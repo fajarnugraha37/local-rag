@@ -1,9 +1,9 @@
 # Tasks: Persistent Vector Database Migration (Feature 004)
 
 ## Progress Tracker
-- `todo`: 9
+- `todo`: 8
 - `doing`: 0
-- `done`: 2
+- `done`: 3
 - `blocked`: 0
 
 ## Dispatch Rule
@@ -46,7 +46,7 @@ print({k: s.CONFIG.get(k) for k in ["vector_db_provider", "vector_db_collection"
 ```
 
 ### T003 — Implement deterministic ID strategy
-- Status: `todo`
+- Status: `done`
 - Goal: ensure idempotent upsert/delete semantics with stable IDs.
 - Files to touch: `app/storage/vector_ids.py` (new), `app/common/content_hashing.py` (optional reuse).
 - Steps:
