@@ -5,6 +5,23 @@ from openai import OpenAI
 import argparse
 import json
 
+# Embedding chunking to avoid model context length limits
+def chunk_text(text, max_chars=1000, overlap=100):
+    chunks = []
+    if not text:
+        return chunks
+    text_len = len(text)
+    start = 0
+    while start < text_len:
+        end = min(text_len, start + max_chars)
+        chunk = text[start:end].strip()
+        if chunk:
+            chunks.append(chunk)
+        if end >= text_len:
+            break
+        start = max(0, end - overlap)
+    return chunks
+
 # ANSI escape codes for colors
 PINK = '\033[95m'
 CYAN = '\033[96m'
@@ -63,7 +80,7 @@ def rewrite_query(user_input_json, conversation_history, ollama_model):
     rewritten_query = response.choices[0].message.content.strip()
     return json.dumps({"Rewritten Query": rewritten_query})
    
-def ollama_chat(user_input, system_message, vault_embeddings, vault_content, ollama_model, conversation_history):
+def ollama_chat(user_input, system_message, vault_embeddings, vault_content, ollama_model, conversation_history, top_k=3, max_context_chars=4000):
     conversation_history.append({"role": "user", "content": user_input})
     
     if len(conversation_history) > 1:
@@ -79,9 +96,12 @@ def ollama_chat(user_input, system_message, vault_embeddings, vault_content, oll
     else:
         rewritten_query = user_input
     
-    relevant_context = get_relevant_context(rewritten_query, vault_embeddings, vault_content)
+    relevant_context = get_relevant_context(rewritten_query, vault_embeddings, vault_content, top_k=top_k)
     if relevant_context:
         context_str = "\n".join(relevant_context)
+        # Limit context to keep requests within model context window
+        if max_context_chars is not None and len(context_str) > max_context_chars:
+            context_str = context_str[:max_context_chars].rstrip() + "\n...[truncated]..."
         print("Context Pulled from Documents: \n\n" + CYAN + context_str + RESET_COLOR)
     else:
         print(CYAN + "No relevant context found." + RESET_COLOR)
@@ -97,11 +117,19 @@ def ollama_chat(user_input, system_message, vault_embeddings, vault_content, oll
         *conversation_history
     ]
     
-    response = client.chat.completions.create(
-        model=ollama_model,
-        messages=messages,
-        max_tokens=2000,
-    )
+    try:
+        response = client.chat.completions.create(
+            model=ollama_model,
+            messages=messages,
+            max_tokens=2000,
+        )
+    except Exception as e:
+        err = str(e)
+        if "requires more system memory" in err:
+            print(YELLOW + f"Model '{ollama_model}' needs more RAM than available. Try a smaller or quantized model with --model (e.g., a 7B/8B quantized variant)." + RESET_COLOR)
+        else:
+            print(YELLOW + f"Chat request failed: {e}" + RESET_COLOR)
+        return "Sorry, the chat request failed."
     
     conversation_history.append({"role": "assistant", "content": response.choices[0].message.content})
     
@@ -110,14 +138,18 @@ def ollama_chat(user_input, system_message, vault_embeddings, vault_content, oll
 # Parse command-line arguments
 print(NEON_GREEN + "Parsing command-line arguments..." + RESET_COLOR)
 parser = argparse.ArgumentParser(description="Ollama Chat")
-parser.add_argument("--model", default="llama3", help="Ollama model to use (default: llama3)")
+# parser.add_argument("--model", default="llama3", help="Ollama model to use (default: llama3)")
+parser.add_argument("--model", default="hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest", help="Ollama model to use (default: hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest)")
+parser.add_argument("--top-k", type=int, default=3, help="Number of top relevant chunks to include (default: 3)")
+parser.add_argument("--max-context-chars", type=int, default=6000, help="Max characters of retrieved context to include (default: 6000)")
 args = parser.parse_args()
 
 # Configuration for the Ollama API client
 print(NEON_GREEN + "Initializing Ollama API client..." + RESET_COLOR)
 client = OpenAI(
     base_url='http://localhost:11434/v1',
-    api_key='llama3'
+    # api_key='llama3'
+    api_key='hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest'
 )
 
 # Load the vault content
@@ -125,20 +157,27 @@ print(NEON_GREEN + "Loading vault content..." + RESET_COLOR)
 vault_content = []
 if os.path.exists("vault.txt"):
     with open("vault.txt", "r", encoding='utf-8') as vault_file:
-        vault_content = vault_file.readlines()
+        raw_text = vault_file.read()
+    # Split by blank lines to preserve paragraph boundaries, then chunk
+    paragraphs = [p.strip() for p in raw_text.split("\n\n") if p.strip()]
+    for p in paragraphs:
+        vault_content.extend(chunk_text(p, max_chars=1000, overlap=100))
 
 # Generate embeddings for the vault content using Ollama
 print(NEON_GREEN + "Generating embeddings for the vault content..." + RESET_COLOR)
 vault_embeddings = []
 for content in vault_content:
-    response = ollama.embeddings(model='mxbai-embed-large', prompt=content)
-    vault_embeddings.append(response["embedding"])
+    try:
+        response = ollama.embeddings(model='mxbai-embed-large', prompt=content)
+        vault_embeddings.append(response["embedding"])
+    except Exception as e:
+        print(YELLOW + f"Skipping a chunk due to embedding error: {e}" + RESET_COLOR)
 
 # Convert to tensor and print embeddings
 print("Converting embeddings to tensor...")
 vault_embeddings_tensor = torch.tensor(vault_embeddings) 
-print("Embeddings for each line in the vault:")
-print(vault_embeddings_tensor)
+print("Embeddings tensor shape:")
+print(vault_embeddings_tensor.shape)
 
 # Conversation loop
 print("Starting conversation loop...")
@@ -150,5 +189,14 @@ while True:
     if user_input.lower() == 'quit':
         break
     
-    response = ollama_chat(user_input, system_message, vault_embeddings_tensor, vault_content, args.model, conversation_history)
+    response = ollama_chat(
+        user_input,
+        system_message,
+        vault_embeddings_tensor,
+        vault_content,
+        args.model,
+        conversation_history,
+        top_k=args.top_k,
+        max_context_chars=args.max_context_chars,
+    )
     print(NEON_GREEN + "Response: \n\n" + response + RESET_COLOR)
