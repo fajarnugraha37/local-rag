@@ -1,9 +1,9 @@
 # Tasks: Persistent Vector Database Migration (Feature 004)
 
 ## Progress Tracker
-- `todo`: 3
+- `todo`: 2
 - `doing`: 0
-- `done`: 8
+- `done`: 9
 - `blocked`: 0
 
 ## Dispatch Rule
@@ -146,7 +146,7 @@ print("count", ChromaVectorStore().count())
 ```
 
 ### T009 — Remove old storage mechanism after cutover
-- Status: `todo`
+- Status: `done`
 - Goal: fully eliminate JSONL-based chunk/embedding storage paths.
 - Files to touch: `app/indexing/embedding_indexer.py`, `app/retrieval/hybrid_search.py`, `app/ingestion/file_ingest_gui.py`, `app/ingestion/email_ingest_job.py`, `config.yaml`, `README.md`.
 - Steps:

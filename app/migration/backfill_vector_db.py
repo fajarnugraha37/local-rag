@@ -77,13 +77,16 @@ def _upsert_with_retries(
 
 
 def backfill(
-    chunks_file: str,
+    chunks_file: Optional[str],
     embeddings_file: Optional[str],
     batch_size: int,
     embedding_model: Optional[str],
     retries: int,
     retry_delay_s: float,
 ) -> Dict[str, int]:
+    if not chunks_file:
+        repo_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        chunks_file = os.path.join(repo_dir, "data", "chunks.jsonl")
     store = ChromaVectorStore()
     chunks = _load_chunks(chunks_file)
     precomputed = _load_embeddings_map(embeddings_file, embedding_model)

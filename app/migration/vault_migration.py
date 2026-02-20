@@ -132,7 +132,7 @@ def migrate(vault_file: str, chunks_file: str, index_meta_file: str, max_chars: 
 
 def main():
     parser = argparse.ArgumentParser(description='Migrate vault.txt to structured chunks (idempotent)')
-    default_vault = settings.CONFIG.get('vault_file', 'vault.txt')
+    default_vault = 'vault.txt'
     repo_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
     default_chunks = os.path.join(repo_dir, 'data', 'chunks.jsonl')
     default_index = os.path.join(repo_dir, 'data', 'index_meta.json')

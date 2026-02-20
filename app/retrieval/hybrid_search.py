@@ -91,8 +91,6 @@ def rrf_merge(ranked_lists: List[List[str]], top_k: int = 10, k: int = 60, weigh
 
 
 def hybrid_search(query: str,
-                  chunks_file: Optional[str] = None,
-                  embeddings_file: Optional[str] = None,
                   top_k: int = 6,
                   dense_top: int = 100,
                   bm25_top: int = 100,
@@ -180,8 +178,6 @@ def hybrid_search(query: str,
 # --- CLI ---
 
 def scored_chunks(query: str,
-                  chunks_file: Optional[str] = None,
-                  embeddings_file: Optional[str] = None,
                   top_k: int = 6,
                   rerank: bool = True,
                   rerank_weights: Optional[Dict[str, float]] = None,
@@ -195,8 +191,6 @@ def scored_chunks(query: str,
     """
     res = hybrid_search(
         query,
-        chunks_file=chunks_file,
-        embeddings_file=embeddings_file,
         top_k=top_k,
         embedding_model=embedding_model,
         filters=filters,

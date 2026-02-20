@@ -9,7 +9,8 @@ A local-first RAG project for documents and email data. The current codebase use
 - Context packing: `app/context/token_budget_packer.py` + `app/context/token_chunking.py`
 - Chat apps: `app/chat/document_chat_cli.py`, `app/chat/document_chat_baseline_cli.py`, `app/chat/email_chat_cli.py`
 - Compatibility shims: root scripts (`localrag.py`, `localrag_no_rewrite.py`, `emailrag2.py`, `upload.py`, etc.) delegate to `app/` modules.
-- Data files: `data/chunks.jsonl`, `data/embeddings.jsonl`, `data/index_meta.json`
+- Vector store: `data/chroma/` (Chroma persistent collection)
+- Legacy migration artifacts: `data/chunks.jsonl`, `data/embeddings.jsonl`, `data/index_meta.json`
 
 ## Setup
 ```powershell
@@ -40,9 +41,9 @@ python -m app.migration.vault_migration --vault vault.txt
 # compatibility: python migrate_vault.py --vault vault.txt
 ```
 
-## Build/Update Embedding Index
+## Backfill Legacy JSONL Into Vector DB
 ```powershell
-python -m app.indexing.embedding_indexer --embedding-model mxbai-embed-large
+python -m app.migration.backfill_vector_db --batch-size 64
 # compatibility: python index_embeddings.py --embedding-model mxbai-embed-large
 ```
 
@@ -112,6 +113,6 @@ Streaming/continuation keys:
 - `continuation_instruction`
 
 ## Notes
-- Retrieval can still run BM25-only if embeddings are missing, but best quality requires running `index_embeddings.py`.
-- `data/chunks.jsonl` may contain sensitive text. Avoid committing private content.
+- Runtime retrieval reads from Chroma persistent storage (`data/chroma` by default).
+- Legacy JSONL files are migration inputs; avoid committing private content.
 - Thinking summaries can expose higher-level reasoning metadata. Keep `enable_thinking_summary` disabled for stricter privacy/safety environments.

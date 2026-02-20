@@ -1,7 +1,5 @@
-vault_file: "data/chunks.jsonl"
 embedding_model: mxbai-embed-large
 embedding_dim: 1024
-embeddings_file: "data/embeddings.jsonl"
 vector_db_provider: "chroma"
 vector_db_persist_dir: "data/chroma"
 vector_db_collection: "easy_local_rag"

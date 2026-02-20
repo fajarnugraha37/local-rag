@@ -1,10 +1,7 @@
 import os
 import time
-import json
 from openai import OpenAI
 import argparse
-import yaml
-import datetime
 from app.config import runtime_settings as settings
 from app.retrieval import hybrid_search as retrieval
 from app.chat.streaming_llm_client import stream_chat_with_continuation
@@ -43,58 +40,6 @@ def open_file(filepath):
     except FileNotFoundError:
         print(f"File '{filepath}' not found.")
         return None
-
-def load_or_generate_embeddings(vault_content, embeddings_file):
-    # Load existing embeddings if valid; otherwise regenerate and persist
-    if os.path.exists(embeddings_file):
-        print(f"Loading embeddings from '{embeddings_file}'...")
-        try:
-            with open(embeddings_file, "r", encoding="utf-8") as file:
-                data = json.load(file)
-            # Validate structure and length when vault content is present
-            if not isinstance(data, list) or (len(vault_content) > 0 and len(data) != len(vault_content)):
-                print(f"Embeddings file '{embeddings_file}' is invalid or mismatched (expected {len(vault_content)} embeddings, got {len(data) if isinstance(data, list) else 'non-list'})")
-                raise ValueError("Invalid embeddings data")
-            return torch.tensor(data)
-        except (json.JSONDecodeError, ValueError) as e:
-            print(f"Embeddings cache corrupted or invalid: {e}")
-            # Back up corrupted file for inspection
-            try:
-                ts = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-                corrupt_path = embeddings_file + f".corrupt.{ts}"
-                os.rename(embeddings_file, corrupt_path)
-                print(f"Backed up corrupted embeddings to '{corrupt_path}'")
-            except Exception as be:
-                print(f"Failed to back up corrupted embeddings file: {be}")
-            # Regenerate and save
-            embeddings = generate_embeddings(vault_content)
-            save_embeddings(embeddings, embeddings_file)
-            return torch.tensor(embeddings)
-    else:
-        print(f"No embeddings found. Generating new embeddings...")
-        embeddings = generate_embeddings(vault_content)
-        save_embeddings(embeddings, embeddings_file)
-        return torch.tensor(embeddings)
-
-def generate_embeddings(vault_content):
-    print("Generating embeddings...")
-    embeddings = []
-    for content in vault_content:
-        try:
-            emb_model = settings.CONFIG.get('embedding_model', 'mxbai-embed-large')
-            response = ollama.embeddings(model=emb_model, prompt=content)
-            embeddings.append(response["embedding"])
-        except Exception as e:
-            print(f"Error generating embeddings: {str(e)}")
-    return embeddings
-
-def save_embeddings(embeddings, embeddings_file):
-    print(f"Saving embeddings to '{embeddings_file}'...")
-    try:
-        with open(embeddings_file, "w", encoding="utf-8") as file:
-            json.dump(embeddings, file)
-    except Exception as e:
-        print(f"Error saving embeddings: {str(e)}")
 
 def get_relevant_context(rewritten_input, vault_embeddings, vault_content, top_k):
     try:
@@ -212,7 +157,6 @@ def ollama_chat(
 def main():
     parser = argparse.ArgumentParser(description="Ollama Chat")
     parser.add_argument("--config", default="config.yaml", help="Path to the configuration file")
-    parser.add_argument("--clear-cache", action="store_true", help="Clear the embeddings cache")
     parser.add_argument("--model", help="Model to use for embeddings and responses")
     parser.add_argument(
         "--stream",
@@ -242,10 +186,6 @@ def main():
     args = parser.parse_args()
 
     config = load_config(args.config)
-
-    if args.clear_cache and os.path.exists(config["embeddings_file"]):
-        print(f"Clearing embeddings cache at '{config['embeddings_file']}'...")
-        os.remove(config["embeddings_file"])
 
     if args.model:
         config["ollama_model"] = args.model

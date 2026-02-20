@@ -52,10 +52,6 @@ def load_settings(config_file='config.yaml'):
     cfg.setdefault('embedding_dim', 1024)
 
     # Override with environment variables (if present)
-    if os.getenv('VAULT_FILE'):
-        cfg['vault_file'] = os.getenv('VAULT_FILE')
-    if os.getenv('EMBEDDINGS_FILE'):
-        cfg['embeddings_file'] = os.getenv('EMBEDDINGS_FILE')
     if os.getenv('OLLAMA_MODEL'):
         cfg['ollama_model'] = os.getenv('OLLAMA_MODEL')
     if os.getenv('TOP_K'):
