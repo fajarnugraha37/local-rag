@@ -1,9 +1,9 @@
 # Tasks: Persistent Vector Database Migration (Feature 004)
 
 ## Progress Tracker
-- `todo`: 7
+- `todo`: 6
 - `doing`: 0
-- `done`: 4
+- `done`: 5
 - `blocked`: 0
 
 ## Dispatch Rule
@@ -77,7 +77,7 @@ python -m pytest -q tests\test_vector_store_smoke.py
 ```
 
 ### T005 — Centralize embedding generation
-- Status: `todo`
+- Status: `done`
 - Goal: avoid duplicated embedding parsing logic and validate embedding dimensions once.
 - Files to touch: `app/indexing/embedding_service.py` (new), `app/indexing/embedding_indexer.py`, `app/retrieval/hybrid_search.py`.
 - Steps:

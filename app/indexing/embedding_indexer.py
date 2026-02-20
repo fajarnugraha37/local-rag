@@ -10,9 +10,9 @@ import argparse
 import time
 from typing import Dict, Any
 
-import ollama
 from app.config import runtime_settings as settings
 from app.common.content_hashing import sha256_hash
+from app.indexing.embedding_service import embed_text
 
 
 def load_chunks(chunks_file: str):
@@ -116,54 +116,15 @@ def main():
             print(f"Skipping empty chunk {chunk_id}")
             continue
 
-        def extract_embedding(resp):
-            # Try several shapes for the response returned by ollama.embeddings
-            try:
-                if resp is None:
-                    return None
-                if isinstance(resp, dict):
-                    if 'embedding' in resp:
-                        return resp['embedding']
-                    data = resp.get('data')
-                    if isinstance(data, list) and len(data) > 0:
-                        first = data[0]
-                        if isinstance(first, dict) and 'embedding' in first:
-                            return first['embedding']
-                if hasattr(resp, 'embedding'):
-                    try:
-                        return resp.embedding
-                    except Exception:
-                        pass
-                if hasattr(resp, 'data'):
-                    data = getattr(resp, 'data')
-                    if isinstance(data, (list, tuple)) and len(data) > 0:
-                        first = data[0]
-                        if hasattr(first, 'embedding'):
-                            return getattr(first, 'embedding')
-                        if isinstance(first, dict) and 'embedding' in first:
-                            return first['embedding']
-                if isinstance(resp, list):
-                    return resp
-            except Exception:
-                return None
-            return None
-
-        try:
-            resp = ollama.embeddings(model=args.embedding_model, prompt=text)
-            emb = extract_embedding(resp)
-        except Exception as e:
-            print(f"Embedding failed for chunk {chunk_id}: {e}")
-            # Try a shorter fallback embedding
-            try:
-                fallback_len = settings.CONFIG.get('embedding_fallback_length', 512)
-                short_text = text[:fallback_len]
-                resp = ollama.embeddings(model=args.embedding_model, prompt=short_text)
-                emb = extract_embedding(resp)
-                if emb is not None:
-                    print(f"Fallback embedding succeeded for chunk {chunk_id} (shortened)")
-            except Exception as e2:
-                print(f"Fallback also failed for chunk {chunk_id}: {e2}")
-                continue
+        emb_info = embed_text(
+            text,
+            embedding_model=args.embedding_model,
+            allow_fallback=True,
+            fallback_length=settings.CONFIG.get('embedding_fallback_length', 512),
+        )
+        emb = emb_info.get('embedding')
+        if emb_info.get('used_fallback') and emb is not None:
+            print(f"Fallback embedding succeeded for chunk {chunk_id} (shortened)")
 
         if emb is None:
             print(f"No embedding extracted for chunk {chunk_id}, skipping.")

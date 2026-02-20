@@ -25,6 +25,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from collections import defaultdict
 
 from app.config import runtime_settings as settings
+from app.indexing.embedding_service import embed_text
 from app.retrieval import heuristic_reranker as reranker
 
 # Optional dependencies (best-effort)
@@ -33,13 +34,6 @@ try:
     _HAS_NUMPY = True
 except Exception:
     _HAS_NUMPY = False
-
-try:
-    import ollama
-    _HAS_OLLAMA = True
-except Exception:
-    _HAS_OLLAMA = False
-
 
 # --- Text tokenization (simple, used for BM25) ---
 def tokenize(text: str) -> List[str]:
@@ -99,50 +93,9 @@ class BM25:
         return indexed[:n]
 
 
-# --- Embedding helpers ---
-
-def extract_embedding(resp: Any) -> Optional[List[float]]:
-    try:
-        if resp is None:
-            return None
-        if isinstance(resp, dict):
-            if 'embedding' in resp:
-                return resp['embedding']
-            data = resp.get('data')
-            if isinstance(data, list) and len(data) > 0:
-                first = data[0]
-                if isinstance(first, dict) and 'embedding' in first:
-                    return first['embedding']
-        if hasattr(resp, 'embedding'):
-            try:
-                return resp.embedding
-            except Exception:
-                pass
-        if hasattr(resp, 'data'):
-            data = getattr(resp, 'data')
-            if isinstance(data, (list, tuple)) and len(data) > 0:
-                first = data[0]
-                if hasattr(first, 'embedding'):
-                    return getattr(first, 'embedding')
-                if isinstance(first, dict) and 'embedding' in first:
-                    return first['embedding']
-        if isinstance(resp, list):
-            return resp
-    except Exception:
-        return None
-    return None
-
-
 def get_query_embedding(text: str, embedding_model: Optional[str] = None) -> Optional[List[float]]:
-    model = embedding_model or settings.CONFIG.get('embedding_model')
-    if not _HAS_OLLAMA:
-        return None
-    try:
-        resp = ollama.embeddings(model=model, prompt=text)
-        emb = extract_embedding(resp)
-        return emb
-    except Exception:
-        return None
+    info = embed_text(text, embedding_model=embedding_model, allow_fallback=False)
+    return info.get('embedding')
 
 
 def load_embeddings(emb_file: str, embedding_model: Optional[str] = None) -> Dict[str, List[float]]:
