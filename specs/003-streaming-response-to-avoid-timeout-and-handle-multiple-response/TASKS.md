@@ -1,7 +1,7 @@
 # Tasks: Streaming Response & Multi-Call Continuation
 
 ## Progress Tracker
-- Status counts: todo 5, doing 0, done 2, blocked 0.
+- Status counts: todo 4, doing 0, done 3, blocked 0.
 
 ## Task List
 
@@ -19,7 +19,7 @@
 - Acceptance: function yields ordered protocol events; stops after `max_continuations`; respects `per_call_max_tokens`.
 - Validation: run a local smoke script that prints streamed chunks; ensure no exceptions.
 
-### T003 — Integrate into document chat CLI (status: todo)
+### T003 — Integrate into document chat CLI (status: done)
 - Goal: Make `app/chat/document_chat_cli.py` support streaming without breaking current usage.
 - Files: `app/chat/document_chat_cli.py`, root shim `localrag.py` if needed.
 - Steps: add CLI flags (`--stream`, `--max-continuations`, `--per-call-max-tokens`, `--enable-thinking-summary`); route through streaming wrapper when enabled; keep non-stream path unchanged.

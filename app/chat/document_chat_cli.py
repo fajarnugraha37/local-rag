@@ -5,6 +5,7 @@ import json
 from app.config import runtime_settings as settings
 from app.retrieval import hybrid_search as retrieval
 from app.context import token_budget_packer as context_packer
+from app.chat.streaming_llm_client import stream_chat_with_continuation
 
 client = None
 
@@ -164,7 +165,19 @@ def rewrite_query(user_input_json, conversation_history, ollama_model):
     rewritten_query = resp.choices[0].message.content.strip()
     return json.dumps({"Rewritten Query": rewritten_query})
    
-def ollama_chat(user_input, system_message, vault_embeddings, vault_content, ollama_model, conversation_history, top_k=3):
+def ollama_chat(
+    user_input,
+    system_message,
+    vault_embeddings,
+    vault_content,
+    ollama_model,
+    conversation_history,
+    top_k=3,
+    stream=False,
+    max_continuations=None,
+    per_call_max_tokens=None,
+    enable_thinking_summary=False,
+):
     conversation_history.append({"role": "user", "content": user_input})
     
     if len(conversation_history) > 1:
@@ -202,6 +215,66 @@ def ollama_chat(user_input, system_message, vault_embeddings, vault_content, oll
         *conversation_history
     ]
     
+    if stream:
+        provider_timeout = settings.CONFIG.get('provider_timeout_s', settings.CONFIG.get('model_timeout', 120))
+        flush_interval_ms = settings.CONFIG.get('flush_interval_ms', 250)
+        effective_per_call_tokens = per_call_max_tokens or settings.CONFIG.get(
+            'per_call_max_tokens',
+            settings.CONFIG.get('chat_max_tokens', 4000),
+        )
+        effective_max_continuations = (
+            settings.CONFIG.get('max_continuations', 2)
+            if max_continuations is None
+            else max_continuations
+        )
+        continuation_instruction = settings.CONFIG.get(
+            'continuation_instruction',
+            'Continue exactly where you left off. Do not repeat prior text.',
+        )
+
+        done_text = ""
+        saw_delta = False
+        stream_failed = False
+        for event in stream_chat_with_continuation(
+            client,
+            model=ollama_model,
+            messages=messages,
+            per_call_max_tokens=effective_per_call_tokens,
+            continuation_instruction=continuation_instruction,
+            max_continuations=effective_max_continuations,
+            timeout=provider_timeout,
+            flush_interval_ms=flush_interval_ms,
+            enable_thinking_summary=enable_thinking_summary,
+        ):
+            event_name = event.get('event')
+            data = event.get('data', {})
+            if event_name == 'final_delta':
+                text = data.get('text', '')
+                if text:
+                    print(text, end='', flush=True)
+                    saw_delta = True
+            elif event_name == 'thinking_delta':
+                summary = data.get('text', '').strip()
+                if summary:
+                    print("\n" + PINK + "Thinking summary:" + RESET_COLOR + " " + summary)
+            elif event_name == 'error':
+                stream_failed = True
+                detail = data.get('detail') or data.get('message') or 'unknown streaming error'
+                print("\n" + YELLOW + f"Streaming error: {detail}" + RESET_COLOR)
+            elif event_name == 'done':
+                done_text = data.get('text', '')
+                if saw_delta:
+                    print()
+
+        if stream_failed and not done_text:
+            return "Sorry, the chat request timed out or failed."
+
+        if not done_text:
+            done_text = "Sorry, the chat request timed out or failed."
+
+        conversation_history.append({"role": "assistant", "content": done_text})
+        return done_text
+
     timeout = settings.CONFIG.get('model_timeout', 120)
     response = _call_with_timeout(
         client.chat.completions.create,
@@ -257,6 +330,30 @@ def main():
     parser.add_argument("--model", default=settings.CONFIG.get("ollama_model", "llama3"), help="Ollama model to use (default from config.yaml)")
     parser.add_argument("--top-k", type=int, default=settings.CONFIG.get("top_k", 3), help="Number of top relevant chunks to include (default from config.yaml)")
     parser.add_argument("--multi-pass", action='store_true', default=settings.CONFIG.get('multi_pass', False), help="Enable multi-pass A/B refinement (default from config.yaml)")
+    parser.add_argument(
+        "--stream",
+        action=argparse.BooleanOptionalAction,
+        default=settings.CONFIG.get("enable_streaming", False),
+        help="Enable streaming response output.",
+    )
+    parser.add_argument(
+        "--max-continuations",
+        type=int,
+        default=settings.CONFIG.get("max_continuations", 2),
+        help="Maximum number of follow-up calls when output is cut by token limit.",
+    )
+    parser.add_argument(
+        "--per-call-max-tokens",
+        type=int,
+        default=settings.CONFIG.get("per_call_max_tokens", settings.CONFIG.get("chat_max_tokens", 4000)),
+        help="Token cap per streaming call before continuation.",
+    )
+    parser.add_argument(
+        "--enable-thinking-summary",
+        action=argparse.BooleanOptionalAction,
+        default=settings.CONFIG.get("enable_thinking_summary", False),
+        help="Enable optional short thinking summary emission (off by default).",
+    )
 
     args = parser.parse_args()
 
@@ -289,6 +386,10 @@ def main():
             args.model,
             conversation_history,
             top_k=args.top_k,
+            stream=args.stream,
+            max_continuations=args.max_continuations,
+            per_call_max_tokens=args.per_call_max_tokens,
+            enable_thinking_summary=args.enable_thinking_summary,
         )
         print(NEON_GREEN + "First-pass (A) Response: \n\n" + response + RESET_COLOR)
 
@@ -311,6 +412,10 @@ def main():
                     args.model,
                     conversation_history,
                     top_k=extra_top_k,
+                    stream=args.stream,
+                    max_continuations=args.max_continuations,
+                    per_call_max_tokens=args.per_call_max_tokens,
+                    enable_thinking_summary=args.enable_thinking_summary,
                 )
                 print(NEON_GREEN + "Refined (B) Response: \n\n" + refined + RESET_COLOR)
                 response = refined
