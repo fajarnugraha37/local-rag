@@ -23,7 +23,7 @@ Status values:
 | T011 | Run pytest smoke suite | T010 | done |
 | T012 | Run evaluation command and verify result file generation | T010 | done |
 | T013 | Run entrypoint backward-compatibility smoke commands | T007 | done |
-| T014 | Audit root `.py` files: only approved shims remain | T013 | todo |
+| T014 | Audit root `.py` files: only approved shims remain | T013 | done |
 | T015 | Update `AGENTS.md` to new modular structure and commands | T014 | todo |
 | T016 | Update `README.md` to new package layout and preserved CLI usage | T014 | todo |
 | T017 | Final consistency pass across PLAN/IMPROVEMENT/TASKS docs | T015,T016 | todo |
@@ -214,7 +214,7 @@ $allowed = @('localrag.py','localrag_no_rewrite.py','emailrag2.py','upload.py','
 Get-ChildItem *.py | Where-Object { $allowed -notcontains $_.Name }
 ```
 Expected: no output.
-- Status: `todo`
+- Status: `done`
 
 ### T015
 - Goal: Update contributor guidance for new module paths.
