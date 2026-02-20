@@ -1,47 +1,78 @@
-# SuperEasy 100% Local RAG with Ollama + Email RAG
+# Easy Local RAG (Ollama + Hybrid Retrieval)
 
-### YouTube Tutorials
-- https://www.youtube.com/watch?v=Oe-7dGDyzPM
-- https://www.youtube.com/watch?v=vFGng_3hDRk
-### Latest YouTube Updated Features
-[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/0X7raD1kISQ/0.jpg)](https://www.youtube.com/watch?v=0X7raD1kISQ)
-### Setup
-1. git clone https://github.com/AllAboutAI-YT/easy-local-rag.git
-2. cd dir
-3. pip install -r requirements.txt
-4. Install Ollama (https://ollama.com/download)
-5. ollama pull hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest (etc)
-6. ollama pull mxbai-embed-large
-7. run upload.py (pdf, .txt, JSON)
-8. run localrag.py (with query re-write)
-9. run localrag_no_rewrite.py (no query re-write)
+A local-first RAG project for documents and email data. The current codebase uses structured chunk storage, incremental embeddings, and hybrid retrieval (dense + BM25 + reranker) with optional multi-pass answering for small models.
 
-### Email RAG Setup
-1. git clone https://github.com/AllAboutAI-YT/easy-local-rag.git
-2. cd dir
-3. pip install -r requirements.txt
-4. Install Ollama (https://ollama.com/download)
-5. ollama pull hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest (etc)
-6. ollama pull mxbai-embed-large
-7. set YOUR email logins in .env (for gmail create app password (video))
-9. python collect_emails.py to download your emails
-10. python emailrag2.py to talk to your emails
+## Current Architecture
+- Ingestion: `upload.py`, `collect_emails.py`, `migrate_vault.py`
+- Indexing: `index_embeddings.py`
+- Retrieval: `retrieval.py` + `reranker.py`
+- Context packing: `context_packer.py` + `chunking.py`
+- Chat apps: `localrag.py`, `localrag_no_rewrite.py`, `emailrag2.py`
+- Data files: `data/chunks.jsonl`, `data/embeddings.jsonl`, `data/index_meta.json`
 
-### Latest Updates
-- Added Email RAG Support (v1.3)
-- Upload.py (v1.2)
-   - replaced /n/n with /n 
-- New embeddings model mxbai-embed-large from ollama (1.2)
-- Rewrite query function to improve retrival on vauge questions (1.2)
-- Pick your model from the CLI (1.1)
-  - python localrag.py --model mistral (hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest is default) 
-- Talk in a true loop with conversation history (1.1)
-   
-### My YouTube Channel
-https://www.youtube.com/c/AllAboutAI
+## Setup
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+ollama pull hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest
+ollama pull mxbai-embed-large
+```
 
-### What is RAG?
-RAG is a way to enhance the capabilities of LLMs by combining their powerful language understanding with targeted retrieval of relevant information from external sources often with using embeddings in vector databases, leading to more accurate, trustworthy, and versatile AI-powered applications
+## Ingest Data
+### Option A: Upload local files (GUI)
+```powershell
+python upload.py
+```
 
-### What is Ollama?
-Ollama is an open-source platform that simplifies the process of running powerful LLMs locally on your own machine, giving users more control and flexibility in their AI projects. https://www.ollama.com
+### Option B: Import emails
+Set `.env` with `GMAIL_USERNAME`, `GMAIL_PASSWORD`, `OUTLOOK_USERNAME`, `OUTLOOK_PASSWORD`, then run:
+```powershell
+python collect_emails.py --keyword "invoice" --startdate 01.01.2025 --enddate 31.01.2025
+```
+
+### Option C: Migrate legacy `vault.txt`
+```powershell
+python migrate_vault.py --vault vault.txt
+```
+
+## Build/Update Embedding Index
+```powershell
+python index_embeddings.py --embedding-model mxbai-embed-large
+```
+
+## Run Chat
+### Main app (rewrite + optional multi-pass)
+```powershell
+python localrag.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest --top-k 6 --multi-pass
+```
+
+### Baseline app (no rewrite)
+```powershell
+python localrag_no_rewrite.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest
+```
+
+### Email chat app
+```powershell
+python emailrag2.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest
+```
+
+## Inspect Retrieval
+```powershell
+python retrieval.py --query "what are key payment terms?" --top-k 6
+```
+
+## Test and Evaluate
+```powershell
+python -m pytest -q
+python eval\run_eval.py --questions eval\questions.jsonl --top-k 6 --output eval\results.json
+make all
+# or: .\run_all.ps1
+```
+
+## Configuration
+Runtime defaults are in `config.yaml`; environment variables can override core values via `settings.py` (for example `OLLAMA_MODEL`, `TOP_K`, `OLLAMA_API_BASE_URL`, `OLLAMA_API_KEY`).
+
+## Notes
+- Retrieval can still run BM25-only if embeddings are missing, but best quality requires running `index_embeddings.py`.
+- `data/chunks.jsonl` may contain sensitive text. Avoid committing private content.
