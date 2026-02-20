@@ -2,3 +2,4 @@ logs/
 __pycache__/
 vault.txt
 vault_embeddings.json
+data/
