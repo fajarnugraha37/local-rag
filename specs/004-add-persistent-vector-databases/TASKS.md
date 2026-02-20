@@ -1,9 +1,9 @@
 # Tasks: Persistent Vector Database Migration (Feature 004)
 
 ## Progress Tracker
-- `todo`: 8
+- `todo`: 7
 - `doing`: 0
-- `done`: 3
+- `done`: 4
 - `blocked`: 0
 
 ## Dispatch Rule
@@ -61,7 +61,7 @@ python -m pytest -q tests\test_vector_ids.py
 ```
 
 ### T004 — Implement Chroma vector store module
-- Status: `todo`
+- Status: `done`
 - Goal: add persistent store operations as the new storage backend.
 - Files to touch: `app/storage/chroma_vector_store.py` (new), `app/storage/__init__.py` (new).
 - Steps:
