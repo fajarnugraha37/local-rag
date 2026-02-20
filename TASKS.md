@@ -21,7 +21,7 @@
 | T105 | 1 | Auto-recover corrupted embedding cache in `emailrag2.py` | - | DONE |
 | T106 | 1 | Harden IMAP error handling in `collect_emails.py` | - | DONE |
 | T107 | 1 | Run Phase 1 validation commands | T102,T103,T104,T105,T106 | DONE |
-| T201 | 2 | Create `data/` storage layout and metadata format | T107 | TODO |
+| T201 | 2 | Create `data/` storage layout and metadata format | T107 | DONE |
 | T202 | 2 | Add hashing and dedup utility | T201 | TODO |
 | T203 | 2 | Create `migrate_vault.py` for legacy migration | T201,T202 | TODO |
 | T204 | 2 | Implement incremental embedding cache/index | T201,T202 | TODO |
