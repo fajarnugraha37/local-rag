@@ -2,7 +2,7 @@
 
 ## Usage
 Prompt format for delegation:
-- `please follow instruction in PLAN.md and do task T001`
+- `please follow ALL instruction carefully in specs\002-make-the-code-modular\PLAN.md and do task T001`
 
 Status values:
 - `todo` | `doing` | `done` | `blocked`
