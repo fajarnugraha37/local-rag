@@ -247,7 +247,7 @@ def hybrid_search(query: str,
                   bm25_top: int = 100,
                   rrf_k: int = 60,
                   embedding_model: Optional[str] = None) -> List[Dict[str, Any]]:
-    repo_dir = os.path.dirname(__file__)
+    repo_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
     chunks_file = chunks_file or os.path.join(repo_dir, 'data', 'chunks.jsonl')
     embeddings_file = embeddings_file or os.path.join(repo_dir, 'data', 'embeddings.jsonl')
     embedding_model = embedding_model or settings.CONFIG.get('embedding_model')
@@ -335,7 +335,7 @@ def scored_chunks(query: str,
     return res
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(description='Hybrid retrieval (dense + BM25 + RRF)')
     parser.add_argument('--query', required=True, help='Query text')
     parser.add_argument('--top-k', type=int, default=6, help='Number of results to return')
@@ -348,3 +348,7 @@ if __name__ == '__main__':
     res = scored_chunks(args.query, chunks_file=args.chunks_file, embeddings_file=args.embeddings_file,
                         top_k=args.top_k, rerank=(not args.no_rerank), embedding_model=args.embedding_model)
     print(json.dumps(res, ensure_ascii=False, indent=2))
+
+
+if __name__ == '__main__':
+    main()

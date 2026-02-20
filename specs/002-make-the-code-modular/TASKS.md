@@ -16,7 +16,7 @@ Status values:
 | T004 | Move ingestion/index/migration modules into `app/` and keep `main()` entrypoints | T003 | done |
 | T005 | Move chat modules into `app/chat/` and expose `main()` in each CLI module | T003 | done |
 | T006 | Move validation/debug scripts into `app/validation` and `app/tools` | T003 | done |
-| T007 | Create root compatibility shims for all existing CLI filenames | T004,T005,T006 | todo |
+| T007 | Create root compatibility shims for all existing CLI filenames | T004,T005,T006 | done |
 | T008 | Update tests to import from `app.*` modules | T007 | todo |
 | T009 | Update `eval/run_eval.py` imports to `app.*` modules | T007 | todo |
 | T010 | Run compile/import smoke checks for package integrity | T008,T009 | todo |
@@ -127,7 +127,7 @@ python -c "from app.validation.phase4_validation_cli import main; from app.tools
 Get-Content localrag.py
 ```
 Expected: tiny wrapper only.
-- Status: `todo`
+- Status: `done`
 
 ### T008
 - Goal: Update test imports to package modules.
