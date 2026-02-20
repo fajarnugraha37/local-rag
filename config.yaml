@@ -1,6 +1,12 @@
 vault_file: "data/chunks.jsonl"
 embedding_model: mxbai-embed-large
+embedding_dim: 1024
 embeddings_file: "data/embeddings.jsonl"
+vector_db_provider: "chroma"
+vector_db_persist_dir: "data/chroma"
+vector_db_collection: "easy_local_rag"
+vector_db_batch_size: 64
+vector_db_timeout_s: 30
 ollama_model: "lfm2.5-thinking:1.2b"
 top_k: 7
 system_message: "You are a helpful assistant that is an expert at extracting the most useful information from a given text"

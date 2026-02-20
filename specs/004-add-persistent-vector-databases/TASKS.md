@@ -1,9 +1,9 @@
 # Tasks: Persistent Vector Database Migration (Feature 004)
 
 ## Progress Tracker
-- `todo`: 10
+- `todo`: 9
 - `doing`: 0
-- `done`: 1
+- `done`: 2
 - `blocked`: 0
 
 ## Dispatch Rule
@@ -27,7 +27,7 @@ python eval\run_eval.py --questions eval\questions.jsonl --top-k 6 --output eval
 ```
 
 ### T002 — Add Chroma dependency and vector config
-- Status: `todo`
+- Status: `done`
 - Goal: define runtime settings for persistent vector DB.
 - Files to touch: `requirements.txt`, `config.yaml`, `app/config/runtime_settings.py`.
 - Steps:

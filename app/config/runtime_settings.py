@@ -44,6 +44,12 @@ def load_settings(config_file='config.yaml'):
         'Continue exactly where you left off. Do not repeat prior text.',
     )
     cfg.setdefault('per_call_max_tokens', int(cfg.get('chat_max_tokens', 4000)))
+    cfg.setdefault('vector_db_provider', 'chroma')
+    cfg.setdefault('vector_db_persist_dir', 'data/chroma')
+    cfg.setdefault('vector_db_collection', 'easy_local_rag')
+    cfg.setdefault('vector_db_batch_size', 64)
+    cfg.setdefault('vector_db_timeout_s', 30)
+    cfg.setdefault('embedding_dim', 1024)
 
     # Override with environment variables (if present)
     if os.getenv('VAULT_FILE'):
@@ -87,6 +93,27 @@ def load_settings(config_file='config.yaml'):
             pass
     if os.getenv('CONTINUATION_INSTRUCTION'):
         cfg['continuation_instruction'] = os.getenv('CONTINUATION_INSTRUCTION')
+    if os.getenv('VECTOR_DB_PROVIDER'):
+        cfg['vector_db_provider'] = os.getenv('VECTOR_DB_PROVIDER')
+    if os.getenv('VECTOR_DB_PERSIST_DIR'):
+        cfg['vector_db_persist_dir'] = os.getenv('VECTOR_DB_PERSIST_DIR')
+    if os.getenv('VECTOR_DB_COLLECTION'):
+        cfg['vector_db_collection'] = os.getenv('VECTOR_DB_COLLECTION')
+    if os.getenv('VECTOR_DB_BATCH_SIZE'):
+        try:
+            cfg['vector_db_batch_size'] = int(os.getenv('VECTOR_DB_BATCH_SIZE'))
+        except ValueError:
+            pass
+    if os.getenv('VECTOR_DB_TIMEOUT_S'):
+        try:
+            cfg['vector_db_timeout_s'] = int(os.getenv('VECTOR_DB_TIMEOUT_S'))
+        except ValueError:
+            pass
+    if os.getenv('EMBEDDING_DIM'):
+        try:
+            cfg['embedding_dim'] = int(os.getenv('EMBEDDING_DIM'))
+        except ValueError:
+            pass
 
     # Nested ollama_api overrides
     if os.getenv('OLLAMA_API_BASE_URL'):
