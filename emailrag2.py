@@ -1,5 +1,3 @@
-import torch
-import ollama
 import os
 import json
 from openai import OpenAI
@@ -7,6 +5,7 @@ import argparse
 import yaml
 import datetime
 import settings
+import retrieval
 
 # ANSI escape codes for colors
 PINK = '\033[95m'
@@ -80,17 +79,11 @@ def save_embeddings(embeddings, embeddings_file):
         print(f"Error saving embeddings: {str(e)}")
 
 def get_relevant_context(rewritten_input, vault_embeddings, vault_content, top_k):
-    print("Retrieving relevant context...")
-    if vault_embeddings.nelement() == 0:
-        return []
     try:
-        input_embedding = ollama.embeddings(model='mxbai-embed-large', prompt=rewritten_input)["embedding"]
-        cos_scores = torch.cosine_similarity(torch.tensor(input_embedding).unsqueeze(0), vault_embeddings)
-        top_k = min(top_k, len(cos_scores))
-        top_indices = torch.topk(cos_scores, k=top_k)[1].tolist()
-        return [vault_content[idx].strip() for idx in top_indices]
+        results = retrieval.scored_chunks(rewritten_input, top_k=top_k)
+        return [r.get('text','').strip() for r in results]
     except Exception as e:
-        print(f"Error getting relevant context: {str(e)}")
+        print(f"Retrieval failed: {e}")
         return []
 
 def ollama_chat(user_input, system_message, vault_embeddings, vault_content, ollama_model, conversation_history, top_k, client):
@@ -136,13 +129,9 @@ def main():
     if args.model:
         config["ollama_model"] = args.model
 
+    # Use data/* storage via retrieval; no vault.txt or in-memory torch embeddings
     vault_content = []
-    if os.path.exists(config["vault_file"]):
-        print(f"Loading content from vault '{config['vault_file']}'...")
-        with open(config["vault_file"], "r", encoding='utf-8') as vault_file:
-            vault_content = vault_file.readlines()
-
-    vault_embeddings_tensor = load_or_generate_embeddings(vault_content, config["embeddings_file"])
+    vault_embeddings_tensor = None
 
     client = OpenAI(
         base_url=config["ollama_api"]["base_url"],

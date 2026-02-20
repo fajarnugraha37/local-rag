@@ -1,9 +1,8 @@
-import torch
-import ollama
 import os
 from openai import OpenAI
 import argparse
 import settings
+import retrieval
 
 # ANSI escape codes for colors
 PINK = '\033[95m'
@@ -17,22 +16,14 @@ def open_file(filepath):
     with open(filepath, 'r', encoding='utf-8') as infile:
         return infile.read()
 
-# Function to get relevant context from the vault based on user input
+# Function to get relevant context using retrieval from data/* storage
 def get_relevant_context(rewritten_input, vault_embeddings, vault_content, top_k=3):
-    if vault_embeddings.nelement() == 0:  # Check if the tensor has any elements
+    try:
+        results = retrieval.scored_chunks(rewritten_input, top_k=top_k)
+        return [r.get('text','').strip() for r in results]
+    except Exception as e:
+        print(YELLOW + f"Retrieval failed: {e}" + RESET_COLOR)
         return []
-    # Encode the rewritten input
-    embedding_model = settings.CONFIG.get("embedding_model", "mxbai-embed-large")
-    input_embedding = ollama.embeddings(model=embedding_model, prompt=rewritten_input)["embedding"]
-    # Compute cosine similarity between the input and vault embeddings
-    cos_scores = torch.cosine_similarity(torch.tensor(input_embedding).unsqueeze(0), vault_embeddings)
-    # Adjust top_k if it's greater than the number of available scores
-    top_k = min(top_k, len(cos_scores))
-    # Sort the scores and get the top-k indices
-    top_indices = torch.topk(cos_scores, k=top_k)[1].tolist()
-    # Get the corresponding context from the vault
-    relevant_context = [vault_content[idx].strip() for idx in top_indices]
-    return relevant_context
 
 # Function to interact with the Ollama model
 def ollama_chat(user_input, system_message, vault_embeddings, vault_content, ollama_model, conversation_history):
@@ -82,34 +73,9 @@ client = OpenAI(
     api_key=settings.CONFIG.get("ollama_api", {}).get("api_key")
 )
 
-# Load the vault content
-vault_file_path = settings.CONFIG.get("vault_file", "vault.txt")
-print(NEON_GREEN + f"Loading vault content from '{vault_file_path}'..." + RESET_COLOR)
+# Using data/* storage via retrieval; no vault.txt or in-memory torch embeddings
 vault_content = []
-if os.path.exists(vault_file_path):
-    with open(vault_file_path, "r", encoding='utf-8') as vault_file:
-        raw_text = vault_file.read()
-    # Split by blank lines to preserve paragraph boundaries
-    paragraphs = [p.strip() for p in raw_text.split("\n\n") if p.strip()]
-    for p in paragraphs:
-        vault_content.append(p)
-else:
-    print(YELLOW + f"Vault file '{vault_file_path}' not found, starting with empty vault." + RESET_COLOR)
-
-# Generate embeddings for the vault content using Ollama
-vault_embeddings = []
-embedding_model = settings.CONFIG.get("embedding_model", "mxbai-embed-large")
-for content in vault_content:
-    try:
-        response = ollama.embeddings(model=embedding_model, prompt=content)
-        vault_embeddings.append(response["embedding"])
-    except Exception as e:
-        print(YELLOW + f"Skipping a chunk due to embedding error: {e}" + RESET_COLOR)
-
-# Convert to tensor and print embeddings
-vault_embeddings_tensor = torch.tensor(vault_embeddings)
-print("Embeddings tensor shape:")
-print(vault_embeddings_tensor.shape)
+vault_embeddings_tensor = None
 
 # Conversation loop
 conversation_history = []

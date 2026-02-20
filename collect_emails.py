@@ -101,31 +101,14 @@ def write_chunks_file(chunks_list, source_path=None, chunks_file=None, append_va
             existing.add(cid)
             new_written += 1
 
-    # For backward compatibility, also append raw text chunks to vault.txt
-    if append_vault:
-        try:
-            vault_path = settings.CONFIG.get('vault_file', os.path.join(repo_dir, 'vault.txt'))
-            with open(vault_path, 'a', encoding='utf-8') as vf:
-                for c in chunks_list:
-                    vf.write(c.strip() + '\n')
-        except Exception:
-            pass
-
-    print(f"Wrote {new_written} new chunks to {chunks_file} (appended to vault: {append_vault})")
+    print(f"Wrote {new_written} new chunks to {chunks_file}")
 
 def save_chunks_to_vault(chunks, source_path=None):
     try:
         write_chunks_file(chunks, source_path=source_path)
     except Exception as e:
         print(f"Failed to save chunks to structured file: {e}")
-        # fallback to legacy vault append
-        vault_path = settings.CONFIG.get('vault_file', os.path.join(os.path.dirname(__file__), 'vault.txt'))
-        try:
-            with open(vault_path, "a", encoding="utf-8") as vault_file:
-                for chunk in chunks:
-                    vault_file.write(chunk.strip() + "\n")
-        except Exception:
-            pass
+
 
 def get_text_from_html(html_content):
     soup = BeautifulSoup(html_content, 'lxml')

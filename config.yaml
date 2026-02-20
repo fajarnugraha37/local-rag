@@ -1,6 +1,6 @@
-vault_file: "vault.txt"
+vault_file: "data/chunks.jsonl"
 embedding_model: mxbai-embed-large
-embeddings_file: "vault_embeddings.json"
+embeddings_file: "data/embeddings.jsonl"
 ollama_model: "hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest"
 top_k: 7
 system_message: "You are a helpful assistant that is an expert at extracting the most useful information from a given text"

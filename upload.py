@@ -23,7 +23,7 @@ def chunk_sentences(text, max_chars=1000):
     return chunks
 
 # Helper: write structured chunk objects to data/chunks.jsonl (deduped)
-def write_chunks_file(chunks_list, source_path, chunks_file=None, append_vault=True):
+def write_chunks_file(chunks_list, source_path, chunks_file=None, append_vault=False):
     repo_dir = os.path.dirname(__file__)
     if chunks_file is None:
         chunks_file = os.path.join(repo_dir, 'data', 'chunks.jsonl')
@@ -67,17 +67,7 @@ def write_chunks_file(chunks_list, source_path, chunks_file=None, append_vault=T
             existing.add(cid)
             new_written += 1
 
-    # For backward compatibility, also append raw text chunks to vault.txt
-    if append_vault:
-        try:
-            vault_path = settings.CONFIG.get('vault_file', os.path.join(repo_dir, 'vault.txt'))
-            with open(vault_path, 'a', encoding='utf-8') as vf:
-                for c in chunks_list:
-                    vf.write(c.strip() + '\n')
-        except Exception:
-            pass
-
-    print(f"Wrote {new_written} new chunks to {chunks_file} (appended to vault: {append_vault})")
+    print(f"Wrote {new_written} new chunks to {chunks_file}")
 
 # Function to convert PDF to text and write structured chunks
 def convert_pdf_to_text():
