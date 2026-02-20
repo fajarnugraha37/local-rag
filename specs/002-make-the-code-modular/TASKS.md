@@ -20,7 +20,7 @@ Status values:
 | T008 | Update tests to import from `app.*` modules | T007 | done |
 | T009 | Update `eval/run_eval.py` imports to `app.*` modules | T007 | done |
 | T010 | Run compile/import smoke checks for package integrity | T008,T009 | done |
-| T011 | Run pytest smoke suite | T010 | todo |
+| T011 | Run pytest smoke suite | T010 | done |
 | T012 | Run evaluation command and verify result file generation | T010 | todo |
 | T013 | Run entrypoint backward-compatibility smoke commands | T007 | todo |
 | T014 | Audit root `.py` files: only approved shims remain | T013 | todo |
@@ -175,7 +175,7 @@ python -m compileall app
 ```powershell
 python -m pytest -q
 ```
-- Status: `todo`
+- Status: `done`
 
 ### T012
 - Goal: Confirm eval pipeline still works.
