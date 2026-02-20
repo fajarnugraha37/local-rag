@@ -1,7 +1,7 @@
 # Tasks: Streaming Response & Multi-Call Continuation
 
 ## Progress Tracker
-- Status counts: todo 6, doing 0, done 1, blocked 0.
+- Status counts: todo 5, doing 0, done 2, blocked 0.
 
 ## Task List
 
@@ -12,7 +12,7 @@
 - Acceptance: protocol helpers importable; config keys available with sane defaults; existing CLIs still run.
 - Validation: `python -m pytest -q`.
 
-### T002 — Streaming + continuation wrapper (status: todo)
+### T002 — Streaming + continuation wrapper (status: done)
 - Goal: Create a reusable streaming client that emits protocol events and chains calls on `finish_reason="length"`.
 - Files: `app/chat/streaming_llm_client.py` (new), optional helper in `app/common/stream_protocol.py`.
 - Steps: implement streaming call with `stream=True`, keep-alives, continuation loop, optional thinking summary sanitizing `<think>` tags, retries, cancellation hook.
