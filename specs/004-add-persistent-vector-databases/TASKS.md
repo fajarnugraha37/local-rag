@@ -1,9 +1,9 @@
 # Tasks: Persistent Vector Database Migration (Feature 004)
 
 ## Progress Tracker
-- `todo`: 5
+- `todo`: 4
 - `doing`: 0
-- `done`: 6
+- `done`: 7
 - `blocked`: 0
 
 ## Dispatch Rule
@@ -109,7 +109,7 @@ python -m pytest -q tests\test_smoke_ingest.py tests\test_vector_store_smoke.py
 ```
 
 ### T007 — Rewrite retrieval path to use vector DB
-- Status: `todo`
+- Status: `done`
 - Goal: cut retrieval over to persistent vector DB (no file-based loading).
 - Files to touch: `app/retrieval/hybrid_search.py`, `app/retrieval/heuristic_reranker.py` (if needed), callers in `app/chat/*.py`, `app/tools/retrieval_debug_cli.py`, `eval/run_eval.py`, `app/validation/phase4_validation_cli.py`.
 - Steps:
