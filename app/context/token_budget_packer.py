@@ -9,8 +9,8 @@ ordered by relevance (most relevant first).
 """
 
 from typing import List, Optional
-import settings
-from chunking import estimate_token_count, chunk_by_tokens
+from app.config import runtime_settings as settings
+from app.context.token_chunking import estimate_token_count, chunk_by_tokens
 
 
 def pack_context(query: str, chunks: List[str], tokenizer=None, max_tokens: Optional[int] = None, overlap_tokens: int = 20) -> List[str]:

@@ -10,7 +10,7 @@ an estimated token budget with a small overlap between chunks.
 """
 
 import re
-import settings
+from app.config import runtime_settings as settings
 from typing import Callable, List, Optional
 
 

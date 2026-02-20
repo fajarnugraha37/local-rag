@@ -11,7 +11,7 @@ Status values:
 | ID | Summary | Depends On | Status |
 |---|---|---|---|
 | T001 | Create `app/` package skeleton and `__init__.py` files | - | done |
-| T002 | Move config/common/context/retrieval modules to semantic `app/` paths | T001 | todo |
+| T002 | Move config/common/context/retrieval modules to semantic `app/` paths | T001 | done |
 | T003 | Rewrite internal imports in moved core modules to `app.*` absolute imports | T002 | todo |
 | T004 | Move ingestion/index/migration modules into `app/` and keep `main()` entrypoints | T003 | todo |
 | T005 | Move chat modules into `app/chat/` and expose `main()` in each CLI module | T003 | todo |
@@ -60,7 +60,7 @@ python -c "import app; print('ok')"
 ```powershell
 python -c "from app.config import runtime_settings; from app.retrieval import hybrid_search; print('ok')"
 ```
-- Status: `todo`
+- Status: `done`
 
 ### T003
 - Goal: Update all core imports to package-qualified imports.

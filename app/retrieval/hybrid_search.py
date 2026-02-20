@@ -24,8 +24,8 @@ import argparse
 from typing import List, Dict, Any, Optional, Tuple
 from collections import defaultdict
 
-import settings
-import reranker
+from app.config import runtime_settings as settings
+from app.retrieval import heuristic_reranker as reranker
 
 # Optional dependencies (best-effort)
 try:

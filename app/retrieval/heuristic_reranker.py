@@ -11,7 +11,7 @@ configurable via weights passed to `rerank()`.
 
 import math
 import re
-import settings
+from app.config import runtime_settings as settings
 from typing import List, Dict, Any, Optional
 
 
