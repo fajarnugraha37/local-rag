@@ -1,9 +1,9 @@
 # Tasks: Persistent Vector Database Migration (Feature 004)
 
 ## Progress Tracker
-- `todo`: 2
+- `todo`: 1
 - `doing`: 0
-- `done`: 9
+- `done`: 10
 - `blocked`: 0
 
 ## Dispatch Rule
@@ -161,7 +161,7 @@ rg -n "chunks\.jsonl|embeddings\.jsonl|append_embedding|load_embeddings\(" app c
 ```
 
 ### T010 — Add full test coverage for migration requirements
-- Status: `todo`
+- Status: `done`
 - Goal: cover correctness and reliability for new storage.
 - Files to touch: `tests/test_vector_ids.py` (new), `tests/test_vector_store_smoke.py` (new), `tests/test_smoke_ingest.py`, `tests/test_smoke_retrieval.py`.
 - Steps:

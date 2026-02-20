@@ -41,7 +41,11 @@ def test_retrieval_vector_db(tmp_path, monkeypatch):
     assert len(res) >= 1
     ids = [r.get("chunk_id") for r in res]
     assert "c1" in ids or "c2" in ids
+    assert all("doc_id" in r and "source" in r and "citation" in r for r in res)
 
     filtered = retrieval.scored_chunks("banana", top_k=2, rerank=False, filters={"doc_id": "doc1"})
     assert len(filtered) >= 1
     assert all(r.get("doc_id") == "doc1" for r in filtered)
+
+    no_match = retrieval.scored_chunks("banana", top_k=2, rerank=False, filters={"doc_id": "does-not-exist"})
+    assert no_match == []
