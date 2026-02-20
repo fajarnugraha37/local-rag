@@ -47,6 +47,71 @@ def _call_with_timeout(func, timeout_sec=30, *args, **kwargs):
         print(YELLOW + f"Model request failed: {e}" + RESET_COLOR)
         return None
 
+
+# Split model reply into internal 'thinking' and final answer when markers are present.
+# Returns (thinking:str|None, final:str|None)
+def split_think_and_final(text):
+    if not text:
+        return (None, None)
+    import re
+    # look for explicit <think> tag
+    m = re.search(r'(?i)<think\b', text)
+    if m:
+        # find end of opening tag
+        tag_close = text.find('>', m.end())
+        start = tag_close + 1 if tag_close != -1 else m.end()
+        # look for closing tag
+        close = re.search(r'(?i)</think>', text[start:])
+        if close:
+            thinking = text[start:start+close.start()].strip()
+            rest = text[start+close.end():].strip()
+            final = rest if rest else None
+            return (thinking, final)
+        # no closing tag; attempt to find a final marker after start
+        fm = re.search(r'(?i)(\n\n|\r\n\r\n)(final answer[:\s]|final[:\s]|\*\*final\*\*)', text[start:])
+        if fm:
+            thinking = text[start:start+fm.start()].strip()
+            final = text[start+fm.end():].strip()
+            return (thinking, final if final else None)
+        # fallback: whole remainder is thinking
+        return (text[start:].strip(), None)
+
+    # no <think> tag: look for explicit final markers
+    fm = re.search(r'(?i)(final answer[:\s]|final[:\s]|\*\*final\*\*|# final)', text)
+    if fm:
+        final = text[fm.end():].strip()
+        thinking = text[:fm.start()].strip() or None
+        return (thinking, final)
+
+    # nothing to split: treat whole as final
+    return (None, text.strip())
+
+
+# Given a draft that contains internal thinking, ask the model to produce a concise final answer only.
+def finalize_draft(draft_text, ollama_model):
+    if not draft_text:
+        return None
+    system_msg = (
+        "You are a concise assistant. Given the draft below which may contain internal reasoning, "
+        "produce a concise final answer only (no chain-of-thought), and return only the answer text."
+    )
+    messages = [{"role": "system", "content": system_msg}, {"role": "user", "content": "Draft:\n\n" + draft_text}]
+    timeout = settings.CONFIG.get('model_timeout', 120)
+    resp = _call_with_timeout(
+        client.chat.completions.create,
+        timeout,
+        model=ollama_model,
+        messages=messages,
+        max_tokens=settings.CONFIG.get('finalize_max_tokens', 400),
+        temperature=settings.CONFIG.get('finalize_temperature', 0.0),
+    )
+    if resp is None:
+        return None
+    try:
+        return resp.choices[0].message.content.strip()
+    except Exception:
+        return None
+
 # Function to open a file and return its contents as a string
 def open_file(filepath):
     with open(filepath, 'r', encoding='utf-8') as infile:
@@ -135,26 +200,51 @@ def ollama_chat(user_input, system_message, vault_embeddings, vault_content, oll
         *conversation_history
     ]
     
-    timeout = settings.CONFIG.get('model_timeout', 30)
+    timeout = settings.CONFIG.get('model_timeout', 120)
     response = _call_with_timeout(
         client.chat.completions.create,
         timeout,
         model=ollama_model,
         messages=messages,
-        max_tokens=settings.CONFIG.get('chat_max_tokens', 2000),
+        max_tokens=settings.CONFIG.get('chat_max_tokens', 4000),
     )
     if response is None:
         return "Sorry, the chat request timed out or failed."
     try:
-        conversation_history.append({"role": "assistant", "content": response.choices[0].message.content})
-        return response.choices[0].message.content
+        resp_text = response.choices[0].message.content
     except Exception as e:
-        err = str(e)
-        if "requires more system memory" in err:
-            print(YELLOW + f"Model '{ollama_model}' needs more RAM than available. Try a smaller or quantized model with --model (e.g., a 7B/8B quantized variant)." + RESET_COLOR)
-        else:
-            print(YELLOW + f"Chat request failed: {e}" + RESET_COLOR)
+        print(YELLOW + f"Chat response parsing failed: {e}" + RESET_COLOR)
         return "Sorry, the chat request failed."
+
+    thinking, final = split_think_and_final(resp_text)
+    auto_finalize = settings.CONFIG.get('auto_finalize_thoughts', False)
+
+    if thinking:
+        print(PINK + "Assistant internal reasoning (thinking):" + RESET_COLOR)
+        print(CYAN + thinking + RESET_COLOR)
+        if final:
+            print(NEON_GREEN + "Final Answer (detected):" + RESET_COLOR)
+            print(final)
+            conversation_history.append({"role": "assistant", "content": final})
+            return final
+        elif auto_finalize:
+            final_text = finalize_draft(thinking, ollama_model)
+            if final_text:
+                print(NEON_GREEN + "Final Answer (derived):" + RESET_COLOR)
+                print(final_text)
+                conversation_history.append({"role": "assistant", "content": final_text})
+                return final_text
+            else:
+                conversation_history.append({"role": "assistant", "content": resp_text})
+                return resp_text
+        else:
+            conversation_history.append({"role": "assistant", "content": resp_text})
+            return resp_text
+    else:
+        # treat as final answer
+        content = final if final else resp_text
+        conversation_history.append({"role": "assistant", "content": content})
+        return content
 
 # Parse command-line arguments
 print(NEON_GREEN + "Parsing command-line arguments..." + RESET_COLOR)
