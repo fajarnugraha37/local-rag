@@ -278,8 +278,12 @@ def hybrid_search(query: str,
     results: List[Dict[str, Any]] = []
     for cid, score in merged:
         meta = chunk_map.get(cid, {})
+        # compose a human-friendly citation [doc_id:chunk_id]
+        doc_id = meta.get('doc_id') or (os.path.basename(meta.get('source')) if meta.get('source') else 'unknown')
+        citation = f"[{doc_id}:{cid}]"
         results.append({
             'chunk_id': cid,
+            'citation': citation,
             'score': score,
             'dense_score': float(dense_score_map.get(cid, 0.0)),
             'bm25_score': float(bm25_score_map.get(cid, 0.0)),

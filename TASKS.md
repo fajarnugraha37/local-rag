@@ -36,7 +36,7 @@
 | T401 | 4 | Remove `max_context_chars` truncation path | T305 | DONE |
 | T402 | 4 | Add token-budget context packer (`context_packer.py`) | T401 | DONE |
 | T403 | 4 | Add multi-pass answering (A/B refinement) | T402 | DONE |
-| T404 | 4 | Add citation output format `[doc_id:chunk_id]` | T402 | TODO |
+| T404 | 4 | Add citation output format `[doc_id:chunk_id]` | T402 | DONE |
 | T405 | 4 | Run Phase 4 validation commands | T403,T404 | TODO |
 | T501 | 5 | Create `eval/questions.jsonl` benchmark set | T405 | TODO |
 | T502 | 5 | Implement `eval/run_eval.py` metrics runner | T501 | TODO |
