@@ -11,7 +11,7 @@ import time
 from typing import Dict, Any
 
 import ollama
-import settings
+from app.config import runtime_settings as settings
 from app.common.content_hashing import sha256_hash
 
 
@@ -87,7 +87,7 @@ def update_index_meta(index_meta_file: str, embedding_model: str):
 
 def main():
     parser = argparse.ArgumentParser(description='Incrementally embed chunks')
-    repo_dir = os.path.dirname(__file__)
+    repo_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
     default_chunks = os.path.join(repo_dir, 'data', 'chunks.jsonl')
     default_embeddings = os.path.join(repo_dir, 'data', 'embeddings.jsonl')
     default_index_meta = os.path.join(repo_dir, 'data', 'index_meta.json')

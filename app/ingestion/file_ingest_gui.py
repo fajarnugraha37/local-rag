@@ -1,7 +1,7 @@
 import os
 import re
 import json
-import settings
+from app.config import runtime_settings as settings
 from app.common.content_hashing import sha256_hash
 
 # Helper: sentence-aware chunking
@@ -22,7 +22,7 @@ def chunk_sentences(text, max_chars=1000):
 
 # Helper: write structured chunk objects to data/chunks.jsonl (deduped)
 def write_chunks_file(chunks_list, source_path, chunks_file=None, append_vault=False):
-    repo_dir = os.path.dirname(__file__)
+    repo_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
     if chunks_file is None:
         chunks_file = os.path.join(repo_dir, 'data', 'chunks.jsonl')
     os.makedirs(os.path.dirname(chunks_file), exist_ok=True)
@@ -124,7 +124,7 @@ def upload_jsonfile():
             write_chunks_file(chunks, file_path)
             print(f"JSON file content processed and appended as structured chunks.")
 
-if __name__ == "__main__":
+def main():
     try:
         import tkinter as tk
         from tkinter import filedialog
@@ -150,3 +150,7 @@ if __name__ == "__main__":
 
         # Run the main event loop
         root.mainloop()
+
+
+if __name__ == "__main__":
+    main()

@@ -11,7 +11,7 @@ import argparse
 import datetime
 from typing import List
 
-import settings
+from app.config import runtime_settings as settings
 from app.common.content_hashing import sha256_hash
 
 
@@ -136,10 +136,10 @@ def migrate(vault_file: str, chunks_file: str, index_meta_file: str, max_chars: 
     return len(to_write)
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(description='Migrate vault.txt to structured chunks (idempotent)')
     default_vault = settings.CONFIG.get('vault_file', 'vault.txt')
-    repo_dir = os.path.dirname(__file__)
+    repo_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
     default_chunks = os.path.join(repo_dir, 'data', 'chunks.jsonl')
     default_index = os.path.join(repo_dir, 'data', 'index_meta.json')
 
@@ -151,3 +151,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     migrate(args.vault, args.chunks_file, args.index_meta, args.max_chars, args.overlap)
+
+
+if __name__ == '__main__':
+    main()

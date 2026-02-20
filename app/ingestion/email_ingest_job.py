@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 load_dotenv()  # Load environment variables from .env file
 
 import json
-import settings
+from app.config import runtime_settings as settings
 from app.common.content_hashing import sha256_hash
 
 # ANSI escape codes for colors
@@ -60,7 +60,7 @@ def chunk_text(text, max_length=1000):
     return chunks
 
 def write_chunks_file(chunks_list, source_path=None, chunks_file=None, append_vault=True):
-    repo_dir = os.path.dirname(__file__)
+    repo_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
     if chunks_file is None:
         chunks_file = os.path.join(repo_dir, 'data', 'chunks.jsonl')
     os.makedirs(os.path.dirname(chunks_file), exist_ok=True)
