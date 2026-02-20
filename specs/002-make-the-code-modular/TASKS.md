@@ -18,7 +18,7 @@ Status values:
 | T006 | Move validation/debug scripts into `app/validation` and `app/tools` | T003 | done |
 | T007 | Create root compatibility shims for all existing CLI filenames | T004,T005,T006 | done |
 | T008 | Update tests to import from `app.*` modules | T007 | done |
-| T009 | Update `eval/run_eval.py` imports to `app.*` modules | T007 | todo |
+| T009 | Update `eval/run_eval.py` imports to `app.*` modules | T007 | done |
 | T010 | Run compile/import smoke checks for package integrity | T008,T009 | todo |
 | T011 | Run pytest smoke suite | T010 | todo |
 | T012 | Run evaluation command and verify result file generation | T010 | todo |
@@ -153,7 +153,7 @@ Expected: no matches.
 ```powershell
 python -c "import eval.run_eval as r; print('ok')"
 ```
-- Status: `todo`
+- Status: `done`
 
 ### T010
 - Goal: Catch syntax/import issues before runtime tests.

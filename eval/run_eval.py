@@ -16,8 +16,8 @@ import statistics
 import os
 from typing import List, Dict, Any
 
-import settings
-import retrieval
+from app.config import runtime_settings as settings
+from app.retrieval import hybrid_search as retrieval
 
 
 def load_questions(path: str) -> List[Dict[str, Any]]:
