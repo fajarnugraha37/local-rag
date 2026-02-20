@@ -24,7 +24,7 @@
 | T201 | 2 | Create `data/` storage layout and metadata format | T107 | DONE |
 | T202 | 2 | Add hashing and dedup utility | T201 | DONE |
 | T203 | 2 | Create `migrate_vault.py` for legacy migration | T201,T202 | DONE |
-| T204 | 2 | Implement incremental embedding cache/index | T201,T202 | TODO |
+| T204 | 2 | Implement incremental embedding cache/index | T201,T202 | DONE |
 | T205 | 2 | Refactor `upload.py` to structured chunk writes | T202 | TODO |
 | T206 | 2 | Refactor `collect_emails.py` to structured chunk writes | T202,T106 | TODO |
 | T207 | 2 | Run Phase 2 validation commands | T203,T204,T205,T206 | TODO |
