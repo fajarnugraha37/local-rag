@@ -19,7 +19,7 @@
 | T103 | 1 | Remove hardcoded config in `localrag_no_rewrite.py` | T101 | DONE |
 | T104 | 1 | Fix global tensor bug in `localrag_no_rewrite.py` | T103 | DONE |
 | T105 | 1 | Auto-recover corrupted embedding cache in `emailrag2.py` | - | DONE |
-| T106 | 1 | Harden IMAP error handling in `collect_emails.py` | - | TODO |
+| T106 | 1 | Harden IMAP error handling in `collect_emails.py` | - | DONE |
 | T107 | 1 | Run Phase 1 validation commands | T102,T103,T104,T105,T106 | TODO |
 | T201 | 2 | Create `data/` storage layout and metadata format | T107 | TODO |
 | T202 | 2 | Add hashing and dedup utility | T201 | TODO |

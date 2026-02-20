@@ -57,48 +57,105 @@ def get_text_from_html(html_content):
     return soup.get_text()
 
 def save_plain_text_content(email_bytes, email_id):
-    msg = BytesParser(policy=policy.default).parsebytes(email_bytes)
+    try:
+        msg = BytesParser(policy=policy.default).parsebytes(email_bytes)
+    except Exception as e:
+        print(f"Failed to parse email ID {email_id}: {e}")
+        return ""
+
     text_content = ""
-    if msg.is_multipart():
-        for part in msg.walk():
-            if part.get_content_type() == 'text/plain':
-                text_content += part.get_payload(decode=True).decode(part.get_content_charset('utf-8'))
-            elif part.get_content_type() == 'text/html':
-                html_content = part.get_payload(decode=True).decode(part.get_content_charset('utf-8'))
-                text_content += get_text_from_html(html_content)
-    else:
-        if msg.get_content_type() == 'text/plain':
-            text_content = msg.get_payload(decode=True).decode(msg.get_content_charset('utf-8'))
-        elif msg.get_content_type() == 'text/html':
-            text_content = get_text_from_html(msg.get_payload(decode=True).decode(msg.get_content_charset('utf-8')))
+    try:
+        if msg.is_multipart():
+            for part in msg.walk():
+                ctype = part.get_content_type()
+                payload = part.get_payload(decode=True)
+                if not payload:
+                    continue
+                charset = part.get_content_charset() or 'utf-8'
+                try:
+                    part_text = payload.decode(charset, errors='replace')
+                except Exception:
+                    part_text = payload.decode('utf-8', errors='replace')
+                if ctype == 'text/plain':
+                    text_content += part_text
+                elif ctype == 'text/html':
+                    text_content += get_text_from_html(part_text)
+        else:
+            ctype = msg.get_content_type()
+            payload = msg.get_payload(decode=True)
+            if payload:
+                charset = msg.get_content_charset() or 'utf-8'
+                try:
+                    content = payload.decode(charset, errors='replace')
+                except Exception:
+                    content = payload.decode('utf-8', errors='replace')
+                if ctype == 'text/plain':
+                    text_content = content
+                elif ctype == 'text/html':
+                    text_content = get_text_from_html(content)
+    except Exception as e:
+        print(f"Error extracting text for email ID {email_id}: {e}")
 
     chunks = chunk_text(text_content)
-    save_chunks_to_vault(chunks)
+    try:
+        save_chunks_to_vault(chunks)
+    except Exception as e:
+        print(f"Failed to save chunks for email ID {email_id}: {e}")
     return text_content
 
 def search_and_process_emails(imap_client, email_source, search_keyword, start_date, end_date):
+    if imap_client is None:
+        print(YELLOW + f"No IMAP client for {email_source}, skipping." + RESET_COLOR)
+        return
+
     search_criteria = 'ALL'
     if start_date and end_date:
         search_criteria = f'(SINCE "{start_date}" BEFORE "{end_date}")'
     if search_keyword:
-        search_criteria += f' BODY "{search_keyword}"'  # Ensure the correct combination of conditions
+        search_criteria += f' BODY "{search_keyword}"'
 
     print(f"Using search criteria for {email_source}: {search_criteria}")
-    typ, data = imap_client.search(None, search_criteria)
-    if typ == 'OK':
+    try:
+        typ, data = imap_client.search(None, search_criteria)
+    except imaplib.IMAP4.error as e:
+        print(YELLOW + f"IMAP search error for {email_source}: {e}" + RESET_COLOR)
+        return
+    except Exception as e:
+        print(YELLOW + f"Unexpected error during IMAP search for {email_source}: {e}" + RESET_COLOR)
+        return
+
+    if typ == 'OK' and data:
         email_ids = data[0].split()
         print(f"Found {len(email_ids)} emails matching criteria in {email_source}.")
 
         for num in email_ids:
-            typ, email_data = imap_client.fetch(num, '(RFC822)')
-            if typ == 'OK':
-                email_id = num.decode('utf-8')
+            try:
+                typ, email_data = imap_client.fetch(num, '(RFC822)')
+            except imaplib.IMAP4.error as e:
+                print(YELLOW + f"IMAP fetch error for message {num} in {email_source}: {e}" + RESET_COLOR)
+                continue
+            except Exception as e:
+                print(YELLOW + f"Unexpected error fetching message {num} in {email_source}: {e}" + RESET_COLOR)
+                continue
+
+            if typ == 'OK' and email_data and email_data[0]:
+                try:
+                    email_id = num.decode('utf-8') if isinstance(num, bytes) else str(num)
+                except Exception:
+                    email_id = str(num)
                 print(f"Downloading and processing email ID: {email_id} from {email_source}")
-                save_plain_text_content(email_data[0][1], email_id)
+                try:
+                    save_plain_text_content(email_data[0][1], email_id)
+                except Exception as e:
+                    print(YELLOW + f"Error processing email ID {email_id} from {email_source}: {e}" + RESET_COLOR)
             else:
-                print(f"Failed to fetch email ID: {num.decode('utf-8')} from {email_source}")
+                try:
+                    id_str = num.decode('utf-8') if isinstance(num, bytes) else str(num)
+                except Exception:
+                    id_str = str(num)
+                print(YELLOW + f"Failed to fetch email ID: {id_str} from {email_source}" + RESET_COLOR)
     else:
-        print(f"Failed to find emails with given criteria in {email_source}. No emails found.")
+        print(YELLOW + f"Failed to find emails with given criteria in {email_source}. No emails found." + RESET_COLOR)
 
 
 def main():
@@ -129,22 +186,51 @@ def main():
     outlook_username = os.getenv('OUTLOOK_USERNAME')
     outlook_password = os.getenv('OUTLOOK_PASSWORD')
 
-    # Connect to Gmail's IMAP server
-    M = imaplib.IMAP4_SSL('imap.gmail.com')
-    M.login(gmail_username, gmail_password)
-    M.select('inbox')
+    # Helper to connect/login/select a mailbox with error handling
+    def connect_imap(server, username, password, source_name):
+        if not username or not password:
+            print(YELLOW + f"No credentials for {source_name}, skipping connection." + RESET_COLOR)
+            return None
+        try:
+            client = imaplib.IMAP4_SSL(server)
+        except Exception as e:
+            print(YELLOW + f"Failed to connect to {source_name} IMAP server {server}: {e}" + RESET_COLOR)
+            return None
+        try:
+            client.login(username, password)
+        except imaplib.IMAP4.error as e:
+            print(YELLOW + f"Login failed for {source_name}: {e}" + RESET_COLOR)
+            try:
+                client.logout()
+            except Exception:
+                pass
+            return None
+        try:
+            typ, data = client.select('inbox')
+            if typ != 'OK':
+                print(YELLOW + f"Failed to select inbox for {source_name}: {data}" + RESET_COLOR)
+                return None
+        except Exception as e:
+            print(YELLOW + f"Error selecting inbox for {source_name}: {e}" + RESET_COLOR)
+            return None
+        return client
 
-    # Connect to Outlook IMAP server
-    H = imaplib.IMAP4_SSL('imap-mail.outlook.com')
-    H.login(outlook_username, outlook_password)
-    H.select('inbox')
+    # Connect to servers (skip if credentials missing or login fails)
+    M = connect_imap('imap.gmail.com', gmail_username, gmail_password, 'Gmail')
+    H = connect_imap('imap-mail.outlook.com', outlook_username, outlook_password, 'Outlook')
 
     # Search and process emails from Gmail and Outlook
     search_and_process_emails(M, "Gmail", args.keyword, start_date, end_date)
     search_and_process_emails(H, "Outlook", args.keyword, start_date, end_date)
 
-    M.logout()
-    H.logout()
+    # Logout only clients that connected successfully
+    for client, name in ((M, 'Gmail'), (H, 'Outlook')):
+        if client:
+            try:
+                client.logout()
+            except Exception as e:
+                print(YELLOW + f"Failed to logout {name}: {e}" + RESET_COLOR)
+
 
 if __name__ == "__main__":
     main()
