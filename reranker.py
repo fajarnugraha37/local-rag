@@ -11,6 +11,7 @@ configurable via weights passed to `rerank()`.
 
 import math
 import re
+import settings
 from typing import List, Dict, Any, Optional
 
 
@@ -57,7 +58,7 @@ def rerank(results: List[Dict[str, Any]], query: str,
     """
     if not results:
         return []
-    weights = weights or {'dense': 1.0, 'bm25': 1.0, 'overlap': 0.8, 'length': 0.1}
+    weights = weights or settings.CONFIG.get('reranker_weights', {'dense': 1.0, 'bm25': 1.0, 'overlap': 0.8, 'length': 0.1})
 
     dense_vals = [float(r.get('dense_score') or 0.0) for r in results]
     bm25_vals = [float(r.get('bm25_score') or 0.0) for r in results]

@@ -8,6 +8,9 @@ import context_packer
 
 # Embedding chunking to avoid model context length limits
 def chunk_text(text, max_chars=1000, overlap=100):
+    # Allow overriding from config.yaml
+    max_chars = settings.CONFIG.get('chunk_max_chars', max_chars)
+    overlap = settings.CONFIG.get('chunk_overlap_chars', overlap)
     chunks = []
     if not text:
         return chunks
@@ -84,9 +87,9 @@ def rewrite_query(user_input_json, conversation_history, ollama_model):
         timeout,
         model=ollama_model,
         messages=[{"role": "system", "content": prompt}],
-        max_tokens=200,
+        max_tokens=settings.CONFIG.get('rewrite_max_tokens', 200),
         n=1,
-        temperature=0.1,
+        temperature=settings.CONFIG.get('rewrite_temperature', 0.1),
     )
     if resp is None:
         print(YELLOW + "Rewrite timed out or failed; using original query." + RESET_COLOR)
@@ -138,7 +141,7 @@ def ollama_chat(user_input, system_message, vault_embeddings, vault_content, oll
         timeout,
         model=ollama_model,
         messages=messages,
-        max_tokens=2000,
+        max_tokens=settings.CONFIG.get('chat_max_tokens', 2000),
     )
     if response is None:
         return "Sorry, the chat request timed out or failed."

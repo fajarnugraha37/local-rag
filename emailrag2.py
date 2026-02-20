@@ -79,7 +79,8 @@ def generate_embeddings(vault_content):
     embeddings = []
     for content in vault_content:
         try:
-            response = ollama.embeddings(model='mxbai-embed-large', prompt=content)
+            emb_model = settings.CONFIG.get('embedding_model', 'mxbai-embed-large')
+            response = ollama.embeddings(model=emb_model, prompt=content)
             embeddings.append(response["embedding"])
         except Exception as e:
             print(f"Error generating embeddings: {str(e)}")
@@ -117,7 +118,7 @@ def ollama_chat(user_input, system_message, vault_embeddings, vault_content, oll
     messages = [{"role": "system", "content": system_message}, *conversation_history]
 
     timeout = settings.CONFIG.get('model_timeout', 30)
-    resp = _call_with_timeout(client.chat.completions.create, timeout, model=ollama_model, messages=messages)
+    resp = _call_with_timeout(client.chat.completions.create, timeout, model=ollama_model, messages=messages, max_tokens=settings.CONFIG.get('chat_max_tokens', 2000))
     if resp is None:
         return "An error occurred while processing your request (timeout or failure)."
     try:

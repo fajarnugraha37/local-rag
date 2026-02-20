@@ -252,13 +252,21 @@ def hybrid_search(query: str,
     embeddings_file = embeddings_file or os.path.join(repo_dir, 'data', 'embeddings.jsonl')
     embedding_model = embedding_model or settings.CONFIG.get('embedding_model')
 
+    # Allow overriding retrieval limits from config.yaml
+    dense_top = settings.CONFIG.get('retrieval_dense_top', dense_top)
+    bm25_top = settings.CONFIG.get('retrieval_bm25_top', bm25_top)
+    rrf_k = settings.CONFIG.get('retrieval_rrf_k', rrf_k)
+    top_k = settings.CONFIG.get('top_k', top_k)
+
     # Load chunks
     chunks = load_chunks(chunks_file)
     chunk_map = {c.get('chunk_id'): c for c in chunks if c.get('chunk_id')}
     docs_text = [c.get('text', '') for c in chunks]
 
-    # BM25 ranking
-    bm25 = BM25(docs_text)
+    # BM25 ranking (k1/b from config if present)
+    bm25_k1 = settings.CONFIG.get('bm25_k1', 1.5)
+    bm25_b = settings.CONFIG.get('bm25_b', 0.75)
+    bm25 = BM25(docs_text, k1=bm25_k1, b=bm25_b)
     bm25_topn = bm25.top_n(query, n=bm25_top)
     bm25_ids = [chunks[i].get('chunk_id') for i, _ in bm25_topn]
 

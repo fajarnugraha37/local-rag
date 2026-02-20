@@ -9,6 +9,7 @@ from hashing import sha256_hash
 
 # Helper: sentence-aware chunking
 def chunk_sentences(text, max_chars=1000):
+    max_chars = settings.CONFIG.get('chunk_max_chars', max_chars)
     sentences = re.split(r'(?<=[.!?]) +', text)
     chunks = []
     current_chunk = ""

@@ -155,7 +155,8 @@ def main():
             print(f"Embedding failed for chunk {chunk_id}: {e}")
             # Try a shorter fallback embedding
             try:
-                short_text = text[:512]
+                fallback_len = settings.CONFIG.get('embedding_fallback_length', 512)
+                short_text = text[:fallback_len]
                 resp = ollama.embeddings(model=args.embedding_model, prompt=short_text)
                 emb = extract_embedding(resp)
                 if emb is not None:

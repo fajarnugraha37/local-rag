@@ -24,6 +24,8 @@ NEON_GREEN = '\033[92m'
 RESET_COLOR = '\033[0m'
 
 def chunk_text(text, max_length=1000):
+    # Allow overriding from config.yaml
+    max_length = settings.CONFIG.get('chunk_max_chars', max_length)
     # Normalize Unicode characters to the closest ASCII representation
     text = text.encode('ascii', 'ignore').decode('ascii')
 

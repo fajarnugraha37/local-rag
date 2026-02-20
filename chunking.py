@@ -10,6 +10,7 @@ an estimated token budget with a small overlap between chunks.
 """
 
 import re
+import settings
 from typing import Callable, List, Optional
 
 
@@ -65,6 +66,10 @@ def chunk_by_tokens(text: str, max_tokens: int = 200, overlap: int = 20,
         return []
 
     tokenizer = tokenizer or _load_tokenizer()
+
+    # Allow overriding defaults from config.yaml
+    max_tokens = settings.CONFIG.get('chunk_max_tokens', max_tokens)
+    overlap = settings.CONFIG.get('chunk_overlap_tokens', overlap)
 
     # Split by sentence-ish boundaries to keep coherence
     sentences = re.split(r'(?<=[.!?]) +', text)

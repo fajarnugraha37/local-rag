@@ -9,6 +9,34 @@ context_overlap: 20
 multi_pass: false
 model_timeout: 30
 
+# Model/chat rewrite & response token limits
+rewrite_max_tokens: 200
+rewrite_temperature: 0.1
+chat_max_tokens: 2000
+
+# Chunking defaults (token counts)
+chunk_max_tokens: 200
+chunk_overlap_tokens: 20
+
+# Retrieval tuning defaults
+retrieval_dense_top: 100
+retrieval_bm25_top: 100
+retrieval_rrf_k: 60
+
+# BM25 parameters
+bm25_k1: 1.5
+bm25_b: 0.75
+
+# Reranker weights (can override keys: dense, bm25, overlap, length)
+reranker_weights:
+  dense: 1.0
+  bm25: 1.0
+  overlap: 0.8
+  length: 0.1
+
+# Embedding fallback length when provider rejects long inputs
+embedding_fallback_length: 512
+
 ollama_api:
   base_url: "http://localhost:11434/v1"
   api_key: "hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest"

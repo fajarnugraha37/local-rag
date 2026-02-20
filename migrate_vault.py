@@ -17,6 +17,10 @@ from hashing import sha256_hash
 
 def chunk_text(text: str, max_chars: int = 1000, overlap: int = 100) -> List[str]:
     """Simple character-based chunking that preserves paragraph boundaries when possible."""
+    # Allow overriding from config.yaml
+    max_chars = settings.CONFIG.get('chunk_max_chars', max_chars)
+    overlap = settings.CONFIG.get('chunk_overlap_chars', overlap)
+
     chunks = []
     if not text:
         return chunks
@@ -142,8 +146,8 @@ if __name__ == '__main__':
     parser.add_argument('--vault', default=default_vault, help='Path to vault file')
     parser.add_argument('--chunks-file', default=default_chunks, help='Path to chunks jsonl file')
     parser.add_argument('--index-meta', default=default_index, help='Path to index meta json file')
-    parser.add_argument('--max-chars', type=int, default=1000, help='Max characters per chunk')
-    parser.add_argument('--overlap', type=int, default=100, help='Overlap characters between chunks')
+    parser.add_argument('--max-chars', type=int, default=settings.CONFIG.get('chunk_max_chars', 1000), help='Max characters per chunk')
+    parser.add_argument('--overlap', type=int, default=settings.CONFIG.get('chunk_overlap_chars', 100), help='Overlap characters between chunks')
 
     args = parser.parse_args()
     migrate(args.vault, args.chunks_file, args.index_meta, args.max_chars, args.overlap)
