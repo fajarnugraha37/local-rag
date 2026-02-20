@@ -30,6 +30,20 @@ YELLOW = '\033[93m'
 NEON_GREEN = '\033[92m'
 RESET_COLOR = '\033[0m'
 
+# Helper to call blocking model requests with a timeout to avoid indefinite hangs.
+def _call_with_timeout(func, timeout_sec=30, *args, **kwargs):
+    import concurrent.futures
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(func, *args, **kwargs)
+            return future.result(timeout=timeout_sec)
+    except concurrent.futures.TimeoutError:
+        print(YELLOW + f"Model request timed out after {timeout_sec} seconds." + RESET_COLOR)
+        return None
+    except Exception as e:
+        print(YELLOW + f"Model request failed: {e}" + RESET_COLOR)
+        return None
+
 # Function to open a file and return its contents as a string
 def open_file(filepath):
     with open(filepath, 'r', encoding='utf-8') as infile:
@@ -64,14 +78,20 @@ def rewrite_query(user_input_json, conversation_history, ollama_model):
     
     Rewritten query: 
     """
-    response = client.chat.completions.create(
+    timeout = settings.CONFIG.get('model_timeout', 30)
+    resp = _call_with_timeout(
+        client.chat.completions.create,
+        timeout,
         model=ollama_model,
         messages=[{"role": "system", "content": prompt}],
         max_tokens=200,
         n=1,
         temperature=0.1,
     )
-    rewritten_query = response.choices[0].message.content.strip()
+    if resp is None:
+        print(YELLOW + "Rewrite timed out or failed; using original query." + RESET_COLOR)
+        return json.dumps({"Rewritten Query": user_input})
+    rewritten_query = resp.choices[0].message.content.strip()
     return json.dumps({"Rewritten Query": rewritten_query})
    
 def ollama_chat(user_input, system_message, vault_embeddings, vault_content, ollama_model, conversation_history, top_k=3):
@@ -112,12 +132,19 @@ def ollama_chat(user_input, system_message, vault_embeddings, vault_content, oll
         *conversation_history
     ]
     
+    timeout = settings.CONFIG.get('model_timeout', 30)
+    response = _call_with_timeout(
+        client.chat.completions.create,
+        timeout,
+        model=ollama_model,
+        messages=messages,
+        max_tokens=2000,
+    )
+    if response is None:
+        return "Sorry, the chat request timed out or failed."
     try:
-        response = client.chat.completions.create(
-            model=ollama_model,
-            messages=messages,
-            max_tokens=2000,
-        )
+        conversation_history.append({"role": "assistant", "content": response.choices[0].message.content})
+        return response.choices[0].message.content
     except Exception as e:
         err = str(e)
         if "requires more system memory" in err:
@@ -125,10 +152,6 @@ def ollama_chat(user_input, system_message, vault_embeddings, vault_content, oll
         else:
             print(YELLOW + f"Chat request failed: {e}" + RESET_COLOR)
         return "Sorry, the chat request failed."
-    
-    conversation_history.append({"role": "assistant", "content": response.choices[0].message.content})
-    
-    return response.choices[0].message.content
 
 # Parse command-line arguments
 print(NEON_GREEN + "Parsing command-line arguments..." + RESET_COLOR)

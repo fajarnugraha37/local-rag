@@ -14,6 +14,21 @@ YELLOW = '\033[93m'
 NEON_GREEN = '\033[92m'
 RESET_COLOR = '\033[0m'
 
+# Helper to call blocking model requests with a timeout to avoid indefinite hangs.
+
+def _call_with_timeout(func, timeout_sec=30, *args, **kwargs):
+    import concurrent.futures
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(func, *args, **kwargs)
+            return future.result(timeout=timeout_sec)
+    except concurrent.futures.TimeoutError:
+        print(YELLOW + f"Model request timed out after {timeout_sec} seconds." + RESET_COLOR)
+        return None
+    except Exception as e:
+        print(YELLOW + f"Model request failed: {e}" + RESET_COLOR)
+        return None
+
 def load_config(config_file):
     # Delegate to shared settings loader
     return settings.load_settings(config_file)
@@ -101,15 +116,15 @@ def ollama_chat(user_input, system_message, vault_embeddings, vault_content, oll
     conversation_history.append({"role": "user", "content": user_input_with_context})
     messages = [{"role": "system", "content": system_message}, *conversation_history]
 
+    timeout = settings.CONFIG.get('model_timeout', 30)
+    resp = _call_with_timeout(client.chat.completions.create, timeout, model=ollama_model, messages=messages)
+    if resp is None:
+        return "An error occurred while processing your request (timeout or failure)."
     try:
-        response = client.chat.completions.create(
-            model=ollama_model,
-            messages=messages
-        )
-        conversation_history.append({"role": "assistant", "content": response.choices[0].message.content})
-        return response.choices[0].message.content
+        conversation_history.append({"role": "assistant", "content": resp.choices[0].message.content})
+        return resp.choices[0].message.content
     except Exception as e:
-        print(f"Error in Ollama chat: {str(e)}")
+        print(f"Error in Ollama chat: {e}")
         return "An error occurred while processing your request."
 
 def main():
