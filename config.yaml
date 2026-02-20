@@ -1,10 +1,10 @@
 vault_file: "data/chunks.jsonl"
 embedding_model: mxbai-embed-large
 embeddings_file: "data/embeddings.jsonl"
-ollama_model: "hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest"
-top_k: 3 # 7
+ollama_model: "lfm2.5-thinking:1.2b"
+top_k: 7
 system_message: "You are a helpful assistant that is an expert at extracting the most useful information from a given text"
-context_token_budget: 600 # 1500
+context_token_budget: 1500
 context_overlap: 20
 multi_pass: false
 model_timeout: 120
@@ -53,4 +53,4 @@ embedding_fallback_length: 512
 
 ollama_api:
   base_url: "http://localhost:11434/v1"
-  api_key: "hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest"
+  api_key: "lfm2.5-thinking:1.2b"
