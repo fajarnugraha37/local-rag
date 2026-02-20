@@ -12,6 +12,13 @@ from dotenv import load_dotenv
 
 load_dotenv()  # Load environment variables from .env file
 
+# ANSI escape codes for colors
+PINK = '\033[95m'
+CYAN = '\033[96m'
+YELLOW = '\033[93m'
+NEON_GREEN = '\033[92m'
+RESET_COLOR = '\033[0m'
+
 def chunk_text(text, max_length=1000):
     # Normalize Unicode characters to the closest ASCII representation
     text = text.encode('ascii', 'ignore').decode('ascii')
