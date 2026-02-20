@@ -12,6 +12,10 @@ from dotenv import load_dotenv
 
 load_dotenv()  # Load environment variables from .env file
 
+import json
+import settings
+from hashing import sha256_hash
+
 # ANSI escape codes for colors
 PINK = '\033[95m'
 CYAN = '\033[96m'
@@ -53,11 +57,75 @@ def chunk_text(text, max_length=1000):
 
     return chunks
 
-def save_chunks_to_vault(chunks):
-    vault_path = "vault.txt"
-    with open(vault_path, "a", encoding="utf-8") as vault_file:
-        for chunk in chunks:
-            vault_file.write(chunk.strip() + "\n")
+def write_chunks_file(chunks_list, source_path=None, chunks_file=None, append_vault=True):
+    repo_dir = os.path.dirname(__file__)
+    if chunks_file is None:
+        chunks_file = os.path.join(repo_dir, 'data', 'chunks.jsonl')
+    os.makedirs(os.path.dirname(chunks_file), exist_ok=True)
+
+    # load existing chunk ids
+    existing = set()
+    if os.path.exists(chunks_file):
+        try:
+            with open(chunks_file, 'r', encoding='utf-8') as cf:
+                for line in cf:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        obj = json.loads(line)
+                        if isinstance(obj, dict) and 'chunk_id' in obj:
+                            existing.add(obj['chunk_id'])
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+
+    new_written = 0
+    with open(chunks_file, 'a', encoding='utf-8') as cf:
+        for chunk_text in chunks_list:
+            text = chunk_text.strip()
+            if not text:
+                continue
+            cid = sha256_hash(text)
+            if cid in existing:
+                continue
+            obj = {
+                'chunk_id': cid,
+                'doc_id': os.path.basename(source_path) if source_path else f'email',
+                'source': source_path or '',
+                'text': text,
+                'token_count': len(text.split())
+            }
+            cf.write(json.dumps(obj, ensure_ascii=False) + '\n')
+            existing.add(cid)
+            new_written += 1
+
+    # For backward compatibility, also append raw text chunks to vault.txt
+    if append_vault:
+        try:
+            vault_path = settings.CONFIG.get('vault_file', os.path.join(repo_dir, 'vault.txt'))
+            with open(vault_path, 'a', encoding='utf-8') as vf:
+                for c in chunks_list:
+                    vf.write(c.strip() + '\n')
+        except Exception:
+            pass
+
+    print(f"Wrote {new_written} new chunks to {chunks_file} (appended to vault: {append_vault})")
+
+def save_chunks_to_vault(chunks, source_path=None):
+    try:
+        write_chunks_file(chunks, source_path=source_path)
+    except Exception as e:
+        print(f"Failed to save chunks to structured file: {e}")
+        # fallback to legacy vault append
+        vault_path = settings.CONFIG.get('vault_file', os.path.join(os.path.dirname(__file__), 'vault.txt'))
+        try:
+            with open(vault_path, "a", encoding="utf-8") as vault_file:
+                for chunk in chunks:
+                    vault_file.write(chunk.strip() + "\n")
+        except Exception:
+            pass
 
 def get_text_from_html(html_content):
     soup = BeautifulSoup(html_content, 'lxml')
@@ -105,7 +173,7 @@ def save_plain_text_content(email_bytes, email_id):
 
     chunks = chunk_text(text_content)
     try:
-        save_chunks_to_vault(chunks)
+        save_chunks_to_vault(chunks, source_path=f"email_{email_id}")
     except Exception as e:
         print(f"Failed to save chunks for email ID {email_id}: {e}")
     return text_content
