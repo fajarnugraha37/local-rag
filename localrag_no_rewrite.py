@@ -3,6 +3,7 @@ import ollama
 import os
 from openai import OpenAI
 import argparse
+import settings
 
 # ANSI escape codes for colors
 PINK = '\033[95m'
@@ -71,13 +72,13 @@ def ollama_chat(user_input, system_message, vault_embeddings, vault_content, oll
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Ollama Chat")
-parser.add_argument("--model", default="dolphin-llama3", help="Ollama model to use (default: llama3)")
+parser.add_argument("--model", default=settings.CONFIG.get("ollama_model", "hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest"), help="Ollama model to use (default from config.yaml)")
 args = parser.parse_args()
 
 # Configuration for the Ollama API client
 client = OpenAI(
-    base_url='http://localhost:11434/v1',
-    api_key='dolphin-llama3'
+    base_url=settings.CONFIG.get("ollama_api", {}).get("base_url", "http://localhost:11434/v1"),
+    api_key=settings.CONFIG.get("ollama_api", {}).get("api_key")
 )
 
 # Load the vault content

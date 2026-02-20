@@ -5,6 +5,7 @@ import json
 from openai import OpenAI
 import argparse
 import yaml
+import settings
 
 # ANSI escape codes for colors
 PINK = '\033[95m'
@@ -14,13 +15,8 @@ NEON_GREEN = '\033[92m'
 RESET_COLOR = '\033[0m'
 
 def load_config(config_file):
-    print("Loading configuration...")
-    try:
-        with open(config_file, 'r') as file:
-            return yaml.safe_load(file)
-    except FileNotFoundError:
-        print(f"Configuration file '{config_file}' not found.")
-        exit(1)
+    # Delegate to shared settings loader
+    return settings.load_settings(config_file)
 
 def open_file(filepath):
     print("Opening file...")

@@ -14,7 +14,7 @@
 ## Master Tracker
 | Task | Phase | Summary | Depends On | Status |
 |---|---|---|---|---|
-| T101 | 1 | Add shared settings loader (`settings.py`) | - | TODO |
+| T101 | 1 | Add shared settings loader (`settings.py`) | - | DONE |
 | T102 | 1 | Remove hardcoded config in `localrag.py` | T101 | TODO |
 | T103 | 1 | Remove hardcoded config in `localrag_no_rewrite.py` | T101 | TODO |
 | T104 | 1 | Fix global tensor bug in `localrag_no_rewrite.py` | T103 | TODO |

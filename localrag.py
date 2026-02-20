@@ -4,6 +4,7 @@ import os
 from openai import OpenAI
 import argparse
 import json
+import settings
 
 # Embedding chunking to avoid model context length limits
 def chunk_text(text, max_chars=1000, overlap=100):
@@ -138,8 +139,8 @@ def ollama_chat(user_input, system_message, vault_embeddings, vault_content, oll
 # Parse command-line arguments
 print(NEON_GREEN + "Parsing command-line arguments..." + RESET_COLOR)
 parser = argparse.ArgumentParser(description="Ollama Chat")
-# parser.add_argument("--model", default="llama3", help="Ollama model to use (default: llama3)")
-parser.add_argument("--model", default="hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest", help="Ollama model to use (default: hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest)")
+# parser.add_argument("--model", default="hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest", help="Ollama model to use (default: hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest)")
+parser.add_argument("--model", default=settings.CONFIG.get("ollama_model", "hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest"), help="Ollama model to use (default from config.yaml)")
 parser.add_argument("--top-k", type=int, default=3, help="Number of top relevant chunks to include (default: 3)")
 parser.add_argument("--max-context-chars", type=int, default=6000, help="Max characters of retrieved context to include (default: 6000)")
 args = parser.parse_args()
@@ -147,9 +148,8 @@ args = parser.parse_args()
 # Configuration for the Ollama API client
 print(NEON_GREEN + "Initializing Ollama API client..." + RESET_COLOR)
 client = OpenAI(
-    base_url='http://localhost:11434/v1',
-    # api_key='llama3'
-    api_key='hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest'
+    base_url=settings.CONFIG.get("ollama_api", {}).get("base_url", "http://localhost:11434/v1"),
+    api_key=settings.CONFIG.get("ollama_api", {}).get("api_key")
 )
 
 # Load the vault content

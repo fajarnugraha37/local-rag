@@ -1,9 +1,9 @@
 vault_file: "vault.txt"
 embeddings_file: "vault_embeddings.json"
-ollama_model: "llama3"
+ollama_model: "hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest"
 top_k: 7
 system_message: "You are a helpful assistant that is an expert at extracting the most useful information from a given text"
 
 ollama_api:
   base_url: "http://localhost:11434/v1"
-  api_key: "llama3"
+  api_key: "hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest"

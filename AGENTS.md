@@ -18,8 +18,8 @@ Use Python 3.10+ in a virtual environment.
 - `.\.venv\Scripts\Activate.ps1`
 - `pip install -r requirements.txt`: install runtime dependencies.
 - `python upload.py`: load local files into `vault.txt`.
-- `python localrag.py --model llama3`: run RAG chat with rewrite.
-- `python localrag_no_rewrite.py --model llama3`: run baseline chat.
+- `python localrag.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest`: run RAG chat with rewrite.
+- `python localrag_no_rewrite.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest`: run baseline chat.
 - `python collect_emails.py --keyword "invoice" --startdate 01.01.2025 --enddate 31.01.2025`: ingest mailbox data.
 - `python emailrag2.py`: chat over ingested email content.
 
