@@ -1,9 +1,9 @@
 # Tasks: Persistent Vector Database Migration (Feature 004)
 
 ## Progress Tracker
-- `todo`: 4
+- `todo`: 3
 - `doing`: 0
-- `done`: 7
+- `done`: 8
 - `blocked`: 0
 
 ## Dispatch Rule
@@ -126,7 +126,7 @@ python -m app.retrieval.hybrid_search --query "contract" --top-k 3
 ```
 
 ### T008 — Implement migration/backfill command
-- Status: `todo`
+- Status: `done`
 - Goal: migrate existing JSONL knowledge to vector DB with resume-safe behavior.
 - Files to touch: `app/migration/backfill_vector_db.py` (new), optionally `index_embeddings.py` shim.
 - Steps:
