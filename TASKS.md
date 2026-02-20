@@ -38,7 +38,7 @@
 | T403 | 4 | Add multi-pass answering (A/B refinement) | T402 | DONE |
 | T404 | 4 | Add citation output format `[doc_id:chunk_id]` | T402 | DONE |
 | T405 | 4 | Run Phase 4 validation commands | T403,T404 | DONE |
-| T501 | 5 | Create `eval/questions.jsonl` benchmark set | T405 | TODO |
+| T501 | 5 | Create `eval/questions.jsonl` benchmark set | T405 | DONE |
 | T502 | 5 | Implement `eval/run_eval.py` metrics runner | T501 | TODO |
 | T503 | 5 | Add `pytest` smoke tests for ingestion/retrieval/packing | T405 | TODO |
 | T504 | 5 | Add repeatable run scripts (`Makefile` or `.ps1`) | T502,T503 | TODO |
