@@ -291,6 +291,37 @@ def hybrid_search(query: str,
 
 
 # --- CLI ---
+
+def scored_chunks(query: str,
+                  chunks_file: Optional[str] = None,
+                  embeddings_file: Optional[str] = None,
+                  top_k: int = 6,
+                  rerank: bool = True,
+                  rerank_weights: Optional[Dict[str, float]] = None,
+                  embedding_model: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Return scored chunk objects with metadata and optional reranking.
+
+    This function returns a list of chunk dicts containing at least:
+    chunk_id, score, dense_score, bm25_score, text, doc_id, source, token_count.
+    If `rerank` is True, the heuristic reranker is applied before returning.
+    """
+    res = hybrid_search(query, chunks_file=chunks_file, embeddings_file=embeddings_file, top_k=top_k, embedding_model=embedding_model)
+
+    # Ensure token_count present and enrich metadata where possible
+    for r in res:
+        if 'token_count' not in r or r.get('token_count') is None:
+            r['token_count'] = len(re.findall(r"\w+", r.get('text', '')))
+
+    if rerank:
+        try:
+            res = reranker.rerank(res, query, weights=rerank_weights, top_k=top_k)
+        except Exception:
+            # On rerank failure, fall back to hybrid ordering
+            pass
+
+    return res
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hybrid retrieval (dense + BM25 + RRF)')
     parser.add_argument('--query', required=True, help='Query text')
@@ -298,8 +329,9 @@ if __name__ == '__main__':
     parser.add_argument('--chunks-file', default=None)
     parser.add_argument('--embeddings-file', default=None)
     parser.add_argument('--embedding-model', default=None)
+    parser.add_argument('--no-rerank', action='store_true', help='Disable reranking')
     args = parser.parse_args()
 
-    res = hybrid_search(args.query, chunks_file=args.chunks_file, embeddings_file=args.embeddings_file,
-                        top_k=args.top_k, embedding_model=args.embedding_model)
+    res = scored_chunks(args.query, chunks_file=args.chunks_file, embeddings_file=args.embeddings_file,
+                        top_k=args.top_k, rerank=(not args.no_rerank), embedding_model=args.embedding_model)
     print(json.dumps(res, ensure_ascii=False, indent=2))
