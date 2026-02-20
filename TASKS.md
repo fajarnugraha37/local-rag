@@ -28,7 +28,7 @@
 | T205 | 2 | Refactor `upload.py` to structured chunk writes | T202 | DONE |
 | T206 | 2 | Refactor `collect_emails.py` to structured chunk writes | T202,T106 | DONE |
 | T207 | 2 | Run Phase 2 validation commands | T203,T204,T205,T206 | DONE |
-| T301 | 3 | Add token-aware chunking module (`chunking.py`) | T207 | TODO |
+| T301 | 3 | Add token-aware chunking module (`chunking.py`) | T207 | DONE |
 | T302 | 3 | Add hybrid retrieval (dense + BM25 + RRF) | T301 | TODO |
 | T303 | 3 | Add cheap reranker (heuristic default) | T302 | TODO |
 | T304 | 3 | Return scored chunk objects with metadata | T302,T303 | TODO |
