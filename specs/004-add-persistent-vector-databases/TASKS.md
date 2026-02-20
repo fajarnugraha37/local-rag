@@ -1,9 +1,9 @@
 # Tasks: Persistent Vector Database Migration (Feature 004)
 
 ## Progress Tracker
-- `todo`: 1
+- `todo`: 0
 - `doing`: 0
-- `done`: 10
+- `done`: 11
 - `blocked`: 0
 
 ## Dispatch Rule
@@ -177,7 +177,7 @@ python -m pytest -q
 ```
 
 ### T011 — Post-cutover evaluation and documentation
-- Status: `todo`
+- Status: `done`
 - Goal: verify retrieval parity and document new operational workflow.
 - Files to touch: `eval/results-post-vector-db.json` (artifact), `README.md`, `AGENTS.md`.
 - Steps:

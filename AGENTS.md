@@ -6,10 +6,13 @@ This repo is a local-first Python RAG stack using Ollama and hybrid retrieval.
 - `app/chat/document_chat_baseline_cli.py`: baseline chat path without rewrite.
 - `app/chat/email_chat_cli.py`: chat flow for email-ingested corpora.
 - `app/ingestion/file_ingest_gui.py`, `app/ingestion/email_ingest_job.py`, `app/migration/vault_migration.py`: ingestion and migration utilities.
-- `app/indexing/embedding_indexer.py`: incremental embedding indexer for `data/embeddings.jsonl`.
+- `app/indexing/embedding_indexer.py`: compatibility shim delegating legacy JSONL backfill to vector DB.
+- `app/migration/backfill_vector_db.py`: idempotent migration from legacy JSONL into Chroma.
+- `app/storage/chroma_vector_store.py`, `app/storage/vector_ids.py`: persistent vector backend and deterministic IDs.
 - `app/retrieval/hybrid_search.py`, `app/retrieval/heuristic_reranker.py`, `app/context/token_budget_packer.py`, `app/context/token_chunking.py`, `app/common/content_hashing.py`, `app/config/runtime_settings.py`: retrieval and packing core.
 - Root `*.py` entrypoints are compatibility shims that delegate to `app/*` modules.
-- `data/`: runtime index artifacts (`chunks.jsonl`, `embeddings.jsonl`, `index_meta.json`).
+- `data/chroma/`: runtime persistent vector database (single source of truth).
+- Legacy migration artifacts may exist in `data/chunks.jsonl`, `data/embeddings.jsonl`, `data/index_meta.json`.
 - `tests/`: smoke tests.
 - `eval/`: evaluation dataset, metrics runner, thresholds.
 - `specs/001-basic-improvements/`: planning docs.
@@ -19,10 +22,12 @@ Use Python 3.10+.
 - `python -m venv .venv`
 - `.\.venv\Scripts\Activate.ps1`
 - `pip install -r requirements.txt`
-- `python -m app.ingestion.file_ingest_gui`: GUI uploader for PDF/TXT/JSON into `data/chunks.jsonl`.
+- `python -m app.ingestion.file_ingest_gui`: GUI uploader for PDF/TXT/JSON into vector DB.
 - `python -m app.ingestion.email_ingest_job --keyword "invoice" --startdate 01.01.2025 --enddate 31.01.2025`: ingest mailbox content.
-- `python -m app.migration.vault_migration --vault vault.txt`: migrate legacy vault into structured chunks.
-- `python -m app.indexing.embedding_indexer --embedding-model mxbai-embed-large`: generate incremental embeddings.
+- `python -m app.migration.vault_migration --vault vault.txt`: migrate legacy vault into vector DB.
+- `python -m app.migration.backfill_vector_db --batch-size 64`: backfill legacy JSONL into vector DB.
+- `python -m app.migration.vault_migration --delete-doc-id "<doc_id>"`: delete all vectors for a document.
+- `python -m app.indexing.embedding_indexer --embedding-model mxbai-embed-large`: compatibility backfill entrypoint.
 - `python -m app.chat.document_chat_cli --model gemma3:1b --top-k 6 --multi-pass`: main chat run.
 - `python -m app.chat.document_chat_cli --stream --max-continuations 2 --per-call-max-tokens 1024`: main chat run with streaming + continuation.
 - `python -m app.chat.document_chat_baseline_cli --stream --max-continuations 2 --per-call-max-tokens 1024`: baseline streaming run.
@@ -51,5 +56,23 @@ Use Python 3.10+.
 - Never commit real credentials in `.env`.
 - Supported env overrides include `OLLAMA_MODEL`, `OLLAMA_API_BASE_URL`, `OLLAMA_API_KEY`, `TOP_K`, and email credentials (`GMAIL_*`, `OUTLOOK_*`).
 - Streaming env/config controls include `ENABLE_STREAMING`, `ENABLE_THINKING_SUMMARY`, `PER_CALL_MAX_TOKENS`, `MAX_CONTINUATIONS`, `FLUSH_INTERVAL_MS`, `PROVIDER_TIMEOUT_S`, and `CONTINUATION_INSTRUCTION`.
-- Treat `data/chunks.jsonl` as sensitive when it contains private documents or email content.
+- Treat `data/chroma` as sensitive when it contains private documents or email content.
 - Thinking summaries should be disabled (`--no-enable-thinking-summary` or `enable_thinking_summary: false`) for stricter privacy/safety requirements.
+
+## Vector DB Runbook
+- Healthcheck:
+```powershell
+@'
+from app.storage.chroma_vector_store import ChromaVectorStore
+print(ChromaVectorStore().health())
+'@ | python -
+```
+- Backup:
+```powershell
+Copy-Item -Recurse -Force data\chroma data\chroma.backup
+```
+- Restore:
+```powershell
+Remove-Item -Recurse -Force data\chroma
+Copy-Item -Recurse -Force data\chroma.backup data\chroma
+```

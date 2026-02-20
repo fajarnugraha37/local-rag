@@ -47,6 +47,33 @@ python -m app.migration.backfill_vector_db --batch-size 64
 # compatibility: python index_embeddings.py --embedding-model mxbai-embed-large
 ```
 
+## Vector DB Operations
+### Healthcheck and Count
+```powershell
+@'
+from app.storage.chroma_vector_store import ChromaVectorStore
+print(ChromaVectorStore().health())
+'@ | python -
+```
+
+### Upsert Workflow
+Ingestion commands (`file_ingest_gui`, `email_ingest_job`, `vault_migration`) now upsert directly into Chroma via deterministic IDs.
+
+### Delete Workflow
+```powershell
+python -m app.migration.vault_migration --delete-doc-id "your_doc_id"
+```
+
+### Backup and Restore
+```powershell
+# backup
+Copy-Item -Recurse -Force data\chroma data\chroma.backup
+
+# restore
+Remove-Item -Recurse -Force data\chroma
+Copy-Item -Recurse -Force data\chroma.backup data\chroma
+```
+
 ## Run Chat
 ### Main app (rewrite + optional multi-pass)
 ```powershell
@@ -99,6 +126,9 @@ python eval\run_eval.py --questions eval\questions.jsonl --top-k 6 --output eval
 make all
 # or: .\run_all.ps1
 ```
+
+Post-cutover eval artifact:
+- `eval/results-post-vector-db.json`
 
 ## Configuration
 Runtime defaults are in `config.yaml`; environment variables can override core values via `app/config/runtime_settings.py` (for example `OLLAMA_MODEL`, `TOP_K`, `OLLAMA_API_BASE_URL`, `OLLAMA_API_KEY`).
