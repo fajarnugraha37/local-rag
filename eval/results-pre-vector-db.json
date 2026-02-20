@@ -1,0 +1,44 @@
+{
+  "n_queries": 3,
+  "top_k": 6,
+  "recall_at_k": 0.0,
+  "mrr": 0.0,
+  "citation_coverage": 1.0,
+  "latency_ms_p50": 46.492500230669975,
+  "latency_ms_p95": 334.4602800440043,
+  "per_query": [
+    {
+      "id": "q001",
+      "query": "What does 'reclaiming' mean in Oracle databases and how does the high water mark (HWM) affect reclamation?",
+      "expected_ids": [
+        "oracle_hwm_doc:chunk_0001"
+      ],
+      "retrieved_count": 6,
+      "hit": false,
+      "reciprocal_rank": 0.0,
+      "latency_ms": 366.4567000232637
+    },
+    {
+      "id": "q002",
+      "query": "How to safely shrink an Oracle datafile without losing data\u2014what are the recommended steps?",
+      "expected_ids": [
+        "oracle_shrink_doc:chunk_0002"
+      ],
+      "retrieved_count": 6,
+      "hit": false,
+      "reciprocal_rank": 0.0,
+      "latency_ms": 46.492500230669975
+    },
+    {
+      "id": "q003",
+      "query": "Define 'reclaiming disk space' and list common limitations when reclaiming segments and extents.",
+      "expected_ids": [
+        "reclaiming_overview:chunk_0003"
+      ],
+      "retrieved_count": 6,
+      "hit": false,
+      "reciprocal_rank": 0.0,
+      "latency_ms": 44.085000175982714
+    }
+  ]
+}

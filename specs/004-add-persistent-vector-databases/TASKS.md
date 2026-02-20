@@ -1,9 +1,9 @@
 # Tasks: Persistent Vector Database Migration (Feature 004)
 
 ## Progress Tracker
-- `todo`: 11
+- `todo`: 10
 - `doing`: 0
-- `done`: 0
+- `done`: 1
 - `blocked`: 0
 
 ## Dispatch Rule
@@ -12,7 +12,7 @@ Use: `please follow specs/004-add-persistent-vector-databases/PLAN.md and do tas
 ## Task List
 
 ### T001 — Baseline behavior snapshot
-- Status: `todo`
+- Status: `done`
 - Goal: capture pre-migration retrieval behavior and data counts for parity checks.
 - Files to touch: `eval/results-pre-vector-db.json` (generated artifact only).
 - Steps:
