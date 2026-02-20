@@ -13,10 +13,10 @@ Run: python phase4_validate.py --query "your query" --top-k 8
 import os
 import json
 import argparse
-import retrieval
-import context_packer
-import settings
-import chunking
+from app.retrieval import hybrid_search as retrieval
+from app.context import token_budget_packer as context_packer
+from app.config import runtime_settings as settings
+from app.context import token_chunking as chunking
 
 
 def run_pass(query: str, top_k: int):
@@ -25,7 +25,7 @@ def run_pass(query: str, top_k: int):
     print(f"Retrieved {len(res)} scored chunks")
 
     # Load full text chunks to present full context when packing
-    repo_dir = os.path.dirname(retrieval.__file__)
+    repo_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
     chunks_file = os.path.join(repo_dir, 'data', 'chunks.jsonl')
     full_chunks = retrieval.load_chunks(chunks_file)
     full_map = {c.get('chunk_id'): c.get('text', '') for c in full_chunks}
