@@ -1,7 +1,7 @@
 # Tasks: Streaming Response & Multi-Call Continuation
 
 ## Progress Tracker
-- Status counts: todo 4, doing 0, done 3, blocked 0.
+- Status counts: todo 3, doing 0, done 4, blocked 0.
 
 ## Task List
 
@@ -26,7 +26,7 @@
 - Acceptance: streaming flag streams incremental output; old invocation works identically when streaming disabled.
 - Validation: `python -m app.chat.document_chat_cli --model llama3 --top-k 1 --stream --max-continuations 2`.
 
-### T004 — Apply to baseline and email CLIs (status: todo)
+### T004 — Apply to baseline and email CLIs (status: done)
 - Goal: Extend streaming support to other chat entrypoints.
 - Files: `app/chat/document_chat_baseline_cli.py`, `app/chat/email_chat_cli.py`, root shims (`localrag_no_rewrite.py`, `emailrag2.py`) if signature changes.
 - Steps: wire in streaming wrapper, expose same flags, preserve defaults.
