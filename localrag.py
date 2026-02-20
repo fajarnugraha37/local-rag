@@ -40,7 +40,8 @@ def get_relevant_context(rewritten_input, vault_embeddings, vault_content, top_k
     if vault_embeddings.nelement() == 0:  # Check if the tensor has any elements
         return []
     # Encode the rewritten input
-    input_embedding = ollama.embeddings(model='mxbai-embed-large', prompt=rewritten_input)["embedding"]
+    embedding_model = settings.CONFIG.get("embedding_model", "mxbai-embed-large")
+    input_embedding = ollama.embeddings(model=embedding_model, prompt=rewritten_input)["embedding"]
     # Compute cosine similarity between the input and vault embeddings
     cos_scores = torch.cosine_similarity(torch.tensor(input_embedding).unsqueeze(0), vault_embeddings)
     # Adjust top_k if it's greater than the number of available scores
@@ -139,10 +140,9 @@ def ollama_chat(user_input, system_message, vault_embeddings, vault_content, oll
 # Parse command-line arguments
 print(NEON_GREEN + "Parsing command-line arguments..." + RESET_COLOR)
 parser = argparse.ArgumentParser(description="Ollama Chat")
-# parser.add_argument("--model", default="hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest", help="Ollama model to use (default: hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest)")
-parser.add_argument("--model", default=settings.CONFIG.get("ollama_model", "hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest"), help="Ollama model to use (default from config.yaml)")
-parser.add_argument("--top-k", type=int, default=3, help="Number of top relevant chunks to include (default: 3)")
-parser.add_argument("--max-context-chars", type=int, default=6000, help="Max characters of retrieved context to include (default: 6000)")
+parser.add_argument("--model", default=settings.CONFIG.get("ollama_model", "llama3"), help="Ollama model to use (default from config.yaml)")
+parser.add_argument("--top-k", type=int, default=settings.CONFIG.get("top_k", 3), help="Number of top relevant chunks to include (default from config.yaml)")
+parser.add_argument("--max-context-chars", type=int, default=settings.CONFIG.get("max_context_chars", 6000), help="Max characters of retrieved context to include (default from config.yaml)")
 args = parser.parse_args()
 
 # Configuration for the Ollama API client
@@ -153,22 +153,26 @@ client = OpenAI(
 )
 
 # Load the vault content
-print(NEON_GREEN + "Loading vault content..." + RESET_COLOR)
+vault_file_path = settings.CONFIG.get("vault_file", "vault.txt")
+print(NEON_GREEN + f"Loading vault content from '{vault_file_path}'..." + RESET_COLOR)
 vault_content = []
-if os.path.exists("vault.txt"):
-    with open("vault.txt", "r", encoding='utf-8') as vault_file:
+if os.path.exists(vault_file_path):
+    with open(vault_file_path, "r", encoding='utf-8') as vault_file:
         raw_text = vault_file.read()
     # Split by blank lines to preserve paragraph boundaries, then chunk
     paragraphs = [p.strip() for p in raw_text.split("\n\n") if p.strip()]
     for p in paragraphs:
         vault_content.extend(chunk_text(p, max_chars=1000, overlap=100))
+else:
+    print(YELLOW + f"Vault file '{vault_file_path}' not found, starting with empty vault." + RESET_COLOR)
 
 # Generate embeddings for the vault content using Ollama
 print(NEON_GREEN + "Generating embeddings for the vault content..." + RESET_COLOR)
 vault_embeddings = []
+embedding_model = settings.CONFIG.get("embedding_model", "mxbai-embed-large")
 for content in vault_content:
     try:
-        response = ollama.embeddings(model='mxbai-embed-large', prompt=content)
+        response = ollama.embeddings(model=embedding_model, prompt=content)
         vault_embeddings.append(response["embedding"])
     except Exception as e:
         print(YELLOW + f"Skipping a chunk due to embedding error: {e}" + RESET_COLOR)
@@ -182,7 +186,7 @@ print(vault_embeddings_tensor.shape)
 # Conversation loop
 print("Starting conversation loop...")
 conversation_history = []
-system_message = "You are a helpful assistant that is an expert at extracting the most useful information from a given text. Also bring in extra relevant infromation to the user query from outside the given context."
+system_message = settings.CONFIG.get("system_message", "You are a helpful assistant that is an expert at extracting the most useful information from a given text. Also bring in extra relevant information to the user query from outside the given context.")
 
 while True:
     user_input = input(YELLOW + "Ask a query about your documents (or type 'quit' to exit): " + RESET_COLOR)
