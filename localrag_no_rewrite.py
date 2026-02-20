@@ -22,7 +22,8 @@ def get_relevant_context(rewritten_input, vault_embeddings, vault_content, top_k
     if vault_embeddings.nelement() == 0:  # Check if the tensor has any elements
         return []
     # Encode the rewritten input
-    input_embedding = ollama.embeddings(model='mxbai-embed-large', prompt=rewritten_input)["embedding"]
+    embedding_model = settings.CONFIG.get("embedding_model", "mxbai-embed-large")
+    input_embedding = ollama.embeddings(model=embedding_model, prompt=rewritten_input)["embedding"]
     # Compute cosine similarity between the input and vault embeddings
     cos_scores = torch.cosine_similarity(torch.tensor(input_embedding).unsqueeze(0), vault_embeddings)
     # Adjust top_k if it's greater than the number of available scores
@@ -36,7 +37,7 @@ def get_relevant_context(rewritten_input, vault_embeddings, vault_content, top_k
 # Function to interact with the Ollama model
 def ollama_chat(user_input, system_message, vault_embeddings, vault_content, ollama_model, conversation_history):
     # Get relevant context from the vault
-    relevant_context = get_relevant_context(user_input, vault_embeddings_tensor, vault_content, top_k=3)
+    relevant_context = get_relevant_context(user_input, vault_embeddings, vault_content, top_k=settings.CONFIG.get("top_k", 3))
     if relevant_context:
         # Convert list to a single string with newlines between items
         context_str = "\n".join(relevant_context)
@@ -82,25 +83,37 @@ client = OpenAI(
 )
 
 # Load the vault content
+vault_file_path = settings.CONFIG.get("vault_file", "vault.txt")
+print(NEON_GREEN + f"Loading vault content from '{vault_file_path}'..." + RESET_COLOR)
 vault_content = []
-if os.path.exists("vault.txt"):
-    with open("vault.txt", "r", encoding='utf-8') as vault_file:
-        vault_content = vault_file.readlines()
+if os.path.exists(vault_file_path):
+    with open(vault_file_path, "r", encoding='utf-8') as vault_file:
+        raw_text = vault_file.read()
+    # Split by blank lines to preserve paragraph boundaries
+    paragraphs = [p.strip() for p in raw_text.split("\n\n") if p.strip()]
+    for p in paragraphs:
+        vault_content.append(p)
+else:
+    print(YELLOW + f"Vault file '{vault_file_path}' not found, starting with empty vault." + RESET_COLOR)
 
 # Generate embeddings for the vault content using Ollama
 vault_embeddings = []
+embedding_model = settings.CONFIG.get("embedding_model", "mxbai-embed-large")
 for content in vault_content:
-    response = ollama.embeddings(model='mxbai-embed-large', prompt=content)
-    vault_embeddings.append(response["embedding"])
+    try:
+        response = ollama.embeddings(model=embedding_model, prompt=content)
+        vault_embeddings.append(response["embedding"])
+    except Exception as e:
+        print(YELLOW + f"Skipping a chunk due to embedding error: {e}" + RESET_COLOR)
 
 # Convert to tensor and print embeddings
-vault_embeddings_tensor = torch.tensor(vault_embeddings) 
-print("Embeddings for each line in the vault:")
-print(vault_embeddings_tensor)
+vault_embeddings_tensor = torch.tensor(vault_embeddings)
+print("Embeddings tensor shape:")
+print(vault_embeddings_tensor.shape)
 
 # Conversation loop
 conversation_history = []
-system_message = "You are a helpful assistant that is an expert at extracting the most useful information from a given text"
+system_message = settings.CONFIG.get("system_message", "You are a helpful assistant that is an expert at extracting the most useful information from a given text")
 
 while True:
     user_input = input(YELLOW + "Ask a question about your documents (or type 'quit' to exit): " + RESET_COLOR)
