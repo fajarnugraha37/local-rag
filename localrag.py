@@ -82,7 +82,7 @@ def rewrite_query(user_input_json, conversation_history, ollama_model):
     rewritten_query = response.choices[0].message.content.strip()
     return json.dumps({"Rewritten Query": rewritten_query})
    
-def ollama_chat(user_input, system_message, vault_embeddings, vault_content, ollama_model, conversation_history, top_k=3, max_context_chars=4000):
+def ollama_chat(user_input, system_message, vault_embeddings, vault_content, ollama_model, conversation_history, top_k=3):
     conversation_history.append({"role": "user", "content": user_input})
     
     if len(conversation_history) > 1:
@@ -101,9 +101,6 @@ def ollama_chat(user_input, system_message, vault_embeddings, vault_content, oll
     relevant_context = get_relevant_context(rewritten_query, vault_embeddings, vault_content, top_k=top_k)
     if relevant_context:
         context_str = "\n".join(relevant_context)
-        # Limit context to keep requests within model context window
-        if max_context_chars is not None and len(context_str) > max_context_chars:
-            context_str = context_str[:max_context_chars].rstrip() + "\n...[truncated]..."
         print("Context Pulled from Documents: \n\n" + CYAN + context_str + RESET_COLOR)
     else:
         print(CYAN + "No relevant context found." + RESET_COLOR)
@@ -142,7 +139,7 @@ print(NEON_GREEN + "Parsing command-line arguments..." + RESET_COLOR)
 parser = argparse.ArgumentParser(description="Ollama Chat")
 parser.add_argument("--model", default=settings.CONFIG.get("ollama_model", "llama3"), help="Ollama model to use (default from config.yaml)")
 parser.add_argument("--top-k", type=int, default=settings.CONFIG.get("top_k", 3), help="Number of top relevant chunks to include (default from config.yaml)")
-parser.add_argument("--max-context-chars", type=int, default=settings.CONFIG.get("max_context_chars", 6000), help="Max characters of retrieved context to include (default from config.yaml)")
+
 args = parser.parse_args()
 
 # Configuration for the Ollama API client
@@ -201,6 +198,5 @@ while True:
         args.model,
         conversation_history,
         top_k=args.top_k,
-        max_context_chars=args.max_context_chars,
     )
     print(NEON_GREEN + "Response: \n\n" + response + RESET_COLOR)

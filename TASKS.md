@@ -33,7 +33,7 @@
 | T303 | 3 | Add cheap reranker (heuristic default) | T302 | DONE |
 | T304 | 3 | Return scored chunk objects with metadata | T302,T303 | DONE |
 | T305 | 3 | Run Phase 3 validation commands | T304 | DONE |
-| T401 | 4 | Remove `max_context_chars` truncation path | T305 | TODO |
+| T401 | 4 | Remove `max_context_chars` truncation path | T305 | DONE |
 | T402 | 4 | Add token-budget context packer (`context_packer.py`) | T401 | TODO |
 | T403 | 4 | Add multi-pass answering (A/B refinement) | T402 | TODO |
 | T404 | 4 | Add citation output format `[doc_id:chunk_id]` | T402 | TODO |
