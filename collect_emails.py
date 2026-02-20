@@ -14,7 +14,7 @@ load_dotenv()  # Load environment variables from .env file
 
 import json
 import settings
-from hashing import sha256_hash
+from app.common.content_hashing import sha256_hash
 
 # ANSI escape codes for colors
 PINK = '\033[95m'

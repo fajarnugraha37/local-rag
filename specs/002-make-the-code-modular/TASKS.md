@@ -12,7 +12,7 @@ Status values:
 |---|---|---|---|
 | T001 | Create `app/` package skeleton and `__init__.py` files | - | done |
 | T002 | Move config/common/context/retrieval modules to semantic `app/` paths | T001 | done |
-| T003 | Rewrite internal imports in moved core modules to `app.*` absolute imports | T002 | todo |
+| T003 | Rewrite internal imports in moved core modules to `app.*` absolute imports | T002 | done |
 | T004 | Move ingestion/index/migration modules into `app/` and keep `main()` entrypoints | T003 | todo |
 | T005 | Move chat modules into `app/chat/` and expose `main()` in each CLI module | T003 | todo |
 | T006 | Move validation/debug scripts into `app/validation` and `app/tools` | T003 | todo |
@@ -72,7 +72,7 @@ python -c "from app.config import runtime_settings; from app.retrieval import hy
 rg -n "^import (settings|retrieval|chunking|context_packer|reranker|hashing)$|from (settings|retrieval|chunking|context_packer|reranker|hashing)"
 ```
 Expected: no matches.
-- Status: `todo`
+- Status: `done`
 
 ### T004
 - Goal: Move ingestion/index/migration modules and preserve executable behavior.

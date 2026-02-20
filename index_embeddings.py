@@ -12,7 +12,7 @@ from typing import Dict, Any
 
 import ollama
 import settings
-from hashing import sha256_hash
+from app.common.content_hashing import sha256_hash
 
 
 def load_chunks(chunks_file: str):

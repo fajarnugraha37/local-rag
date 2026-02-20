@@ -12,7 +12,7 @@ import datetime
 from typing import List
 
 import settings
-from hashing import sha256_hash
+from app.common.content_hashing import sha256_hash
 
 
 def chunk_text(text: str, max_chars: int = 1000, overlap: int = 100) -> List[str]:

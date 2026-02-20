@@ -2,7 +2,7 @@ import os
 import re
 import json
 import settings
-from hashing import sha256_hash
+from app.common.content_hashing import sha256_hash
 
 # Helper: sentence-aware chunking
 def chunk_sentences(text, max_chars=1000):

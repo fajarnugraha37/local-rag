@@ -1,5 +1,5 @@
-from context_packer import pack_context
-from chunking import estimate_token_count
+from app.context.token_budget_packer import pack_context
+from app.context.token_chunking import estimate_token_count
 
 
 def test_pack_context_budget():
