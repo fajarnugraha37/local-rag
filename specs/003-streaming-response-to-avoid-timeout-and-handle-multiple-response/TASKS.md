@@ -1,7 +1,7 @@
 # Tasks: Streaming Response & Multi-Call Continuation
 
 ## Progress Tracker
-- Status counts: todo 2, doing 0, done 5, blocked 0.
+- Status counts: todo 1, doing 0, done 6, blocked 0.
 
 ## Task List
 
@@ -40,7 +40,7 @@
 - Acceptance: `curl -N http://localhost:8000/chat/stream?...` returns SSE events until completion.
 - Validation: manual curl; server exits cleanly on ctrl+c.
 
-### T006 — Tests for continuation and streaming (status: todo)
+### T006 — Tests for continuation and streaming (status: done)
 - Goal: Cover continuation logic, ordering, and toggles.
 - Files: `tests/test_streaming_continuation.py` (new), adjust fixtures if needed.
 - Steps: mock provider to force `finish_reason="length"`, assert concatenated output equals expected, test cancellation and config toggles.
