@@ -95,6 +95,7 @@ python .\cmd\app.py --cli debug-retrieval
 # Eval
 python .\cmd\app.py --cli eval --questions eval\questions.jsonl --top-k 6 --output eval\results.json
 ```
+`ingest-files --path ...` now shows progress bars (PDF page read + embedding/upsert) so ingestion status is visible.
 
 ## Make Targets
 ```powershell

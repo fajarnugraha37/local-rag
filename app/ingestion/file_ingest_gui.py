@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import re
+import sys
 from typing import Sequence
 
 from app.config import runtime_settings as settings
@@ -31,8 +32,37 @@ def chunk_sentences(text: str, max_chars: int = 1000) -> list[str]:
     return chunks
 
 
-def write_chunks_file(chunks_list, source_path, chunks_file=None, append_vault=False):
-    result = ingest_chunks(chunks_list, source_path=source_path)
+def _render_progress(prefix: str, current: int, total: int, *, width: int = 30) -> None:
+    safe_total = max(1, total)
+    safe_current = min(max(current, 0), safe_total)
+    ratio = safe_current / safe_total
+    filled = int(width * ratio)
+    bar = "#" * filled + "-" * (width - filled)
+    percent = int(ratio * 100)
+    sys.stdout.write(f"\r{prefix}: [{bar}] {percent:3d}% ({safe_current}/{safe_total})")
+    sys.stdout.flush()
+
+
+def write_chunks_file(chunks_list, source_path, chunks_file=None, append_vault=False, show_progress: bool = True):
+    total = len(chunks_list) if hasattr(chunks_list, "__len__") else 0
+    progress_state = {"last_current": -1}
+
+    def _on_progress(stage: str, current: int, progress_total: int, stats):
+        if not show_progress:
+            return
+        if stage in {"start", "chunk"}:
+            safe_total = progress_total or total or 1
+            if current == progress_state["last_current"] and stage == "chunk":
+                return
+            progress_state["last_current"] = current
+            _render_progress("Embedding + upsert", current, safe_total)
+        elif stage == "done":
+            safe_total = progress_total or total or max(1, current)
+            _render_progress("Embedding + upsert", safe_total, safe_total)
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+
+    result = ingest_chunks(chunks_list, source_path=source_path, progress_callback=_on_progress if show_progress else None)
     print(f"Wrote {result['added']} new chunks to vector DB (failed={result['failed']}, skipped={result['skipped']})")
     return result
 
@@ -41,7 +71,7 @@ def _normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def _read_pdf_text(path: str) -> str:
+def _read_pdf_text(path: str, *, show_progress: bool = True) -> str:
     try:
         import PyPDF2
     except Exception as exc:
@@ -49,11 +79,17 @@ def _read_pdf_text(path: str) -> str:
 
     with open(path, "rb") as pdf_file:
         pdf_reader = PyPDF2.PdfReader(pdf_file)
+        total_pages = len(pdf_reader.pages)
         text_parts = []
-        for page in pdf_reader.pages:
+        for idx, page in enumerate(pdf_reader.pages, start=1):
             extracted = page.extract_text() or ""
             if extracted:
                 text_parts.append(extracted)
+            if show_progress:
+                _render_progress("Reading PDF pages", idx, total_pages)
+        if show_progress:
+            sys.stdout.write("\n")
+            sys.stdout.flush()
     return _normalize_text(" ".join(text_parts))
 
 
@@ -72,8 +108,9 @@ def ingest_file_path(file_path: str):
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
     _, ext = os.path.splitext(file_path.lower())
+    print(f"Ingesting '{file_path}'...")
     if ext == ".pdf":
-        text = _read_pdf_text(file_path)
+        text = _read_pdf_text(file_path, show_progress=True)
     elif ext == ".txt":
         text = _read_txt_text(file_path)
     elif ext == ".json":
@@ -81,11 +118,13 @@ def ingest_file_path(file_path: str):
     else:
         raise ValueError(f"Unsupported file type: {ext}. Supported: .pdf, .txt, .json")
 
+    print("Chunking text...")
     chunks = chunk_sentences(text, max_chars=1000)
     if not chunks:
         print(f"No content found for '{file_path}'. Nothing ingested.")
         return {"added": 0, "failed": 0, "skipped": 0}
-    result = write_chunks_file(chunks, file_path)
+    print(f"Prepared {len(chunks)} chunks. Starting embedding/upsert...")
+    result = write_chunks_file(chunks, file_path, show_progress=True)
     print(f"Processed {len(chunks)} chunks from '{file_path}'.")
     return result
 

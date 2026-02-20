@@ -68,3 +68,54 @@ def test_ingest_retrieve_delete_integration(tmp_path, monkeypatch):
 
     after_delete = retrieval.scored_chunks("payment terms", top_k=3, rerank=False, filters={"doc_id": doc})
     assert after_delete == []
+
+
+def test_ingest_progress_callback(tmp_path, monkeypatch):
+    persist_dir = tmp_path / "chroma_progress"
+    collection = "test_ingest_progress"
+
+    settings.CONFIG["vector_db_persist_dir"] = str(persist_dir)
+    settings.CONFIG["vector_db_collection"] = collection
+    settings.CONFIG["embedding_dim"] = 4
+    settings.CONFIG["vector_db_batch_size"] = 2
+
+    def fake_embed_text(text, embedding_model=None, allow_fallback=True, fallback_length=None):
+        return {"embedding": [0.1, 0.2, 0.3, 0.4], "model": "fake", "used_fallback": False}
+
+    monkeypatch.setattr(vector_ingest_service, "embed_text", fake_embed_text)
+
+    events = []
+
+    def on_progress(stage, current, total, stats):
+        events.append((stage, current, total, dict(stats)))
+
+    result = ingest_chunks(
+        ["first chunk", "second chunk"],
+        source_path="progress.txt",
+        progress_callback=on_progress,
+    )
+    assert result["added"] == 2
+    stages = [evt[0] for evt in events]
+    assert "start" in stages
+    assert "chunk" in stages
+    assert stages[-1] == "done"
+
+
+def test_ingest_duplicate_chunk_texts_do_not_fail(tmp_path, monkeypatch):
+    persist_dir = tmp_path / "chroma_duplicates"
+    collection = "test_ingest_duplicates"
+
+    settings.CONFIG["vector_db_persist_dir"] = str(persist_dir)
+    settings.CONFIG["vector_db_collection"] = collection
+    settings.CONFIG["embedding_dim"] = 4
+    settings.CONFIG["vector_db_batch_size"] = 64
+
+    def fake_embed_text(text, embedding_model=None, allow_fallback=True, fallback_length=None):
+        return {"embedding": [0.1, 0.2, 0.3, 0.4], "model": "fake", "used_fallback": False}
+
+    monkeypatch.setattr(vector_ingest_service, "embed_text", fake_embed_text)
+
+    repeated = ["same chunk text"] * 5
+    summary = ingest_chunks(repeated, source_path="dup.txt", doc_id="dup.txt")
+    assert summary["added"] == 5
+    assert summary["failed"] == 0
