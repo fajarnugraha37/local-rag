@@ -14,7 +14,13 @@ import json
 import time
 import statistics
 import os
+import sys
 from typing import List, Dict, Any
+
+# Allow running as `python eval/run_eval.py` from repo root.
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 from app.config import runtime_settings as settings
 from app.retrieval import hybrid_search as retrieval
