@@ -15,8 +15,8 @@ rewrite_temperature: 0.1
 chat_max_tokens: 4000
 
 # Streaming + continuation defaults
-enable_streaming: false
-enable_thinking_summary: false
+enable_streaming: true
+enable_thinking_summary: true
 per_call_max_tokens: 4000
 max_continuations: 2
 flush_interval_ms: 250
