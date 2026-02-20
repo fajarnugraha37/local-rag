@@ -40,7 +40,7 @@ ACTION_SPECS: Dict[str, ActionSpec] = {
     "ingest-files": ActionSpec(
         name="ingest-files",
         target="app.ingestion.file_ingest_gui:main",
-        description="Launch GUI uploader for PDF/TXT/JSON ingestion.",
+        description="Ingest PDF/TXT/JSON files (--path non-GUI, no --path opens GUI).",
     ),
     "ingest-email": ActionSpec(
         name="ingest-email",

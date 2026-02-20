@@ -5,6 +5,7 @@ APP := $(PYTHON) cmd\app.py
 TOP_K ?= 6
 Q ?= what are key payment terms?
 KEYWORD ?= invoice
+INGEST_PATH ?=
 
 help:
 	@$(info Available targets:)
@@ -13,7 +14,7 @@ help:
 	@$(info   make chat)
 	@$(info   make chat-baseline)
 	@$(info   make chat-email)
-	@$(info   make ingest)
+	@$(info   make ingest INGEST_PATH="path\\to\\file.pdf")
 	@$(info   make ingest-email KEYWORD="invoice")
 	@$(info   make migrate-vault)
 	@$(info   make backfill)
@@ -40,7 +41,11 @@ chat-email:
 	$(APP) --cli chat-email
 
 ingest:
+ifeq ($(strip $(INGEST_PATH)),)
 	$(APP) --cli ingest-files
+else
+	$(APP) --cli ingest-files --path "$(INGEST_PATH)"
+endif
 
 ingest-email:
 	$(APP) --cli ingest-email --keyword "$(KEYWORD)"

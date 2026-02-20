@@ -16,7 +16,7 @@
 - `curl http://127.0.0.1:8000/actions` (or `/action`): list server-exposed actions and HTTP support flags.
 - `python .\cmd\app.py --cli --help`: list CLI actions.
 - `python .\cmd\app.py --cli chat --top-k 6`: main chat flow.
-- `python .\cmd\app.py --cli ingest-files`: GUI file ingestion.
+- `python .\cmd\app.py --cli ingest-files --path .\docs\sample.pdf`: non-GUI ingestion; omit `--path` to open GUI.
 - `python .\cmd\app.py --cli query --query "..." --top-k 6`: retrieval inspection.
 - `python -m pytest -q`: test suite.
 - `make help`, `make test`, `make eval`, `make all`: standardized workflows.

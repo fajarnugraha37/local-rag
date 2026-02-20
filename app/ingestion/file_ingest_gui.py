@@ -1,111 +1,149 @@
+from __future__ import annotations
+
+import argparse
+import json
 import os
 import re
-import json
+from typing import Sequence
+
 from app.config import runtime_settings as settings
 from app.ingestion.vector_ingest_service import ingest_chunks
 
-# Helper: sentence-aware chunking
-def chunk_sentences(text, max_chars=1000):
-    max_chars = settings.CONFIG.get('chunk_max_chars', max_chars)
-    sentences = re.split(r'(?<=[.!?]) +', text)
-    chunks = []
+
+def chunk_sentences(text: str, max_chars: int = 1000) -> list[str]:
+    max_chars = int(settings.CONFIG.get("chunk_max_chars", max_chars))
+    sentences = re.split(r"(?<=[.!?]) +", text)
+    chunks: list[str] = []
     current_chunk = ""
     for sentence in sentences:
-        if len(current_chunk) + len(sentence) + 1 < max_chars:
-            current_chunk += (sentence + " ").strip()
-        else:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+        candidate = f"{current_chunk} {sentence}".strip() if current_chunk else sentence
+        if len(candidate) <= max_chars:
+            current_chunk = candidate
+            continue
+        if current_chunk:
             chunks.append(current_chunk)
-            current_chunk = sentence + " "
+        current_chunk = sentence
     if current_chunk:
         chunks.append(current_chunk)
     return chunks
 
-# Helper: write structured chunk objects to vector DB (idempotent upsert)
+
 def write_chunks_file(chunks_list, source_path, chunks_file=None, append_vault=False):
     result = ingest_chunks(chunks_list, source_path=source_path)
     print(f"Wrote {result['added']} new chunks to vector DB (failed={result['failed']}, skipped={result['skipped']})")
+    return result
 
-# Function to convert PDF to text and write structured chunks
-def convert_pdf_to_text():
-    file_path = filedialog.askopenfilename(filetypes=[("PDF Files", "*.pdf")])
-    if file_path:
-        with open(file_path, 'rb') as pdf_file:
-            pdf_reader = PyPDF2.PdfReader(pdf_file)
-            num_pages = len(pdf_reader.pages)
-            text = ''
-            for page_num in range(num_pages):
-                page = pdf_reader.pages[page_num]
-                if page.extract_text():
-                    text += page.extract_text() + " "
 
-            # Normalize whitespace and clean up text
-            text = re.sub(r'\s+', ' ', text).strip()
+def _normalize_text(text: str) -> str:
+    return re.sub(r"\s+", " ", text).strip()
 
-            # Chunk the text
-            chunks = chunk_sentences(text, max_chars=1000)
 
-            write_chunks_file(chunks, file_path)
-            print(f"PDF content processed and appended as structured chunks.")
+def _read_pdf_text(path: str) -> str:
+    try:
+        import PyPDF2
+    except Exception as exc:
+        raise RuntimeError("PyPDF2 is required to ingest PDF files.") from exc
 
-# Function to upload a text file and write structured chunks
-def upload_txtfile():
-    file_path = filedialog.askopenfilename(filetypes=[("Text Files", "*.txt")])
-    if file_path:
-        with open(file_path, 'r', encoding="utf-8") as txt_file:
-            text = txt_file.read()
+    with open(path, "rb") as pdf_file:
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        text_parts = []
+        for page in pdf_reader.pages:
+            extracted = page.extract_text() or ""
+            if extracted:
+                text_parts.append(extracted)
+    return _normalize_text(" ".join(text_parts))
 
-            # Normalize whitespace and clean up text
-            text = re.sub(r'\s+', ' ', text).strip()
 
-            # Chunk the text
-            chunks = chunk_sentences(text, max_chars=1000)
+def _read_json_text(path: str) -> str:
+    with open(path, "r", encoding="utf-8") as json_file:
+        data = json.load(json_file)
+    return _normalize_text(json.dumps(data, ensure_ascii=False))
 
-            write_chunks_file(chunks, file_path)
-            print(f"Text file content processed and appended as structured chunks.")
 
-# Function to upload a JSON file and write structured chunks
-def upload_jsonfile():
-    file_path = filedialog.askopenfilename(filetypes=[("JSON Files", "*.json")])
-    if file_path:
-        with open(file_path, 'r', encoding="utf-8") as json_file:
-            data = json.load(json_file)
+def _read_txt_text(path: str) -> str:
+    with open(path, "r", encoding="utf-8") as txt_file:
+        return _normalize_text(txt_file.read())
 
-            # Flatten the JSON data into a single string
-            text = json.dumps(data, ensure_ascii=False)
 
-            # Normalize whitespace and clean up text
-            text = re.sub(r'\s+', ' ', text).strip()
+def ingest_file_path(file_path: str):
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
+    _, ext = os.path.splitext(file_path.lower())
+    if ext == ".pdf":
+        text = _read_pdf_text(file_path)
+    elif ext == ".txt":
+        text = _read_txt_text(file_path)
+    elif ext == ".json":
+        text = _read_json_text(file_path)
+    else:
+        raise ValueError(f"Unsupported file type: {ext}. Supported: .pdf, .txt, .json")
 
-            # Chunk the text
-            chunks = chunk_sentences(text, max_chars=1000)
+    chunks = chunk_sentences(text, max_chars=1000)
+    if not chunks:
+        print(f"No content found for '{file_path}'. Nothing ingested.")
+        return {"added": 0, "failed": 0, "skipped": 0}
+    result = write_chunks_file(chunks, file_path)
+    print(f"Processed {len(chunks)} chunks from '{file_path}'.")
+    return result
 
-            write_chunks_file(chunks, file_path)
-            print(f"JSON file content processed and appended as structured chunks.")
 
-def main():
+def _launch_gui() -> None:
     try:
         import tkinter as tk
         from tkinter import filedialog
-        import PyPDF2
     except Exception:
-        print("GUI components not available; upload utilities are importable for testing.")
-    else:
-        # Create the main window
-        root = tk.Tk()
-        root.title("Upload .pdf, .txt, or .json")
+        print("GUI components not available. Use --path to ingest from CLI.")
+        return
 
-        # Create a button to open the file dialog for PDF
-        pdf_button = tk.Button(root, text="Upload PDF", command=convert_pdf_to_text)
-        pdf_button.pack(pady=10)
+    def select_and_ingest(filetypes):
+        file_path = filedialog.askopenfilename(filetypes=filetypes)
+        if not file_path:
+            return
+        try:
+            ingest_file_path(file_path)
+        except Exception as exc:
+            print(f"Failed to ingest '{file_path}': {exc}")
 
-        # Create a button to open the file dialog for text file
-        txt_button = tk.Button(root, text="Upload Text File", command=upload_txtfile)
-        txt_button.pack(pady=10)
+    root = tk.Tk()
+    root.title("Upload .pdf, .txt, or .json")
 
-        # Create a button to open the file dialog for JSON file
-        json_button = tk.Button(root, text="Upload JSON File", command=upload_jsonfile)
-        json_button.pack(pady=10)
+    pdf_button = tk.Button(root, text="Upload PDF", command=lambda: select_and_ingest([("PDF Files", "*.pdf")]))
+    pdf_button.pack(pady=10)
 
-        # Run the main event loop
-        root.mainloop()
+    txt_button = tk.Button(root, text="Upload Text File", command=lambda: select_and_ingest([("Text Files", "*.txt")]))
+    txt_button.pack(pady=10)
 
+    json_button = tk.Button(root, text="Upload JSON File", command=lambda: select_and_ingest([("JSON Files", "*.json")]))
+    json_button.pack(pady=10)
+
+    root.mainloop()
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Ingest PDF/TXT/JSON files into vector storage. Use --path for non-GUI mode.",
+    )
+    parser.add_argument(
+        "--path",
+        dest="paths",
+        action="append",
+        default=[],
+        help="Path to .pdf/.txt/.json file. Repeat --path for multiple files.",
+    )
+    return parser
+
+
+def main(argv: Sequence[str] | None = None):
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+    if args.paths:
+        for path in args.paths:
+            try:
+                ingest_file_path(path)
+            except Exception as exc:
+                parser.error(str(exc))
+        return
+    _launch_gui()

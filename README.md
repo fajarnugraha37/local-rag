@@ -79,6 +79,8 @@ python .\cmd\app.py --cli chat-email --stream
 
 # Ingestion
 python .\cmd\app.py --cli ingest-files
+python .\cmd\app.py --cli ingest-files --path .\docs\sample.pdf
+python .\cmd\app.py --cli ingest-files --path .\docs\a.txt --path .\docs\b.json
 python .\cmd\app.py --cli ingest-email --keyword "invoice" --startdate 01.01.2025 --enddate 31.01.2025
 python .\cmd\app.py --cli migrate-vault --vault vault.txt
 
