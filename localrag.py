@@ -144,6 +144,7 @@ print(NEON_GREEN + "Parsing command-line arguments..." + RESET_COLOR)
 parser = argparse.ArgumentParser(description="Ollama Chat")
 parser.add_argument("--model", default=settings.CONFIG.get("ollama_model", "llama3"), help="Ollama model to use (default from config.yaml)")
 parser.add_argument("--top-k", type=int, default=settings.CONFIG.get("top_k", 3), help="Number of top relevant chunks to include (default from config.yaml)")
+parser.add_argument("--no-multi-pass", action='store_true', help="Disable multi-pass A/B refinement (default: enabled)")
 
 args = parser.parse_args()
 
@@ -204,4 +205,31 @@ while True:
         conversation_history,
         top_k=args.top_k,
     )
-    print(NEON_GREEN + "Response: \n\n" + response + RESET_COLOR)
+    print(NEON_GREEN + "First-pass (A) Response: \n\n" + response + RESET_COLOR)
+
+    # Multi-pass A/B refinement: run a second pass with wider retrieval and ask model to refine
+    if not getattr(args, 'no_multi_pass', False):
+        try:
+            print(NEON_GREEN + "Running multi-pass refinement (B)..." + RESET_COLOR)
+            extra_top_k = max(1, args.top_k * 2)
+            extra_context = get_relevant_context(user_input, vault_embeddings_tensor, vault_content, top_k=extra_top_k)
+            max_tokens = settings.CONFIG.get('context_token_budget', 1500)
+            overlap_tokens = settings.CONFIG.get('context_overlap', 20)
+            packed_extra = context_packer.pack_context(user_input, extra_context, max_tokens=max_tokens, overlap_tokens=overlap_tokens)
+            extra_context_str = "\n\n".join(packed_extra)
+            refine_prompt = f"Refine the previous assistant response to the query:\n{user_input}\n\nPrevious response:\n{response}\n\nAdditional context (may be empty):\n{extra_context_str}\n\nProduce a concise, corrected and improved final answer based on the additional context."
+            refined = ollama_chat(
+                refine_prompt,
+                system_message,
+                vault_embeddings_tensor,
+                vault_content,
+                args.model,
+                conversation_history,
+                top_k=extra_top_k,
+            )
+            print(NEON_GREEN + "Refined (B) Response: \n\n" + refined + RESET_COLOR)
+            response = refined
+        except Exception as e:
+            print(YELLOW + f"Multi-pass refinement failed: {e}" + RESET_COLOR)
+
+    print(NEON_GREEN + "Final Response: \n\n" + response + RESET_COLOR)
