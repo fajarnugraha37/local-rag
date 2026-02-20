@@ -1,7 +1,7 @@
 # Tasks: Streaming Response & Multi-Call Continuation
 
 ## Progress Tracker
-- Status counts: todo 3, doing 0, done 4, blocked 0.
+- Status counts: todo 2, doing 0, done 5, blocked 0.
 
 ## Task List
 
@@ -33,7 +33,7 @@
 - Acceptance: both CLIs run with and without `--stream`; no regression in conversation history handling.
 - Validation: run each CLI once with `--stream`; optional quick prompt “ping”.
 
-### T005 — Optional SSE endpoint (status: todo)
+### T005 — Optional SSE endpoint (status: done)
 - Goal: Expose streaming protocol over HTTP without heavy deps.
 - Files: `app/chat/streaming_server.py` (new) or minimal server module; optional runner script.
 - Steps: implement `/chat/stream` SSE endpoint forwarding events from streaming wrapper; send keep-alives; handle client disconnect.
