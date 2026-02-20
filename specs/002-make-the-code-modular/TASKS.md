@@ -26,7 +26,7 @@ Status values:
 | T014 | Audit root `.py` files: only approved shims remain | T013 | done |
 | T015 | Update `AGENTS.md` to new modular structure and commands | T014 | done |
 | T016 | Update `README.md` to new package layout and preserved CLI usage | T014 | done |
-| T017 | Final consistency pass across PLAN/IMPROVEMENT/TASKS docs | T015,T016 | todo |
+| T017 | Final consistency pass across PLAN/IMPROVEMENT/TASKS docs | T015,T016 | done |
 
 ---
 
@@ -250,4 +250,4 @@ rg -n "app/|localrag.py|python -m" README.md
 ```powershell
 rg -n "T0[0-9]{2}" specs\002-make-the-code-modular\TASKS.md
 ```
-- Status: `todo`
+- Status: `done`

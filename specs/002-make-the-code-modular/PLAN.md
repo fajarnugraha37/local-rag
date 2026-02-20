@@ -1,5 +1,9 @@
 # Runnable Modularization Plan
 
+## Execution Status
+This plan has been executed through Phase H in the current branch/worktree.
+Refer to `specs/002-make-the-code-modular/TASKS.md` for per-task completion states (`T001`-`T017`).
+
 ## Preflight
 Repository facts detected from scan:
 - Tests present: `tests/test_smoke_ingest.py`, `tests/test_smoke_packer.py`, `tests/test_smoke_retrieval.py`
