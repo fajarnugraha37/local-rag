@@ -1,7 +1,4 @@
 import os
-import tkinter as tk
-from tkinter import filedialog
-import PyPDF2
 import re
 import json
 import settings
@@ -127,21 +124,29 @@ def upload_jsonfile():
             write_chunks_file(chunks, file_path)
             print(f"JSON file content processed and appended as structured chunks.")
 
-# Create the main window
-root = tk.Tk()
-root.title("Upload .pdf, .txt, or .json")
+if __name__ == "__main__":
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        import PyPDF2
+    except Exception:
+        print("GUI components not available; upload utilities are importable for testing.")
+    else:
+        # Create the main window
+        root = tk.Tk()
+        root.title("Upload .pdf, .txt, or .json")
 
-# Create a button to open the file dialog for PDF
-pdf_button = tk.Button(root, text="Upload PDF", command=convert_pdf_to_text)
-pdf_button.pack(pady=10)
+        # Create a button to open the file dialog for PDF
+        pdf_button = tk.Button(root, text="Upload PDF", command=convert_pdf_to_text)
+        pdf_button.pack(pady=10)
 
-# Create a button to open the file dialog for text file
-txt_button = tk.Button(root, text="Upload Text File", command=upload_txtfile)
-txt_button.pack(pady=10)
+        # Create a button to open the file dialog for text file
+        txt_button = tk.Button(root, text="Upload Text File", command=upload_txtfile)
+        txt_button.pack(pady=10)
 
-# Create a button to open the file dialog for JSON file
-json_button = tk.Button(root, text="Upload JSON File", command=upload_jsonfile)
-json_button.pack(pady=10)
+        # Create a button to open the file dialog for JSON file
+        json_button = tk.Button(root, text="Upload JSON File", command=upload_jsonfile)
+        json_button.pack(pady=10)
 
-# Run the main event loop
-root.mainloop()
+        # Run the main event loop
+        root.mainloop()
