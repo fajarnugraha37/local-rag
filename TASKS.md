@@ -18,7 +18,7 @@
 | T102 | 1 | Remove hardcoded config in `localrag.py` | T101 | DONE |
 | T103 | 1 | Remove hardcoded config in `localrag_no_rewrite.py` | T101 | DONE |
 | T104 | 1 | Fix global tensor bug in `localrag_no_rewrite.py` | T103 | DONE |
-| T105 | 1 | Auto-recover corrupted embedding cache in `emailrag2.py` | - | TODO |
+| T105 | 1 | Auto-recover corrupted embedding cache in `emailrag2.py` | - | DONE |
 | T106 | 1 | Harden IMAP error handling in `collect_emails.py` | - | TODO |
 | T107 | 1 | Run Phase 1 validation commands | T102,T103,T104,T105,T106 | TODO |
 | T201 | 2 | Create `data/` storage layout and metadata format | T107 | TODO |
@@ -54,12 +54,12 @@
 ### T102
 - Objective: Replace hardcoded client/model settings in `localrag.py`.
 - Done when: script works with config/env only.
-- Validate: `python localrag.py --model gemma3:1b`
+- Validate: `python localrag.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest`
 
 ### T103
 - Objective: Replace hardcoded client/model settings in `localrag_no_rewrite.py`.
 - Done when: script uses shared settings path.
-- Validate: `python localrag_no_rewrite.py --model gemma3:1b`
+- Validate: `python localrag_no_rewrite.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest`
 
 ### T104
 - Objective: Fix `ollama_chat()` to use passed `vault_embeddings` argument, not global tensor.
@@ -91,8 +91,8 @@ python emailrag2.py --clear-cache
 - Done when: retrieval returns ranked chunk objects with scores and metadata.
 - Validate:
 ```powershell
-python localrag.py --model gemma3:1b --top-k 6
-python localrag.py --model gemma3:1b --top-k 6 --rewrite off
+python localrag.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest --top-k 6
+python localrag.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest --top-k 6 --rewrite off
 ```
 
 ### T401-T405
@@ -101,8 +101,8 @@ python localrag.py --model gemma3:1b --top-k 6 --rewrite off
 - Done when: context is packed by token budget and overflow evidence handled by second pass.
 - Validate:
 ```powershell
-python localrag.py --model gemma3:1b --top-k 8 --rewrite on
-python localrag.py --model gemma3:1b --top-k 8 --rewrite off
+python localrag.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest --top-k 8 --rewrite on
+python localrag.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest --top-k 8 --rewrite off
 ```
 
 ### T501-T505
@@ -112,7 +112,7 @@ python localrag.py --model gemma3:1b --top-k 8 --rewrite off
 - Validate:
 ```powershell
 pytest -q
-python eval/run_eval.py --model gemma3:1b
+python eval/run_eval.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest
 ```
 
 ## Quick Start Sequence

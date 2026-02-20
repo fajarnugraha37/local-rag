@@ -4,7 +4,7 @@
 This plan implements `IMPROVEMENT.md` with a strict low-cost setup:
 - Local-first (`Ollama`) and no paid APIs.
 - Target hardware: CPU or low-VRAM GPU, 8-16 GB RAM.
-- Target generation models: `gemma3:1b` or `qwen2.5:1.5b-instruct`.
+- Target generation models: `hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest` or `qwen2.5:1.5b-instruct`.
 - Context window assumption: ~8k tokens.
 - Primary goal: no information loss from naive truncation.
 
@@ -31,8 +31,8 @@ Work in 5 phases. Each phase is deployable and testable on its own.
 
 ### Validation Commands
 ```powershell
-python localrag.py --model gemma3:1b
-python localrag_no_rewrite.py --model gemma3:1b
+python localrag.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest
+python localrag_no_rewrite.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest
 python emailrag2.py --clear-cache
 python collect_emails.py --keyword "test"
 ```
@@ -90,8 +90,8 @@ python emailrag2.py --clear-cache
 
 ### Validation Commands
 ```powershell
-python localrag.py --model gemma3:1b --top-k 6
-python localrag.py --model gemma3:1b --top-k 6 --rewrite off
+python localrag.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest --top-k 6
+python localrag.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest --top-k 6 --rewrite off
 ```
 
 ## Phase 4: Context Packing Without Truncation
@@ -121,8 +121,8 @@ python localrag.py --model gemma3:1b --top-k 6 --rewrite off
 
 ### Validation Commands
 ```powershell
-python localrag.py --model gemma3:1b --top-k 8 --rewrite on
-python localrag.py --model gemma3:1b --top-k 8 --rewrite off
+python localrag.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest --top-k 8 --rewrite on
+python localrag.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest --top-k 8 --rewrite off
 ```
 
 ## Phase 5: Evaluation, Testing, and Release Hardening
@@ -152,12 +152,12 @@ python localrag.py --model gemma3:1b --top-k 8 --rewrite off
 ### Validation Commands
 ```powershell
 pytest -q
-python eval/run_eval.py --model gemma3:1b
+python eval/run_eval.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest
 ```
 
 ## Cheap-AI Runtime Defaults
 Use these defaults after implementation:
-- Generation model: `gemma3:1b`.
+- Generation model: `hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest`.
 - Embedding model: keep `mxbai-embed-large` initially, add optional smaller embedding model flag for low-RAM setups.
 - Retrieval: `top_n_dense=30`, `top_n_bm25=30`, rerank to `top_k=6`.
 - Conversation memory: rolling window only (last N turns within budget).

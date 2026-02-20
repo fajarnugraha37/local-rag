@@ -5,6 +5,7 @@ import json
 from openai import OpenAI
 import argparse
 import yaml
+import datetime
 import settings
 
 # ANSI escape codes for colors
@@ -28,19 +29,36 @@ def open_file(filepath):
         return None
 
 def load_or_generate_embeddings(vault_content, embeddings_file):
+    # Load existing embeddings if valid; otherwise regenerate and persist
     if os.path.exists(embeddings_file):
         print(f"Loading embeddings from '{embeddings_file}'...")
         try:
             with open(embeddings_file, "r", encoding="utf-8") as file:
-                return torch.tensor(json.load(file))
-        except json.JSONDecodeError:
-            print(f"Invalid JSON format in embeddings file '{embeddings_file}'.")
-            embeddings = []
+                data = json.load(file)
+            # Validate structure and length when vault content is present
+            if not isinstance(data, list) or (len(vault_content) > 0 and len(data) != len(vault_content)):
+                print(f"Embeddings file '{embeddings_file}' is invalid or mismatched (expected {len(vault_content)} embeddings, got {len(data) if isinstance(data, list) else 'non-list'})")
+                raise ValueError("Invalid embeddings data")
+            return torch.tensor(data)
+        except (json.JSONDecodeError, ValueError) as e:
+            print(f"Embeddings cache corrupted or invalid: {e}")
+            # Back up corrupted file for inspection
+            try:
+                ts = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+                corrupt_path = embeddings_file + f".corrupt.{ts}"
+                os.rename(embeddings_file, corrupt_path)
+                print(f"Backed up corrupted embeddings to '{corrupt_path}'")
+            except Exception as be:
+                print(f"Failed to back up corrupted embeddings file: {be}")
+            # Regenerate and save
+            embeddings = generate_embeddings(vault_content)
+            save_embeddings(embeddings, embeddings_file)
+            return torch.tensor(embeddings)
     else:
         print(f"No embeddings found. Generating new embeddings...")
         embeddings = generate_embeddings(vault_content)
         save_embeddings(embeddings, embeddings_file)
-    return torch.tensor(embeddings)
+        return torch.tensor(embeddings)
 
 def generate_embeddings(vault_content):
     print("Generating embeddings...")
