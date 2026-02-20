@@ -24,7 +24,7 @@ Status values:
 | T012 | Run evaluation command and verify result file generation | T010 | done |
 | T013 | Run entrypoint backward-compatibility smoke commands | T007 | done |
 | T014 | Audit root `.py` files: only approved shims remain | T013 | done |
-| T015 | Update `AGENTS.md` to new modular structure and commands | T014 | todo |
+| T015 | Update `AGENTS.md` to new modular structure and commands | T014 | done |
 | T016 | Update `README.md` to new package layout and preserved CLI usage | T014 | todo |
 | T017 | Final consistency pass across PLAN/IMPROVEMENT/TASKS docs | T015,T016 | todo |
 
@@ -225,7 +225,7 @@ Expected: no output.
 ```powershell
 rg -n "app/|app\\" AGENTS.md
 ```
-- Status: `todo`
+- Status: `done`
 
 ### T016
 - Goal: Update user documentation for modular architecture.

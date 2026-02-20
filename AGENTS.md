@@ -2,12 +2,13 @@
 
 ## Project Structure & Module Organization
 This repo is a local-first Python RAG stack using Ollama and hybrid retrieval.
-- `localrag.py`: main CLI chat loop (query rewrite + optional multi-pass refinement).
-- `localrag_no_rewrite.py`: baseline chat path without rewrite.
-- `emailrag2.py`: chat flow for email-ingested corpora.
-- `upload.py`, `collect_emails.py`, `migrate_vault.py`: ingestion and migration utilities.
-- `index_embeddings.py`: incremental embedding indexer for `data/embeddings.jsonl`.
-- `retrieval.py`, `reranker.py`, `context_packer.py`, `chunking.py`, `hashing.py`, `settings.py`: retrieval and packing core.
+- `app/chat/document_chat_cli.py`: main CLI chat loop (query rewrite + optional multi-pass refinement).
+- `app/chat/document_chat_baseline_cli.py`: baseline chat path without rewrite.
+- `app/chat/email_chat_cli.py`: chat flow for email-ingested corpora.
+- `app/ingestion/file_ingest_gui.py`, `app/ingestion/email_ingest_job.py`, `app/migration/vault_migration.py`: ingestion and migration utilities.
+- `app/indexing/embedding_indexer.py`: incremental embedding indexer for `data/embeddings.jsonl`.
+- `app/retrieval/hybrid_search.py`, `app/retrieval/heuristic_reranker.py`, `app/context/token_budget_packer.py`, `app/context/token_chunking.py`, `app/common/content_hashing.py`, `app/config/runtime_settings.py`: retrieval and packing core.
+- Root `*.py` entrypoints are compatibility shims that delegate to `app/*` modules.
 - `data/`: runtime index artifacts (`chunks.jsonl`, `embeddings.jsonl`, `index_meta.json`).
 - `tests/`: smoke tests.
 - `eval/`: evaluation dataset, metrics runner, thresholds.
@@ -18,12 +19,12 @@ Use Python 3.10+.
 - `python -m venv .venv`
 - `.\.venv\Scripts\Activate.ps1`
 - `pip install -r requirements.txt`
-- `python upload.py`: GUI uploader for PDF/TXT/JSON into `data/chunks.jsonl`.
-- `python collect_emails.py --keyword "invoice" --startdate 01.01.2025 --enddate 31.01.2025`: ingest mailbox content.
-- `python migrate_vault.py --vault vault.txt`: migrate legacy vault into structured chunks.
-- `python index_embeddings.py --embedding-model mxbai-embed-large`: generate incremental embeddings.
-- `python localrag.py --model gemma3:1b --top-k 6 --multi-pass`: main chat run.
-- `python retrieval.py --query "your question" --top-k 6`: inspect retrieval output.
+- `python -m app.ingestion.file_ingest_gui`: GUI uploader for PDF/TXT/JSON into `data/chunks.jsonl`.
+- `python -m app.ingestion.email_ingest_job --keyword "invoice" --startdate 01.01.2025 --enddate 31.01.2025`: ingest mailbox content.
+- `python -m app.migration.vault_migration --vault vault.txt`: migrate legacy vault into structured chunks.
+- `python -m app.indexing.embedding_indexer --embedding-model mxbai-embed-large`: generate incremental embeddings.
+- `python -m app.chat.document_chat_cli --model gemma3:1b --top-k 6 --multi-pass`: main chat run.
+- `python -m app.retrieval.hybrid_search --query "your question" --top-k 6`: inspect retrieval output.
 - `python -m pytest -q`, `make test`, `make eval`, `make all`, or `.\run_all.ps1`.
 
 ## Coding Style & Naming Conventions
