@@ -6,6 +6,7 @@ top_k: 7
 system_message: "You are a helpful assistant that is an expert at extracting the most useful information from a given text"
 context_token_budget: 1500
 context_overlap: 20
+multi_pass: false
 
 ollama_api:
   base_url: "http://localhost:11434/v1"

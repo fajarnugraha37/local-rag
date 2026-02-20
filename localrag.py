@@ -135,7 +135,7 @@ print(NEON_GREEN + "Parsing command-line arguments..." + RESET_COLOR)
 parser = argparse.ArgumentParser(description="Ollama Chat")
 parser.add_argument("--model", default=settings.CONFIG.get("ollama_model", "llama3"), help="Ollama model to use (default from config.yaml)")
 parser.add_argument("--top-k", type=int, default=settings.CONFIG.get("top_k", 3), help="Number of top relevant chunks to include (default from config.yaml)")
-parser.add_argument("--no-multi-pass", action='store_true', help="Disable multi-pass A/B refinement (default: enabled)")
+parser.add_argument("--multi-pass", action='store_true', default=settings.CONFIG.get('multi_pass', False), help="Enable multi-pass A/B refinement (default from config.yaml)")
 
 args = parser.parse_args()
 
@@ -172,7 +172,7 @@ while True:
     print(NEON_GREEN + "First-pass (A) Response: \n\n" + response + RESET_COLOR)
 
     # Multi-pass A/B refinement: run a second pass with wider retrieval and ask model to refine
-    if not getattr(args, 'no_multi_pass', False):
+    if getattr(args, 'multi_pass', settings.CONFIG.get('multi_pass', False)):
         try:
             print(NEON_GREEN + "Running multi-pass refinement (B)..." + RESET_COLOR)
             extra_top_k = max(1, args.top_k * 2)
