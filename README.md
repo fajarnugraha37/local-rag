@@ -53,6 +53,26 @@ python -m app.chat.document_chat_cli --model hf.co/mradermacher/Gemma-3-1B-it-GL
 # compatibility: python localrag.py --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest --top-k 6 --multi-pass
 ```
 
+### Streaming mode (all chat CLIs)
+```powershell
+python -m app.chat.document_chat_cli --stream --max-continuations 2 --per-call-max-tokens 1024
+python -m app.chat.document_chat_baseline_cli --stream --max-continuations 2 --per-call-max-tokens 1024
+python -m app.chat.email_chat_cli --stream --max-continuations 2 --per-call-max-tokens 1024
+```
+- `--stream/--no-stream`: enable or disable token streaming output.
+- `--max-continuations`: follow-up calls when a response hits token limit (`finish_reason=length`).
+- `--per-call-max-tokens`: token cap per streamed provider call.
+- `--enable-thinking-summary/--no-enable-thinking-summary`: optional short reasoning summary event.
+
+### SSE endpoint (optional server)
+```powershell
+python -m app.chat.streaming_server --host 127.0.0.1 --port 8000
+curl -N "http://127.0.0.1:8000/chat/stream?question=What%20is%20the%20summary%3F&top_k=3&max_continuations=2&per_call_max_tokens=512"
+```
+- Health: `GET /health`
+- Stream: `GET /chat/stream`
+- Event types: `meta`, `final_delta`, `thinking_delta`, `part_done`, `done`, `error`
+
 ### Baseline app (no rewrite)
 ```powershell
 python -m app.chat.document_chat_baseline_cli --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest
@@ -82,6 +102,16 @@ make all
 ## Configuration
 Runtime defaults are in `config.yaml`; environment variables can override core values via `app/config/runtime_settings.py` (for example `OLLAMA_MODEL`, `TOP_K`, `OLLAMA_API_BASE_URL`, `OLLAMA_API_KEY`).
 
+Streaming/continuation keys:
+- `enable_streaming`
+- `enable_thinking_summary`
+- `per_call_max_tokens`
+- `max_continuations`
+- `flush_interval_ms`
+- `provider_timeout_s`
+- `continuation_instruction`
+
 ## Notes
 - Retrieval can still run BM25-only if embeddings are missing, but best quality requires running `index_embeddings.py`.
 - `data/chunks.jsonl` may contain sensitive text. Avoid committing private content.
+- Thinking summaries can expose higher-level reasoning metadata. Keep `enable_thinking_summary` disabled for stricter privacy/safety environments.

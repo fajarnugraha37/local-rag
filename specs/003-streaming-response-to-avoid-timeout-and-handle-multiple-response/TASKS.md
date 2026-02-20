@@ -1,7 +1,7 @@
 # Tasks: Streaming Response & Multi-Call Continuation
 
 ## Progress Tracker
-- Status counts: todo 1, doing 0, done 6, blocked 0.
+- Status counts: todo 0, doing 0, done 7, blocked 0.
 
 ## Task List
 
@@ -47,7 +47,7 @@
 - Acceptance: new tests pass and existing tests unaffected.
 - Validation: `python -m pytest -q`.
 
-### T007 — Update docs (status: todo)
+### T007 — Update docs (status: done)
 - Goal: Document new behavior and usage.
 - Files: `README.md`, `AGENTS.md`, optionally `specs/003...` links.
 - Steps: add streaming flags/examples, SSE contract summary, safety note about thinking summaries defaulting off.

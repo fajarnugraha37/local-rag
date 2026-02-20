@@ -24,6 +24,10 @@ Use Python 3.10+.
 - `python -m app.migration.vault_migration --vault vault.txt`: migrate legacy vault into structured chunks.
 - `python -m app.indexing.embedding_indexer --embedding-model mxbai-embed-large`: generate incremental embeddings.
 - `python -m app.chat.document_chat_cli --model gemma3:1b --top-k 6 --multi-pass`: main chat run.
+- `python -m app.chat.document_chat_cli --stream --max-continuations 2 --per-call-max-tokens 1024`: main chat run with streaming + continuation.
+- `python -m app.chat.document_chat_baseline_cli --stream --max-continuations 2 --per-call-max-tokens 1024`: baseline streaming run.
+- `python -m app.chat.email_chat_cli --stream --max-continuations 2 --per-call-max-tokens 1024`: email chat streaming run.
+- `python -m app.chat.streaming_server --host 127.0.0.1 --port 8000`: optional SSE server (`/chat/stream`, `/health`).
 - `python -m app.retrieval.hybrid_search --query "your question" --top-k 6`: inspect retrieval output.
 - `python -m pytest -q`, `make test`, `make eval`, `make all`, or `.\run_all.ps1`.
 
@@ -46,4 +50,6 @@ Use Python 3.10+.
 ## Security & Configuration Tips
 - Never commit real credentials in `.env`.
 - Supported env overrides include `OLLAMA_MODEL`, `OLLAMA_API_BASE_URL`, `OLLAMA_API_KEY`, `TOP_K`, and email credentials (`GMAIL_*`, `OUTLOOK_*`).
+- Streaming env/config controls include `ENABLE_STREAMING`, `ENABLE_THINKING_SUMMARY`, `PER_CALL_MAX_TOKENS`, `MAX_CONTINUATIONS`, `FLUSH_INTERVAL_MS`, `PROVIDER_TIMEOUT_S`, and `CONTINUATION_INSTRUCTION`.
 - Treat `data/chunks.jsonl` as sensitive when it contains private documents or email content.
+- Thinking summaries should be disabled (`--no-enable-thinking-summary` or `enable_thinking_summary: false`) for stricter privacy/safety requirements.
