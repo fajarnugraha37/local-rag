@@ -249,5 +249,3 @@ def main():
                 print(YELLOW + f"Failed to logout {name}: {e}" + RESET_COLOR)
 
 
-if __name__ == "__main__":
-    main()

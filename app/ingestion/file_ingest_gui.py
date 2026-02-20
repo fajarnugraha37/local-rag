@@ -109,6 +109,3 @@ def main():
         # Run the main event loop
         root.mainloop()
 
-
-if __name__ == "__main__":
-    main()

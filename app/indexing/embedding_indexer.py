@@ -37,6 +37,3 @@ def main() -> None:
         f"vector_count={summary['vector_count']}"
     )
 
-
-if __name__ == "__main__":
-    main()

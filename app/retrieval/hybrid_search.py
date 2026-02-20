@@ -230,6 +230,3 @@ def main():
     )
     print(json.dumps(res, ensure_ascii=False, indent=2))
 
-
-if __name__ == '__main__':
-    main()

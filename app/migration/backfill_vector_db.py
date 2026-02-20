@@ -207,6 +207,3 @@ def main() -> None:
         retry_delay_s=max(0.0, float(args.retry_delay_s)),
     )
 
-
-if __name__ == "__main__":
-    main()

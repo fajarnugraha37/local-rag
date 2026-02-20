@@ -1,0 +1,352 @@
+{
+  "info": {
+    "name": "Easy Local RAG Server",
+    "description": "Postman collection for centralized server mode (python .\\cmd\\app.py --server). Covers health, SSE chat, ingestion, retrieval, and HTTP action execution.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "4c4b8a70-2f33-4f01-b090-c1f9d9a1b2a9"
+  },
+  "item": [
+    {
+      "name": "Server",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('ok=true', function () { pm.expect(pm.response.json().ok).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Actions",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/actions",
+              "host": ["{{baseUrl}}"],
+              "path": ["actions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('includes http_supported_actions', function () {",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(Array.isArray(body.http_supported_actions)).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Chat SSE",
+      "item": [
+        {
+          "name": "SSE Chat Stream - Basic",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "text/event-stream" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/stream?question={{question}}&top_k={{top_k}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "stream"],
+              "query": [
+                { "key": "question", "value": "{{question}}" },
+                { "key": "top_k", "value": "{{top_k}}" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('content-type is SSE', function () {",
+                  "  var ct = pm.response.headers.get('Content-Type') || '';",
+                  "  pm.expect(ct.toLowerCase()).to.include('text/event-stream');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SSE Chat Stream - Missing Question (400)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/stream",
+              "host": ["{{baseUrl}}"],
+              "path": ["chat", "stream"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400 for missing question', function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ingestion",
+      "item": [
+        {
+          "name": "Ingest Chunks",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chunks\": [\n    \"Payment terms are net 30 days.\",\n    \"Late fee applies after due date.\"\n  ],\n  \"source_path\": \"postman/manual\",\n  \"doc_id\": \"postman_doc_001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingest/chunks",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingest", "chunks"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('ingest response has result', function () {",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.ok).to.eql(true);",
+                  "  pm.expect(body.result).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ingest Text",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Invoice policy: payment due within 14 days. Support contact is finance@example.com\",\n  \"doc_id\": \"postman_doc_002\",\n  \"source_path\": \"postman/text\",\n  \"max_chars\": 300\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingest/text",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingest", "text"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('ingest text returns chunk_count', function () {",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.ok).to.eql(true);",
+                  "  pm.expect(body.chunk_count).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Document Vectors",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doc_id\": \"postman_doc_001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/vectors/delete-doc",
+              "host": ["{{baseUrl}}"],
+              "path": ["vectors", "delete-doc"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('delete returns deleted count', function () {",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.ok).to.eql(true);",
+                  "  pm.expect(body.deleted).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Retrieval",
+      "item": [
+        {
+          "name": "Retrieval Query",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"payment terms\",\n  \"top_k\": 3,\n  \"rerank\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/retrieval/query",
+              "host": ["{{baseUrl}}"],
+              "path": ["retrieval", "query"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('response has results array', function () {",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.ok).to.eql(true);",
+                  "  pm.expect(Array.isArray(body.results)).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Actions",
+      "item": [
+        {
+          "name": "Run Action - Query Help",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"query\",\n  \"args\": [\"--help\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/actions/run",
+              "host": ["{{baseUrl}}"],
+              "path": ["actions", "run"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('action execution returned stdout', function () {",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.result).to.be.an('object');",
+                  "  pm.expect(body.result.exit_code).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Run Action - Unsupported (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"chat\",\n  \"args\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/actions/run",
+              "host": ["{{baseUrl}}"],
+              "path": ["actions", "run"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:8000" },
+    { "key": "question", "value": "Summarize the indexed documents" },
+    { "key": "top_k", "value": "3" }
+  ]
+}

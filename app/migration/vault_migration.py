@@ -1,5 +1,5 @@
 """
-migrate_vault.py
+Vault migration utilities.
 
 Convert an existing vault.txt into structured chunk records in data/chunks.jsonl.
 Idempotent: running multiple times will not duplicate chunks.
@@ -150,7 +150,3 @@ def main():
         print(f"Deleted {deleted} vectors for doc_id={args.delete_doc_id}")
         return
     migrate(args.vault, args.chunks_file, args.index_meta, args.max_chars, args.overlap)
-
-
-if __name__ == '__main__':
-    main()

@@ -4,7 +4,7 @@ eval/run_eval.py
 Simple evaluation runner for retrieval metrics (Recall@k, MRR, citation coverage, latency P50/P95).
 
 Usage:
-  python eval/run_eval.py --questions eval/questions.jsonl --top-k 6 --output eval/results.json
+  python .\\cmd\\app.py --cli eval --questions eval/questions.jsonl --top-k 6 --output eval/results.json
 
 This script is intentionally lightweight and robust to slightly different retrieval result shapes.
 """
@@ -205,5 +205,3 @@ def main():
     run_eval(args.questions, top_k=args.top_k, output_file=args.output)
 
 
-if __name__ == '__main__':
-    main()

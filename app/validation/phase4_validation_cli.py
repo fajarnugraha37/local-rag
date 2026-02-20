@@ -1,13 +1,12 @@
 """
-phase4_validate.py
-
 Phase 4 validation: exercise multi-pass retrieval and citation outputs
 without calling external LLMs. This script demonstrates:
 - retrieval.scored_chunks returns citation metadata
 - context_packer.pack_context selects chunks within token budget
 - multi-pass (A/B) retrieval produces wider context on second pass
 
-Run: python phase4_validate.py --query "your query" --top-k 8
+Run via centralized launcher:
+python .\\cmd\\app.py --cli validate-phase4 --query "your query" --top-k 8
 """
 
 import argparse
@@ -72,5 +71,3 @@ def main():
     print('\nPhase 4 validation complete.')
 
 
-if __name__ == '__main__':
-    main()

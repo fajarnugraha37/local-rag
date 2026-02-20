@@ -225,5 +225,3 @@ def main():
         else:
             print(NEON_GREEN + "Response: \n\n" + response + RESET_COLOR)
 
-if __name__ == "__main__":
-    main()
