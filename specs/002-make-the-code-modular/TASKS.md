@@ -22,7 +22,7 @@ Status values:
 | T010 | Run compile/import smoke checks for package integrity | T008,T009 | done |
 | T011 | Run pytest smoke suite | T010 | done |
 | T012 | Run evaluation command and verify result file generation | T010 | done |
-| T013 | Run entrypoint backward-compatibility smoke commands | T007 | todo |
+| T013 | Run entrypoint backward-compatibility smoke commands | T007 | done |
 | T014 | Audit root `.py` files: only approved shims remain | T013 | todo |
 | T015 | Update `AGENTS.md` to new modular structure and commands | T014 | todo |
 | T016 | Update `README.md` to new package layout and preserved CLI usage | T014 | todo |
@@ -201,7 +201,7 @@ python eval\run_eval.py --questions eval\questions.jsonl --top-k 6 --output eval
 python retrieval.py --query "banana" --top-k 2
 python phase4_validate.py --query "banana" --top-k 2
 ```
-- Status: `todo`
+- Status: `done`
 
 ### T014
 - Goal: Ensure root code cleanup rule is satisfied.
