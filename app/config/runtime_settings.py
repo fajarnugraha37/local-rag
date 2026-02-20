@@ -38,7 +38,7 @@ def load_settings(config_file='config.yaml'):
     cfg.setdefault('enable_thinking_summary', True)
     cfg.setdefault('max_continuations', 2)
     cfg.setdefault('flush_interval_ms', 250)
-    cfg.setdefault('provider_timeout_s', int(cfg.get('model_timeout', 120)))
+    cfg.setdefault('provider_timeout_s', 300)
     cfg.setdefault(
         'continuation_instruction',
         'Continue exactly where you left off. Do not repeat prior text.',

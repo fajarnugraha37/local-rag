@@ -1,4 +1,5 @@
 import os
+import time
 from openai import OpenAI
 import argparse
 from app.config import runtime_settings as settings
@@ -84,6 +85,8 @@ def ollama_chat(
         done_text = ""
         saw_delta = False
         stream_failed = False
+        last_token_at = time.monotonic()
+        last_keepalive_notice_at = 0.0
         for event in stream_chat_with_continuation(
             client,
             model=ollama_model,
@@ -100,12 +103,18 @@ def ollama_chat(
             if event_name == 'final_delta':
                 text = data.get('text', '')
                 if text:
-                    print(text, end='', flush=True)
+                    print(NEON_GREEN + text + RESET_COLOR, end='', flush=True)
                     saw_delta = True
+                    last_token_at = time.monotonic()
+            elif event_name == 'meta' and data.get('kind') == 'keepalive':
+                now = time.monotonic()
+                if now - last_token_at >= 3.0 and now - last_keepalive_notice_at >= 3.0:
+                    print("\n" + YELLOW + "[still generating...]" + RESET_COLOR)
+                    last_keepalive_notice_at = now
             elif event_name == 'thinking_delta':
                 summary = data.get('text', '').strip()
                 if summary:
-                    print("\n" + PINK + "Thinking summary:" + RESET_COLOR + " " + summary)
+                    print("\n" + PINK + "Thinking summary:" + RESET_COLOR + " " + CYAN + summary + RESET_COLOR)
             elif event_name == 'error':
                 stream_failed = True
                 detail = data.get('detail') or data.get('message') or 'unknown streaming error'
@@ -198,7 +207,10 @@ def main():
             per_call_max_tokens=args.per_call_max_tokens,
             enable_thinking_summary=args.enable_thinking_summary,
         )
-        print(NEON_GREEN + "Response: \n\n" + response + RESET_COLOR)
+        if args.stream:
+            print(NEON_GREEN + "Response complete." + RESET_COLOR)
+        else:
+            print(NEON_GREEN + "Response: \n\n" + response + RESET_COLOR)
 
 
 if __name__ == '__main__':

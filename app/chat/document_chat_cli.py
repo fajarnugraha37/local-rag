@@ -1,4 +1,5 @@
 import os
+import time
 from openai import OpenAI
 import argparse
 import json
@@ -235,6 +236,8 @@ def ollama_chat(
         done_text = ""
         saw_delta = False
         stream_failed = False
+        last_token_at = time.monotonic()
+        last_keepalive_notice_at = 0.0
         for event in stream_chat_with_continuation(
             client,
             model=ollama_model,
@@ -251,12 +254,18 @@ def ollama_chat(
             if event_name == 'final_delta':
                 text = data.get('text', '')
                 if text:
-                    print(text, end='', flush=True)
+                    print(NEON_GREEN + text + RESET_COLOR, end='', flush=True)
                     saw_delta = True
+                    last_token_at = time.monotonic()
+            elif event_name == 'meta' and data.get('kind') == 'keepalive':
+                now = time.monotonic()
+                if now - last_token_at >= 3.0 and now - last_keepalive_notice_at >= 3.0:
+                    print("\n" + YELLOW + "[still generating...]" + RESET_COLOR)
+                    last_keepalive_notice_at = now
             elif event_name == 'thinking_delta':
                 summary = data.get('text', '').strip()
                 if summary:
-                    print("\n" + PINK + "Thinking summary:" + RESET_COLOR + " " + summary)
+                    print("\n" + PINK + "Thinking summary:" + RESET_COLOR + " " + CYAN + summary + RESET_COLOR)
             elif event_name == 'error':
                 stream_failed = True
                 detail = data.get('detail') or data.get('message') or 'unknown streaming error'
@@ -391,7 +400,10 @@ def main():
             per_call_max_tokens=args.per_call_max_tokens,
             enable_thinking_summary=args.enable_thinking_summary,
         )
-        print(NEON_GREEN + "First-pass (A) Response: \n\n" + response + RESET_COLOR)
+        if args.stream:
+            print(NEON_GREEN + "First-pass (A) Response complete." + RESET_COLOR)
+        else:
+            print(NEON_GREEN + "First-pass (A) Response: \n\n" + response + RESET_COLOR)
 
         # Multi-pass A/B refinement: run a second pass with wider retrieval and ask model to refine
         if getattr(args, 'multi_pass', settings.CONFIG.get('multi_pass', False)):
@@ -417,12 +429,18 @@ def main():
                     per_call_max_tokens=args.per_call_max_tokens,
                     enable_thinking_summary=args.enable_thinking_summary,
                 )
-                print(NEON_GREEN + "Refined (B) Response: \n\n" + refined + RESET_COLOR)
+                if args.stream:
+                    print(NEON_GREEN + "Refined (B) Response complete." + RESET_COLOR)
+                else:
+                    print(NEON_GREEN + "Refined (B) Response: \n\n" + refined + RESET_COLOR)
                 response = refined
             except Exception as e:
                 print(YELLOW + f"Multi-pass refinement failed: {e}" + RESET_COLOR)
 
-        print(NEON_GREEN + "Final Response: \n\n" + response + RESET_COLOR)
+        if args.stream:
+            print(NEON_GREEN + "Final Response complete." + RESET_COLOR)
+        else:
+            print(NEON_GREEN + "Final Response: \n\n" + response + RESET_COLOR)
 
 
 if __name__ == '__main__':
