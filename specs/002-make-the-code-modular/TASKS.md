@@ -10,7 +10,7 @@ Status values:
 ## Task Index
 | ID | Summary | Depends On | Status |
 |---|---|---|---|
-| T001 | Create `app/` package skeleton and `__init__.py` files | - | todo |
+| T001 | Create `app/` package skeleton and `__init__.py` files | - | done |
 | T002 | Move config/common/context/retrieval modules to semantic `app/` paths | T001 | todo |
 | T003 | Rewrite internal imports in moved core modules to `app.*` absolute imports | T002 | todo |
 | T004 | Move ingestion/index/migration modules into `app/` and keep `main()` entrypoints | T003 | todo |
@@ -42,7 +42,7 @@ Status values:
 ```powershell
 python -c "import app; print('ok')"
 ```
-- Status: `todo`
+- Status: `done`
 
 ### T002
 - Goal: Move foundational modules to semantic names.
