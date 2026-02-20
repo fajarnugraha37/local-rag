@@ -5,6 +5,7 @@ from openai import OpenAI
 import argparse
 import json
 import settings
+import context_packer
 
 # Embedding chunking to avoid model context length limits
 def chunk_text(text, max_chars=1000, overlap=100):
@@ -100,7 +101,11 @@ def ollama_chat(user_input, system_message, vault_embeddings, vault_content, oll
     
     relevant_context = get_relevant_context(rewritten_query, vault_embeddings, vault_content, top_k=top_k)
     if relevant_context:
-        context_str = "\n".join(relevant_context)
+        # Pack by token budget (tokenizer-aware when possible)
+        max_tokens = settings.CONFIG.get('context_token_budget', 1500)
+        overlap_tokens = settings.CONFIG.get('context_overlap', 20)
+        packed = context_packer.pack_context(rewritten_query, relevant_context, max_tokens=max_tokens, overlap_tokens=overlap_tokens)
+        context_str = "\n\n".join(packed)
         print("Context Pulled from Documents: \n\n" + CYAN + context_str + RESET_COLOR)
     else:
         print(CYAN + "No relevant context found." + RESET_COLOR)
