@@ -17,7 +17,7 @@ Status values:
 | T005 | Move chat modules into `app/chat/` and expose `main()` in each CLI module | T003 | done |
 | T006 | Move validation/debug scripts into `app/validation` and `app/tools` | T003 | done |
 | T007 | Create root compatibility shims for all existing CLI filenames | T004,T005,T006 | done |
-| T008 | Update tests to import from `app.*` modules | T007 | todo |
+| T008 | Update tests to import from `app.*` modules | T007 | done |
 | T009 | Update `eval/run_eval.py` imports to `app.*` modules | T007 | todo |
 | T010 | Run compile/import smoke checks for package integrity | T008,T009 | todo |
 | T011 | Run pytest smoke suite | T010 | todo |
@@ -142,7 +142,7 @@ Expected: tiny wrapper only.
 rg -n "from (upload|context_packer|chunking) import|^import retrieval" tests
 ```
 Expected: no matches.
-- Status: `todo`
+- Status: `done`
 
 ### T009
 - Goal: Update evaluation runner imports.

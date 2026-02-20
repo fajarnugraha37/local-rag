@@ -1,5 +1,5 @@
 import json
-import retrieval
+from app.retrieval import hybrid_search as retrieval
 
 
 def test_retrieval_bm25(tmp_path):

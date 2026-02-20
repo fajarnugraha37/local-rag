@@ -1,5 +1,5 @@
 import json
-from upload import write_chunks_file
+from app.ingestion.file_ingest_gui import write_chunks_file
 
 
 def test_write_chunks_file(tmp_path):
