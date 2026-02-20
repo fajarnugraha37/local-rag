@@ -1,11 +1,11 @@
 # Tasks: Streaming Response & Multi-Call Continuation
 
 ## Progress Tracker
-- Status counts: todo 7, doing 0, done 0, blocked 0.
+- Status counts: todo 6, doing 0, done 1, blocked 0.
 
 ## Task List
 
-### T001 — Define streaming protocol + config (status: todo)
+### T001 — Define streaming protocol + config (status: done)
 - Goal: Provide shared event schema and config knobs for streaming/continuation.
 - Files: `app/common/stream_protocol.py`, `config.yaml`, `app/config/runtime_settings.py`.
 - Steps: add event builders, add defaults (`enable_streaming`, `enable_thinking_summary`, `per_call_max_tokens`, `max_continuations`, `flush_interval_ms`, `provider_timeout_s`, `continuation_instruction`), ensure loader reads them.

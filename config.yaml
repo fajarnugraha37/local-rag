@@ -14,6 +14,15 @@ rewrite_max_tokens: 200
 rewrite_temperature: 0.1
 chat_max_tokens: 4000
 
+# Streaming + continuation defaults
+enable_streaming: false
+enable_thinking_summary: false
+per_call_max_tokens: 4000
+max_continuations: 2
+flush_interval_ms: 250
+provider_timeout_s: 120
+continuation_instruction: "Continue exactly where you left off. Do not repeat prior text."
+
 # Finalization options for reasoning drafts
 auto_finalize_thoughts: false
 finalize_max_tokens: 400
