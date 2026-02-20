@@ -30,6 +30,8 @@ python .\cmd\app.py --server --host 127.0.0.1 --port 8000
 - Stream: `GET /chat/stream?question=...&top_k=...&max_continuations=...&per_call_max_tokens=...`
 - Ingest chunks: `POST /ingest/chunks`
 - Ingest raw text: `POST /ingest/text`
+- Ingest files by server-local paths: `POST /ingest/files`
+- Ingest uploaded files (multipart): `POST /ingest/upload`
 - Delete vectors by doc: `POST /vectors/delete-doc`
 - Retrieval query: `POST /retrieval/query`
 - Run non-interactive CLI actions via HTTP: `POST /actions/run`
@@ -53,6 +55,15 @@ curl -X POST "http://127.0.0.1:8000/ingest/chunks" `
 curl -X POST "http://127.0.0.1:8000/retrieval/query" `
   -H "Content-Type: application/json" `
   -d "{\"query\":\"payment terms\",\"top_k\":3,\"rerank\":true}"
+
+# ingest server-local files
+curl -X POST "http://127.0.0.1:8000/ingest/files" `
+  -H "Content-Type: application/json" `
+  -d "{\"paths\":[\"README.md\"],\"recursive\":false}"
+
+# ingest uploaded file(s)
+curl -X POST "http://127.0.0.1:8000/ingest/upload" `
+  -F "file=@README.md"
 ```
 
 Postman assets:
@@ -81,6 +92,7 @@ python .\cmd\app.py --cli chat-email --stream
 python .\cmd\app.py --cli ingest-files
 python .\cmd\app.py --cli ingest-files --path .\docs\sample.pdf
 python .\cmd\app.py --cli ingest-files --path .\docs\a.txt --path .\docs\b.json
+python .\cmd\app.py --cli ingest-files --path .\ --recursive --include \"*.md\" --include \"*.yaml\" --exclude \"*/.git/*\"
 python .\cmd\app.py --cli ingest-email --keyword "invoice" --startdate 01.01.2025 --enddate 31.01.2025
 python .\cmd\app.py --cli migrate-vault --vault vault.txt
 
@@ -95,7 +107,19 @@ python .\cmd\app.py --cli debug-retrieval
 # Eval
 python .\cmd\app.py --cli eval --questions eval\questions.jsonl --top-k 6 --output eval\results.json
 ```
-`ingest-files --path ...` now shows progress bars (PDF page read + embedding/upsert) so ingestion status is visible.
+`ingest-files --path ...` supports documents/config/data formats and prints per-file summary.
+
+Supported ingestion formats (case-insensitive):
+- Docs/text: `.md`, `.markdown`, `.mdx`, `.rst`, `.adoc`, `.asciidoc`, `.txt`, `.log`
+- Config/spec/code: `.yaml`, `.yml`, `.toml`, `.ini`, `.conf`, `.env`, `.properties`, `.sql`, `.proto`, `.graphql`, `.gql`, `.sh`, `.bash`, `.ps1`, `.gitignore`, `.gitattributes`, `.editorconfig`, `.npmrc`, `.yarnrc`, `Dockerfile`, `Makefile`
+- Structured/data: `.json`, `.jsonc`, `.jsonl`, `.ndjson`, `.csv`, `.tsv`, `.parquet`, `.feather`, `.arrow`, `.ipynb`, `.har`, `.html`, `.htm`, `.xml`, `.svg`
+- Office: `.pdf`, `.docx`, `.doc`, `.pptx`, `.ppt`, `.xlsx`, `.xls`
+
+Install/upgrade parser dependencies:
+```powershell
+pip install -r requirements.txt
+```
+Legacy `.doc/.ppt/.xls` extraction is best-effort (OLE parsing). Unsupported binaries are skipped with warnings, not fatal.
 
 ## Make Targets
 ```powershell
@@ -124,6 +148,12 @@ Streaming/continuation config keys:
 - `flush_interval_ms`
 - `provider_timeout_s`
 - `continuation_instruction`
+
+Ingestion config keys:
+- `ingest_max_bytes`, `ingest_max_rows`, `ingest_max_objects`
+- `ingest_max_pages`, `ingest_max_slides`, `ingest_max_sheets`
+- `ingest_zip_max_entries`, `ingest_zip_max_uncompressed_bytes`
+- `ingest_enable_parquet`, `ingest_enable_legacy_office`
 
 ## Backup / Restore
 ```powershell

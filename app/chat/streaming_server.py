@@ -15,6 +15,7 @@ from app.chat.streaming_llm_client import stream_chat_with_continuation
 from app.config import runtime_settings as settings
 from app.context import token_budget_packer as context_packer
 from app.ingestion.vector_ingest_service import delete_doc, ingest_chunks
+from app.ingestion.pipeline import build_options, ingest_paths, ingest_uploaded_files
 from app.retrieval import hybrid_search as retrieval
 
 
@@ -90,6 +91,48 @@ def _chunk_text_for_ingest(text: str, max_chars: int) -> list[str]:
     if current:
         chunks.append(current)
     return chunks
+
+
+def _parse_multipart_upload(content_type: str, raw_body: bytes) -> tuple[list[tuple[str, bytes]], dict[str, str]]:
+    boundary_match = re.search(r"boundary=([^;]+)", content_type or "", flags=re.IGNORECASE)
+    if not boundary_match:
+        raise ValueError("missing multipart boundary")
+    boundary = boundary_match.group(1).strip().strip('"')
+    boundary_bytes = f"--{boundary}".encode("utf-8")
+
+    files: list[tuple[str, bytes]] = []
+    fields: dict[str, str] = {}
+
+    for part in raw_body.split(boundary_bytes):
+        if not part:
+            continue
+        stripped = part.strip()
+        if stripped in {b"--", b""}:
+            continue
+        if b"\r\n\r\n" not in part:
+            continue
+        header_blob, body_blob = part.split(b"\r\n\r\n", 1)
+        headers = header_blob.decode("utf-8", errors="ignore").split("\r\n")
+        content = body_blob.rstrip(b"\r\n")
+
+        disposition = ""
+        for header in headers:
+            if header.lower().startswith("content-disposition:"):
+                disposition = header
+                break
+        if not disposition:
+            continue
+        name_match = re.search(r'name="([^"]+)"', disposition)
+        filename_match = re.search(r'filename="([^"]*)"', disposition)
+        if not name_match:
+            continue
+        field_name = name_match.group(1)
+        if filename_match and filename_match.group(1):
+            files.append((filename_match.group(1), content))
+            continue
+        fields[field_name] = content.decode("utf-8", errors="replace")
+
+    return files, fields
 
 
 def _run_action_capture(action: str, action_args: list[str]) -> dict:
@@ -246,13 +289,12 @@ class StreamingHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         parsed = urlparse(self.path)
 
-        try:
-            body = self._read_json()
-        except ValueError as exc:
-            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
-            return
-
         if parsed.path == "/ingest/chunks":
+            try:
+                body = self._read_json()
+            except ValueError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+                return
             chunks = body.get("chunks")
             if not isinstance(chunks, list) or not chunks:
                 self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'chunks' must be a non-empty array"})
@@ -269,6 +311,11 @@ class StreamingHandler(BaseHTTPRequestHandler):
                 return
 
         if parsed.path == "/ingest/text":
+            try:
+                body = self._read_json()
+            except ValueError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+                return
             text = (body.get("text") or "").strip()
             if not text:
                 self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'text' is required"})
@@ -297,7 +344,87 @@ class StreamingHandler(BaseHTTPRequestHandler):
                 self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(exc)})
                 return
 
+        if parsed.path in {"/ingest/files", "/ingestion/files"}:
+            try:
+                body = self._read_json()
+            except ValueError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+                return
+            paths = body.get("paths")
+            if not isinstance(paths, list) or not paths or any(not isinstance(value, str) for value in paths):
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'paths' must be a non-empty array of strings"})
+                return
+            recursive = _parse_bool(body.get("recursive"), default=False)
+            include_patterns = body.get("include") or []
+            exclude_patterns = body.get("exclude") or []
+            if not isinstance(include_patterns, list) or any(not isinstance(value, str) for value in include_patterns):
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'include' must be an array of strings"})
+                return
+            if not isinstance(exclude_patterns, list) or any(not isinstance(value, str) for value in exclude_patterns):
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'exclude' must be an array of strings"})
+                return
+            options = build_options(
+                recursive=recursive,
+                include_patterns=include_patterns,
+                exclude_patterns=exclude_patterns,
+                max_bytes=body.get("max_bytes", settings.CONFIG.get("ingest_max_bytes", 8 * 1024 * 1024)),
+                max_rows=body.get("max_rows", settings.CONFIG.get("ingest_max_rows", 2000)),
+                max_pages=body.get("max_pages", settings.CONFIG.get("ingest_max_pages", 200)),
+                max_slides=body.get("max_slides", settings.CONFIG.get("ingest_max_slides", 300)),
+                max_sheets=body.get("max_sheets", settings.CONFIG.get("ingest_max_sheets", 50)),
+            )
+            try:
+                summary = ingest_paths(paths, options=options, embedding_model=body.get("embedding_model"))
+                self._send_json(HTTPStatus.OK, {"ok": True, "summary": summary})
+                return
+            except Exception as exc:
+                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(exc)})
+                return
+
+        if parsed.path in {"/ingest/upload", "/ingestion/upload"}:
+            content_type = self.headers.get("Content-Type", "")
+            if "multipart/form-data" not in content_type:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "Content-Type must be multipart/form-data"})
+                return
+            raw_len = self.headers.get("Content-Length", "0")
+            try:
+                content_len = int(raw_len)
+            except ValueError:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "invalid Content-Length"})
+                return
+            if content_len <= 0:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "empty multipart body"})
+                return
+            raw_body = self.rfile.read(content_len)
+            try:
+                uploaded, fields = _parse_multipart_upload(content_type, raw_body)
+            except ValueError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+                return
+            if not uploaded:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "No file uploads provided under form field 'file'"})
+                return
+            options = build_options(
+                max_bytes=fields.get("max_bytes", settings.CONFIG.get("ingest_max_bytes", 8 * 1024 * 1024)),
+                max_rows=fields.get("max_rows", settings.CONFIG.get("ingest_max_rows", 2000)),
+                max_pages=fields.get("max_pages", settings.CONFIG.get("ingest_max_pages", 200)),
+                max_slides=fields.get("max_slides", settings.CONFIG.get("ingest_max_slides", 300)),
+                max_sheets=fields.get("max_sheets", settings.CONFIG.get("ingest_max_sheets", 50)),
+            )
+            try:
+                summary = ingest_uploaded_files(uploaded, options=options, embedding_model=fields.get("embedding_model"))
+                self._send_json(HTTPStatus.OK, {"ok": True, "summary": summary})
+                return
+            except Exception as exc:
+                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(exc)})
+                return
+
         if parsed.path == "/vectors/delete-doc":
+            try:
+                body = self._read_json()
+            except ValueError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+                return
             doc_id = (body.get("doc_id") or "").strip()
             if not doc_id:
                 self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'doc_id' is required"})
@@ -311,6 +438,11 @@ class StreamingHandler(BaseHTTPRequestHandler):
                 return
 
         if parsed.path == "/retrieval/query":
+            try:
+                body = self._read_json()
+            except ValueError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+                return
             query_text = (body.get("query") or "").strip()
             if not query_text:
                 self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'query' is required"})
@@ -334,6 +466,11 @@ class StreamingHandler(BaseHTTPRequestHandler):
                 return
 
         if parsed.path in {"/actions/run", "/action/run"}:
+            try:
+                body = self._read_json()
+            except ValueError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+                return
             action = (body.get("action") or "").strip()
             action_args = body.get("args") or []
             if action not in HTTP_ACTIONS:
@@ -377,6 +514,8 @@ def main():
     print("GET  /chat/stream?question=...&top_k=...&model=...")
     print("POST /ingest/chunks")
     print("POST /ingest/text")
+    print("POST /ingest/files")
+    print("POST /ingest/upload (multipart form-data)")
     print("POST /vectors/delete-doc")
     print("POST /retrieval/query")
     print("POST /actions/run")

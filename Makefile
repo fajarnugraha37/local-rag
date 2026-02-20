@@ -14,7 +14,7 @@ help:
 	@$(info   make chat)
 	@$(info   make chat-baseline)
 	@$(info   make chat-email)
-	@$(info   make ingest INGEST_PATH="path\\to\\file.pdf")
+	@$(info   make ingest INGEST_PATH="path\\to\\file_or_dir")
 	@$(info   make ingest-email KEYWORD="invoice")
 	@$(info   make migrate-vault)
 	@$(info   make backfill)

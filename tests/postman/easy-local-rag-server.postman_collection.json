@@ -14,12 +14,19 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Accept", "value": "application/json" }
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/health",
-              "host": ["{{baseUrl}}"],
-              "path": ["health"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
             }
           },
           "event": [
@@ -40,12 +47,19 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Accept", "value": "application/json" }
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/actions",
-              "host": ["{{baseUrl}}"],
-              "path": ["actions"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actions"
+              ]
             }
           },
           "event": [
@@ -74,15 +88,29 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Accept", "value": "text/event-stream" }
+              {
+                "key": "Accept",
+                "value": "text/event-stream"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/chat/stream?question={{question}}&top_k={{top_k}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["chat", "stream"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "stream"
+              ],
               "query": [
-                { "key": "question", "value": "{{question}}" },
-                { "key": "top_k", "value": "{{top_k}}" }
+                {
+                  "key": "question",
+                  "value": "{{question}}"
+                },
+                {
+                  "key": "top_k",
+                  "value": "{{top_k}}"
+                }
               ]
             }
           },
@@ -107,12 +135,20 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Accept", "value": "application/json" }
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/chat/stream",
-              "host": ["{{baseUrl}}"],
-              "path": ["chat", "stream"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chat",
+                "stream"
+              ]
             }
           },
           "event": [
@@ -137,7 +173,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -145,8 +184,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/ingest/chunks",
-              "host": ["{{baseUrl}}"],
-              "path": ["ingest", "chunks"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingest",
+                "chunks"
+              ]
             }
           },
           "event": [
@@ -171,7 +215,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -179,8 +226,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/ingest/text",
-              "host": ["{{baseUrl}}"],
-              "path": ["ingest", "text"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingest",
+                "text"
+              ]
             }
           },
           "event": [
@@ -205,7 +257,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -213,8 +268,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/vectors/delete-doc",
-              "host": ["{{baseUrl}}"],
-              "path": ["vectors", "delete-doc"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vectors",
+                "delete-doc"
+              ]
             }
           },
           "event": [
@@ -233,6 +293,88 @@
               }
             }
           ]
+        },
+        {
+          "name": "Ingest Files (Server Paths)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paths\": [\"README.md\"],\n  \"recursive\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingest/files",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingest",
+                "files"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('summary exists', function () { var body = pm.response.json(); pm.expect(body.ok).to.eql(true); pm.expect(body.summary).to.be.an('object'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ingest Upload (Multipart)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{uploadFilePath}}"
+                },
+                {
+                  "key": "max_rows",
+                  "type": "text",
+                  "value": "1000"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingest/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingest",
+                "upload"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('upload summary exists', function () { var body = pm.response.json(); pm.expect(body.ok).to.eql(true); pm.expect(body.summary).to.be.an('object'); });"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -244,7 +386,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -252,8 +397,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/retrieval/query",
-              "host": ["{{baseUrl}}"],
-              "path": ["retrieval", "query"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "retrieval",
+                "query"
+              ]
             }
           },
           "event": [
@@ -283,7 +433,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -291,8 +444,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/actions/run",
-              "host": ["{{baseUrl}}"],
-              "path": ["actions", "run"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actions",
+                "run"
+              ]
             }
           },
           "event": [
@@ -317,7 +475,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -325,8 +486,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/actions/run",
-              "host": ["{{baseUrl}}"],
-              "path": ["actions", "run"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actions",
+                "run"
+              ]
             }
           },
           "event": [
@@ -345,8 +511,21 @@
     }
   ],
   "variable": [
-    { "key": "baseUrl", "value": "http://127.0.0.1:8000" },
-    { "key": "question", "value": "Summarize the indexed documents" },
-    { "key": "top_k", "value": "3" }
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "question",
+      "value": "Summarize the indexed documents"
+    },
+    {
+      "key": "top_k",
+      "value": "3"
+    },
+    {
+      "key": "uploadFilePath",
+      "value": ""
+    }
   ]
 }

@@ -50,6 +50,17 @@ def load_settings(config_file='config.yaml'):
     cfg.setdefault('vector_db_batch_size', 64)
     cfg.setdefault('vector_db_timeout_s', 30)
     cfg.setdefault('embedding_dim', 1024)
+    cfg.setdefault('ingest_max_bytes', 8 * 1024 * 1024)
+    cfg.setdefault('ingest_max_rows', 2000)
+    cfg.setdefault('ingest_max_objects', 2000)
+    cfg.setdefault('ingest_max_pages', 200)
+    cfg.setdefault('ingest_max_slides', 300)
+    cfg.setdefault('ingest_max_sheets', 50)
+    cfg.setdefault('ingest_timeout_s', 30)
+    cfg.setdefault('ingest_zip_max_entries', 10000)
+    cfg.setdefault('ingest_zip_max_uncompressed_bytes', 128 * 1024 * 1024)
+    cfg.setdefault('ingest_enable_parquet', True)
+    cfg.setdefault('ingest_enable_legacy_office', True)
 
     # Override with environment variables (if present)
     if os.getenv('OLLAMA_MODEL'):
@@ -110,6 +121,57 @@ def load_settings(config_file='config.yaml'):
             cfg['embedding_dim'] = int(os.getenv('EMBEDDING_DIM'))
         except ValueError:
             pass
+    if os.getenv('INGEST_MAX_BYTES'):
+        try:
+            cfg['ingest_max_bytes'] = int(os.getenv('INGEST_MAX_BYTES'))
+        except ValueError:
+            pass
+    if os.getenv('INGEST_MAX_ROWS'):
+        try:
+            cfg['ingest_max_rows'] = int(os.getenv('INGEST_MAX_ROWS'))
+        except ValueError:
+            pass
+    if os.getenv('INGEST_MAX_OBJECTS'):
+        try:
+            cfg['ingest_max_objects'] = int(os.getenv('INGEST_MAX_OBJECTS'))
+        except ValueError:
+            pass
+    if os.getenv('INGEST_MAX_PAGES'):
+        try:
+            cfg['ingest_max_pages'] = int(os.getenv('INGEST_MAX_PAGES'))
+        except ValueError:
+            pass
+    if os.getenv('INGEST_MAX_SLIDES'):
+        try:
+            cfg['ingest_max_slides'] = int(os.getenv('INGEST_MAX_SLIDES'))
+        except ValueError:
+            pass
+    if os.getenv('INGEST_MAX_SHEETS'):
+        try:
+            cfg['ingest_max_sheets'] = int(os.getenv('INGEST_MAX_SHEETS'))
+        except ValueError:
+            pass
+    if os.getenv('INGEST_TIMEOUT_S'):
+        try:
+            cfg['ingest_timeout_s'] = int(os.getenv('INGEST_TIMEOUT_S'))
+        except ValueError:
+            pass
+    if os.getenv('INGEST_ZIP_MAX_ENTRIES'):
+        try:
+            cfg['ingest_zip_max_entries'] = int(os.getenv('INGEST_ZIP_MAX_ENTRIES'))
+        except ValueError:
+            pass
+    if os.getenv('INGEST_ZIP_MAX_UNCOMPRESSED_BYTES'):
+        try:
+            cfg['ingest_zip_max_uncompressed_bytes'] = int(os.getenv('INGEST_ZIP_MAX_UNCOMPRESSED_BYTES'))
+        except ValueError:
+            pass
+    parsed_ingest_enable_parquet = _parse_bool_env(os.getenv('INGEST_ENABLE_PARQUET'))
+    if parsed_ingest_enable_parquet is not None:
+        cfg['ingest_enable_parquet'] = parsed_ingest_enable_parquet
+    parsed_ingest_enable_legacy_office = _parse_bool_env(os.getenv('INGEST_ENABLE_LEGACY_OFFICE'))
+    if parsed_ingest_enable_legacy_office is not None:
+        cfg['ingest_enable_legacy_office'] = parsed_ingest_enable_legacy_office
 
     # Nested ollama_api overrides
     if os.getenv('OLLAMA_API_BASE_URL'):

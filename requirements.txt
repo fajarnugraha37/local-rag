@@ -7,3 +7,10 @@ beautifulsoup4
 lxml
 python-dotenv
 chromadb
+python-docx
+openpyxl
+python-pptx
+pyarrow
+nbformat
+xlrd==1.2.0
+olefile

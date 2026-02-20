@@ -16,7 +16,9 @@
 - `curl http://127.0.0.1:8000/actions` (or `/action`): list server-exposed actions and HTTP support flags.
 - `python .\cmd\app.py --cli --help`: list CLI actions.
 - `python .\cmd\app.py --cli chat --top-k 6`: main chat flow.
-- `python .\cmd\app.py --cli ingest-files --path .\docs\sample.pdf`: non-GUI ingestion with console progress bars; omit `--path` to open GUI.
+- `python .\cmd\app.py --cli ingest-files --path .\docs\sample.pdf`: non-GUI ingestion (repeat `--path` for many files, add `--recursive` for directories); omit `--path` to open GUI.
+- `curl -X POST http://127.0.0.1:8000/ingest/files -H "Content-Type: application/json" -d "{\"paths\":[\"README.md\"]}"`: server-side path ingestion.
+- `curl -X POST http://127.0.0.1:8000/ingest/upload -F "file=@README.md"`: server upload ingestion.
 - `python .\cmd\app.py --cli query --query "..." --top-k 6`: retrieval inspection.
 - `python -m pytest -q`: test suite.
 - `make help`, `make test`, `make eval`, `make all`: standardized workflows.
@@ -28,9 +30,11 @@
 - Do not add new root-level entrypoint scripts.
 - For new runnable capabilities, add one action in `cmd/actions.py` and call existing `app/*` logic.
 - For HTTP APIs, add routes in `app/chat/streaming_server.py` and mirror them in `tests/postman/*`.
+- For ingestion formats, register extractors in `app/ingestion/extractors/registry.py` and keep parsing/chunking shared through `app/ingestion/pipeline.py`.
 
 ## Testing Guidelines
 - Add tests under `tests/` using `test_*.py` naming.
+- Add format fixtures/tests under `tests/` when changing ingestion extractors (docs/config/data/office groups).
 - For launcher changes, validate:
   - `python .\cmd\app.py --help`
   - `python .\cmd\app.py --server --help`
@@ -46,3 +50,4 @@
 - Keep secrets in `.env`; never commit credentials.
 - Prefer config/env keys over hardcoded values.
 - Treat `data/chroma/` as sensitive if it contains private document/email content.
+- Enforce ingestion limits via `ingest_*` config keys to avoid oversized files and parser abuse.

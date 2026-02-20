@@ -8,6 +8,7 @@ import sys
 from typing import Sequence
 
 from app.config import runtime_settings as settings
+from app.ingestion.pipeline import build_options, ingest_paths
 from app.ingestion.vector_ingest_service import ingest_chunks
 
 
@@ -67,66 +68,30 @@ def write_chunks_file(chunks_list, source_path, chunks_file=None, append_vault=F
     return result
 
 
-def _normalize_text(text: str) -> str:
-    return re.sub(r"\s+", " ", text).strip()
-
-
-def _read_pdf_text(path: str, *, show_progress: bool = True) -> str:
-    try:
-        import PyPDF2
-    except Exception as exc:
-        raise RuntimeError("PyPDF2 is required to ingest PDF files.") from exc
-
-    with open(path, "rb") as pdf_file:
-        pdf_reader = PyPDF2.PdfReader(pdf_file)
-        total_pages = len(pdf_reader.pages)
-        text_parts = []
-        for idx, page in enumerate(pdf_reader.pages, start=1):
-            extracted = page.extract_text() or ""
-            if extracted:
-                text_parts.append(extracted)
-            if show_progress:
-                _render_progress("Reading PDF pages", idx, total_pages)
-        if show_progress:
-            sys.stdout.write("\n")
-            sys.stdout.flush()
-    return _normalize_text(" ".join(text_parts))
-
-
 def _read_json_text(path: str) -> str:
     with open(path, "r", encoding="utf-8") as json_file:
         data = json.load(json_file)
-    return _normalize_text(json.dumps(data, ensure_ascii=False))
+    return re.sub(r"\s+", " ", json.dumps(data, ensure_ascii=False)).strip()
 
 
 def _read_txt_text(path: str) -> str:
     with open(path, "r", encoding="utf-8") as txt_file:
-        return _normalize_text(txt_file.read())
+        return re.sub(r"\s+", " ", txt_file.read()).strip()
 
 
 def ingest_file_path(file_path: str):
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"File not found: {file_path}")
-    _, ext = os.path.splitext(file_path.lower())
-    print(f"Ingesting '{file_path}'...")
-    if ext == ".pdf":
-        text = _read_pdf_text(file_path, show_progress=True)
-    elif ext == ".txt":
-        text = _read_txt_text(file_path)
-    elif ext == ".json":
-        text = _read_json_text(file_path)
+    options = build_options()
+    summary = ingest_paths([file_path], options=options)
+    file_result = summary["files"][0] if summary.get("files") else {"status": "skipped", "reason": "no_file"}
+    if file_result.get("status") == "ok":
+        print(
+            f"Ingested '{file_result['path']}' chunks={file_result.get('chunks_count', 0)} "
+            f"warnings={len(file_result.get('warnings') or [])}"
+        )
     else:
-        raise ValueError(f"Unsupported file type: {ext}. Supported: .pdf, .txt, .json")
-
-    print("Chunking text...")
-    chunks = chunk_sentences(text, max_chars=1000)
-    if not chunks:
-        print(f"No content found for '{file_path}'. Nothing ingested.")
-        return {"added": 0, "failed": 0, "skipped": 0}
-    print(f"Prepared {len(chunks)} chunks. Starting embedding/upsert...")
-    result = write_chunks_file(chunks, file_path, show_progress=True)
-    print(f"Processed {len(chunks)} chunks from '{file_path}'.")
-    return result
+        reason = file_result.get("reason", "unknown")
+        print(f"Skipped '{file_path}': {reason}")
+    return file_result
 
 
 def _launch_gui() -> None:
@@ -137,52 +102,143 @@ def _launch_gui() -> None:
         print("GUI components not available. Use --path to ingest from CLI.")
         return
 
-    def select_and_ingest(filetypes):
-        file_path = filedialog.askopenfilename(filetypes=filetypes)
-        if not file_path:
+    def select_and_ingest():
+        selected = filedialog.askopenfilenames(
+            filetypes=[
+                ("All Supported", "*.*"),
+                ("Text", "*.txt *.md *.markdown *.mdx *.rst *.adoc *.asciidoc"),
+                ("Config", "*.yaml *.yml *.toml *.ini *.conf *.env *.properties"),
+                ("Data", "*.json *.jsonc *.jsonl *.ndjson *.csv *.tsv *.parquet *.ipynb"),
+                ("Office", "*.pdf *.docx *.doc *.pptx *.ppt *.xlsx *.xls"),
+            ]
+        )
+        if not selected:
             return
-        try:
-            ingest_file_path(file_path)
-        except Exception as exc:
-            print(f"Failed to ingest '{file_path}': {exc}")
+        _run_ingestion(
+            list(selected),
+            recursive=False,
+            include_patterns=[],
+            exclude_patterns=[],
+        )
 
     root = tk.Tk()
-    root.title("Upload .pdf, .txt, or .json")
+    root.title("Ingest files into Easy Local RAG")
 
-    pdf_button = tk.Button(root, text="Upload PDF", command=lambda: select_and_ingest([("PDF Files", "*.pdf")]))
-    pdf_button.pack(pady=10)
-
-    txt_button = tk.Button(root, text="Upload Text File", command=lambda: select_and_ingest([("Text Files", "*.txt")]))
-    txt_button.pack(pady=10)
-
-    json_button = tk.Button(root, text="Upload JSON File", command=lambda: select_and_ingest([("JSON Files", "*.json")]))
-    json_button.pack(pady=10)
+    upload_button = tk.Button(root, text="Select Files and Ingest", command=select_and_ingest)
+    upload_button.pack(pady=16, padx=16)
 
     root.mainloop()
 
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Ingest PDF/TXT/JSON files into vector storage. Use --path for non-GUI mode.",
+        description="Ingest files into vector storage. Use --path for non-GUI mode.",
     )
     parser.add_argument(
         "--path",
         dest="paths",
         action="append",
         default=[],
-        help="Path to .pdf/.txt/.json file. Repeat --path for multiple files.",
+        help="File or directory path to ingest. Repeat --path for multiple inputs.",
     )
+    parser.add_argument("--recursive", action="store_true", help="Recursively ingest files inside directories.")
+    parser.add_argument("--include", action="append", default=[], help="Glob include filter (repeatable).")
+    parser.add_argument("--exclude", action="append", default=[], help="Glob exclude filter (repeatable).")
+    parser.add_argument("--max-bytes", type=int, default=None, help="Max bytes per file.")
+    parser.add_argument("--max-rows", type=int, default=None, help="Max rows/records per structured file.")
+    parser.add_argument("--max-pages", type=int, default=None, help="Max pages for PDF.")
+    parser.add_argument("--max-slides", type=int, default=None, help="Max slides for PPT/PPTX.")
+    parser.add_argument("--max-sheets", type=int, default=None, help="Max sheets for XLS/XLSX.")
+    parser.add_argument("--fail-fast", action="store_true", help="Stop on first failed file.")
     return parser
+
+
+def _run_ingestion(
+    paths: Sequence[str],
+    *,
+    recursive: bool,
+    include_patterns: Sequence[str],
+    exclude_patterns: Sequence[str],
+    max_bytes: int | None = None,
+    max_rows: int | None = None,
+    max_pages: int | None = None,
+    max_slides: int | None = None,
+    max_sheets: int | None = None,
+    fail_fast: bool = False,
+):
+    options = build_options(
+        recursive=recursive,
+        include_patterns=list(include_patterns),
+        exclude_patterns=list(exclude_patterns),
+        max_bytes=max_bytes if max_bytes is not None else settings.CONFIG.get("ingest_max_bytes", 8 * 1024 * 1024),
+        max_rows=max_rows if max_rows is not None else settings.CONFIG.get("ingest_max_rows", 2000),
+        max_pages=max_pages if max_pages is not None else settings.CONFIG.get("ingest_max_pages", 200),
+        max_slides=max_slides if max_slides is not None else settings.CONFIG.get("ingest_max_slides", 300),
+        max_sheets=max_sheets if max_sheets is not None else settings.CONFIG.get("ingest_max_sheets", 50),
+    )
+
+    progress_state = {"current_file": ""}
+
+    def _on_progress(stage: str, current: int, total: int, stats):
+        file_path = str((stats or {}).get("file_path") or "")
+        if file_path and stage == "start" and file_path != progress_state["current_file"]:
+            if progress_state["current_file"]:
+                sys.stdout.write("\n")
+            print(f"Ingesting '{file_path}'...")
+            progress_state["current_file"] = file_path
+        if stage in {"start", "chunk"}:
+            label = "Embedding + upsert"
+            if file_path:
+                label = f"Embedding + upsert [{os.path.basename(file_path)}]"
+            _render_progress(label, current, total)
+        elif stage == "done":
+            label = "Embedding + upsert"
+            if file_path:
+                label = f"Embedding + upsert [{os.path.basename(file_path)}]"
+            _render_progress(label, total or current, total or current or 1)
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+
+    summary = ingest_paths(paths, options=options, progress_callback=_on_progress)
+    for item in summary.get("files", []):
+        status = item.get("status")
+        line = (
+            f"[{status}] {item.get('path')} chunks={item.get('chunks_count', 0)} "
+            f"warnings={len(item.get('warnings') or [])} duration_ms={item.get('duration_ms', 0)}"
+        )
+        reason = item.get("reason")
+        if reason:
+            line += f" reason={reason}"
+        print(line)
+        if fail_fast and status == "failed":
+            break
+
+    print(
+        "Summary: "
+        f"total_files={summary.get('total_files', 0)} "
+        f"extracted={summary.get('extracted', 0)} "
+        f"skipped={summary.get('skipped', 0)} "
+        f"failed={summary.get('failed', 0)} "
+        f"total_chunks={summary.get('total_chunks', 0)}"
+    )
+    return summary
 
 
 def main(argv: Sequence[str] | None = None):
     parser = _build_parser()
     args = parser.parse_args(argv)
     if args.paths:
-        for path in args.paths:
-            try:
-                ingest_file_path(path)
-            except Exception as exc:
-                parser.error(str(exc))
+        _run_ingestion(
+            args.paths,
+            recursive=args.recursive,
+            include_patterns=args.include,
+            exclude_patterns=args.exclude,
+            max_bytes=args.max_bytes,
+            max_rows=args.max_rows,
+            max_pages=args.max_pages,
+            max_slides=args.max_slides,
+            max_sheets=args.max_sheets,
+            fail_fast=args.fail_fast,
+        )
         return
     _launch_gui()

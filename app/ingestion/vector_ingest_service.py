@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Callable, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from app.config import runtime_settings as settings
 from app.indexing.embedding_service import embed_text
@@ -21,8 +21,30 @@ def _resolve_doc_id(source_path: Optional[str], explicit_doc_id: Optional[str] =
     return "unknown"
 
 
+def _coerce_chunk(raw_chunk: Any) -> Tuple[str, Dict[str, Any]]:
+    if isinstance(raw_chunk, dict):
+        text = str(raw_chunk.get("text") or "").strip()
+        metadata = raw_chunk.get("metadata")
+        if not isinstance(metadata, dict):
+            metadata = {}
+        return text, metadata
+    return str(raw_chunk or "").strip(), {}
+
+
+def _metadata_scalars(meta: Dict[str, Any]) -> Dict[str, Any]:
+    safe: Dict[str, Any] = {}
+    for key, value in (meta or {}).items():
+        if value is None:
+            continue
+        if isinstance(value, (str, int, float, bool)):
+            safe[key] = value
+            continue
+        safe[key] = str(value)
+    return safe
+
+
 def ingest_chunks(
-    chunks_list: Iterable[str],
+    chunks_list: Iterable[Any],
     *,
     source_path: Optional[str] = None,
     doc_id: Optional[str] = None,
@@ -54,7 +76,7 @@ def ingest_chunks(
 
     for raw_chunk in chunks_list:
         processed += 1
-        text = (raw_chunk or "").strip()
+        text, extra_meta = _coerce_chunk(raw_chunk)
         if not text:
             skipped += 1
             if progress_callback:
@@ -87,18 +109,21 @@ def ingest_chunks(
         chunk_key = base_chunk_key if occurrence == 1 else stable_chunk_id(f"{base_chunk_key}:{occurrence}")
         v_id = stable_vector_id(resolved_doc_key, chunk_key)
 
+        metadata = {
+            "doc_id": resolved_doc_id,
+            "doc_key": resolved_doc_key,
+            "chunk_id": chunk_key,
+            "source": source_path or "",
+            "token_count": len(text.split()),
+        }
+        metadata.update(_metadata_scalars(extra_meta))
+
         batch.append(
             {
                 "id": v_id,
                 "embedding": emb,
                 "text": text,
-                "metadata": {
-                    "doc_id": resolved_doc_id,
-                    "doc_key": resolved_doc_key,
-                    "chunk_id": chunk_key,
-                    "source": source_path or "",
-                    "token_count": len(text.split()),
-                },
+                "metadata": metadata,
             }
         )
 

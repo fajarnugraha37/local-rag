@@ -36,6 +36,19 @@ finalize_temperature: 0.0
 chunk_max_tokens: 200
 chunk_overlap_tokens: 20
 
+# Ingestion safety + parser limits
+ingest_max_bytes: 8388608
+ingest_max_rows: 2000
+ingest_max_objects: 2000
+ingest_max_pages: 200
+ingest_max_slides: 300
+ingest_max_sheets: 50
+ingest_timeout_s: 30
+ingest_zip_max_entries: 10000
+ingest_zip_max_uncompressed_bytes: 134217728
+ingest_enable_parquet: true
+ingest_enable_legacy_office: true
+
 # Retrieval tuning defaults
 retrieval_dense_top: 100
 retrieval_bm25_top: 100
