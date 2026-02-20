@@ -42,7 +42,7 @@
 | T502 | 5 | Implement `eval/run_eval.py` metrics runner | T501 | DONE |
 | T503 | 5 | Add `pytest` smoke tests for ingestion/retrieval/packing | T405 | DONE |
 | T504 | 5 | Add repeatable run scripts (`Makefile` or `.ps1`) | T502,T503 | DONE |
-| T505 | 5 | Run full quality gates and document thresholds | T502,T503,T504 | TODO |
+| T505 | 5 | Run full quality gates and document thresholds | T502,T503,T504 | DONE |
 
 ## Task Cards
 

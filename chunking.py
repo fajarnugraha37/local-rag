@@ -51,7 +51,7 @@ def estimate_token_count(text: Optional[str], tokenizer: Optional[Callable] = No
         return len(str(text).split())
 
 
-def chunk_by_tokens(text: str, max_tokens: int = 200, overlap: int = 20,
+def chunk_by_tokens(text: str, max_tokens: Optional[int] = None, overlap: Optional[int] = None,
                     tokenizer: Optional[Callable] = None) -> List[str]:
     """Split text into chunks aiming for <= max_tokens (estimated).
 
@@ -67,9 +67,11 @@ def chunk_by_tokens(text: str, max_tokens: int = 200, overlap: int = 20,
 
     tokenizer = tokenizer or _load_tokenizer()
 
-    # Allow overriding defaults from config.yaml
-    max_tokens = settings.CONFIG.get('chunk_max_tokens', max_tokens)
-    overlap = settings.CONFIG.get('chunk_overlap_tokens', overlap)
+    # Respect explicit caller parameters; fall back to config defaults only when caller did not provide values
+    if max_tokens is None:
+        max_tokens = settings.CONFIG.get('chunk_max_tokens', 200)
+    if overlap is None:
+        overlap = settings.CONFIG.get('chunk_overlap_tokens', 20)
 
     # Split by sentence-ish boundaries to keep coherence
     sentences = re.split(r'(?<=[.!?]) +', text)

@@ -10,7 +10,7 @@ def test_retrieval_bm25(tmp_path):
     ]
     with open(chunks_file, 'w', encoding='utf-8') as fh:
         for obj in data:
-            fh.write(json.dumps(obj, ensure_ascii=False) + '\\n')
+            fh.write(json.dumps(obj, ensure_ascii=False) + '\n')
 
     res = retrieval.scored_chunks("banana", chunks_file=str(chunks_file), embeddings_file=str(tmp_path / "emb.jsonl"), top_k=2, rerank=False)
     assert isinstance(res, list)

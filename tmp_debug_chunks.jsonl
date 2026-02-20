@@ -1,0 +1,2 @@
+{"chunk_id": "c1", "doc_id": "doc1", "source": "s1", "text": "apple banana cherry", "token_count": 3}
+{"chunk_id": "c2", "doc_id": "doc2", "source": "s2", "text": "banana orange melon", "token_count": 3}
