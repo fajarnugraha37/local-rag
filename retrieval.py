@@ -25,6 +25,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from collections import defaultdict
 
 import settings
+import reranker
 
 # Optional dependencies (best-effort)
 try:
