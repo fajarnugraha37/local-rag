@@ -30,7 +30,7 @@
 | T207 | 2 | Run Phase 2 validation commands | T203,T204,T205,T206 | DONE |
 | T301 | 3 | Add token-aware chunking module (`chunking.py`) | T207 | DONE |
 | T302 | 3 | Add hybrid retrieval (dense + BM25 + RRF) | T301 | DONE |
-| T303 | 3 | Add cheap reranker (heuristic default) | T302 | TODO |
+| T303 | 3 | Add cheap reranker (heuristic default) | T302 | DONE |
 | T304 | 3 | Return scored chunk objects with metadata | T302,T303 | TODO |
 | T305 | 3 | Run Phase 3 validation commands | T304 | TODO |
 | T401 | 4 | Remove `max_context_chars` truncation path | T305 | TODO |
