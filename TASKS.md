@@ -17,7 +17,7 @@
 | T101 | 1 | Add shared settings loader (`settings.py`) | - | DONE |
 | T102 | 1 | Remove hardcoded config in `localrag.py` | T101 | DONE |
 | T103 | 1 | Remove hardcoded config in `localrag_no_rewrite.py` | T101 | DONE |
-| T104 | 1 | Fix global tensor bug in `localrag_no_rewrite.py` | T103 | TODO |
+| T104 | 1 | Fix global tensor bug in `localrag_no_rewrite.py` | T103 | DONE |
 | T105 | 1 | Auto-recover corrupted embedding cache in `emailrag2.py` | - | TODO |
 | T106 | 1 | Harden IMAP error handling in `collect_emails.py` | - | TODO |
 | T107 | 1 | Run Phase 1 validation commands | T102,T103,T104,T105,T106 | TODO |
