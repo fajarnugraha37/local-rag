@@ -7,7 +7,7 @@ system_message: "You are a helpful assistant that is an expert at extracting the
 context_token_budget: 1500
 context_overlap: 20
 multi_pass: false
-model_timeout: 30
+model_timeout: 60
 
 # Model/chat rewrite & response token limits
 rewrite_max_tokens: 200
