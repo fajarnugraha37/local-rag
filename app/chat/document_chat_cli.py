@@ -2,9 +2,11 @@ import os
 from openai import OpenAI
 import argparse
 import json
-import settings
-import retrieval
-import context_packer
+from app.config import runtime_settings as settings
+from app.retrieval import hybrid_search as retrieval
+from app.context import token_budget_packer as context_packer
+
+client = None
 
 # Embedding chunking to avoid model context length limits
 def chunk_text(text, max_chars=1000, overlap=100):
@@ -246,70 +248,77 @@ def ollama_chat(user_input, system_message, vault_embeddings, vault_content, oll
         conversation_history.append({"role": "assistant", "content": content})
         return content
 
-# Parse command-line arguments
-print(NEON_GREEN + "Parsing command-line arguments..." + RESET_COLOR)
-parser = argparse.ArgumentParser(description="Ollama Chat")
-parser.add_argument("--model", default=settings.CONFIG.get("ollama_model", "llama3"), help="Ollama model to use (default from config.yaml)")
-parser.add_argument("--top-k", type=int, default=settings.CONFIG.get("top_k", 3), help="Number of top relevant chunks to include (default from config.yaml)")
-parser.add_argument("--multi-pass", action='store_true', default=settings.CONFIG.get('multi_pass', False), help="Enable multi-pass A/B refinement (default from config.yaml)")
+def main():
+    global client
 
-args = parser.parse_args()
+    # Parse command-line arguments
+    print(NEON_GREEN + "Parsing command-line arguments..." + RESET_COLOR)
+    parser = argparse.ArgumentParser(description="Ollama Chat")
+    parser.add_argument("--model", default=settings.CONFIG.get("ollama_model", "llama3"), help="Ollama model to use (default from config.yaml)")
+    parser.add_argument("--top-k", type=int, default=settings.CONFIG.get("top_k", 3), help="Number of top relevant chunks to include (default from config.yaml)")
+    parser.add_argument("--multi-pass", action='store_true', default=settings.CONFIG.get('multi_pass', False), help="Enable multi-pass A/B refinement (default from config.yaml)")
 
-# Configuration for the Ollama API client
-print(NEON_GREEN + "Initializing Ollama API client..." + RESET_COLOR)
-client = OpenAI(
-    base_url=settings.CONFIG.get("ollama_api", {}).get("base_url", "http://localhost:11434/v1"),
-    api_key=settings.CONFIG.get("ollama_api", {}).get("api_key")
-)
+    args = parser.parse_args()
 
-# Using data/* storage via retrieval; no vault.txt or in-memory torch embeddings
-vault_content = []
-vault_embeddings_tensor = None
-
-# Conversation loop
-print("Starting conversation loop...")
-conversation_history = []
-system_message = settings.CONFIG.get("system_message", "You are a helpful assistant that is an expert at extracting the most useful information from a given text. Also bring in extra relevant information to the user query from outside the given context.")
-
-while True:
-    user_input = input(YELLOW + "Ask a query about your documents (or type 'quit' to exit): " + RESET_COLOR)
-    if user_input.lower() == 'quit':
-        break
-    
-    response = ollama_chat(
-        user_input,
-        system_message,
-        vault_embeddings_tensor,
-        vault_content,
-        args.model,
-        conversation_history,
-        top_k=args.top_k,
+    # Configuration for the Ollama API client
+    print(NEON_GREEN + "Initializing Ollama API client..." + RESET_COLOR)
+    client = OpenAI(
+        base_url=settings.CONFIG.get("ollama_api", {}).get("base_url", "http://localhost:11434/v1"),
+        api_key=settings.CONFIG.get("ollama_api", {}).get("api_key")
     )
-    print(NEON_GREEN + "First-pass (A) Response: \n\n" + response + RESET_COLOR)
 
-    # Multi-pass A/B refinement: run a second pass with wider retrieval and ask model to refine
-    if getattr(args, 'multi_pass', settings.CONFIG.get('multi_pass', False)):
-        try:
-            print(NEON_GREEN + "Running multi-pass refinement (B)..." + RESET_COLOR)
-            extra_top_k = max(1, args.top_k * 2)
-            extra_context = get_relevant_context(user_input, vault_embeddings_tensor, vault_content, top_k=extra_top_k)
-            max_tokens = settings.CONFIG.get('context_token_budget', 1500)
-            overlap_tokens = settings.CONFIG.get('context_overlap', 20)
-            packed_extra = context_packer.pack_context(user_input, extra_context, max_tokens=max_tokens, overlap_tokens=overlap_tokens)
-            extra_context_str = "\n\n".join(packed_extra)
-            refine_prompt = f"Refine the previous assistant response to the query:\n{user_input}\n\nPrevious response:\n{response}\n\nAdditional context (may be empty):\n{extra_context_str}\n\nProduce a concise, corrected and improved final answer based on the additional context."
-            refined = ollama_chat(
-                refine_prompt,
-                system_message,
-                vault_embeddings_tensor,
-                vault_content,
-                args.model,
-                conversation_history,
-                top_k=extra_top_k,
-            )
-            print(NEON_GREEN + "Refined (B) Response: \n\n" + refined + RESET_COLOR)
-            response = refined
-        except Exception as e:
-            print(YELLOW + f"Multi-pass refinement failed: {e}" + RESET_COLOR)
+    # Using data/* storage via retrieval; no vault.txt or in-memory torch embeddings
+    vault_content = []
+    vault_embeddings_tensor = None
 
-    print(NEON_GREEN + "Final Response: \n\n" + response + RESET_COLOR)
+    # Conversation loop
+    print("Starting conversation loop...")
+    conversation_history = []
+    system_message = settings.CONFIG.get("system_message", "You are a helpful assistant that is an expert at extracting the most useful information from a given text. Also bring in extra relevant information to the user query from outside the given context.")
+
+    while True:
+        user_input = input(YELLOW + "Ask a query about your documents (or type 'quit' to exit): " + RESET_COLOR)
+        if user_input.lower() == 'quit':
+            break
+
+        response = ollama_chat(
+            user_input,
+            system_message,
+            vault_embeddings_tensor,
+            vault_content,
+            args.model,
+            conversation_history,
+            top_k=args.top_k,
+        )
+        print(NEON_GREEN + "First-pass (A) Response: \n\n" + response + RESET_COLOR)
+
+        # Multi-pass A/B refinement: run a second pass with wider retrieval and ask model to refine
+        if getattr(args, 'multi_pass', settings.CONFIG.get('multi_pass', False)):
+            try:
+                print(NEON_GREEN + "Running multi-pass refinement (B)..." + RESET_COLOR)
+                extra_top_k = max(1, args.top_k * 2)
+                extra_context = get_relevant_context(user_input, vault_embeddings_tensor, vault_content, top_k=extra_top_k)
+                max_tokens = settings.CONFIG.get('context_token_budget', 1500)
+                overlap_tokens = settings.CONFIG.get('context_overlap', 20)
+                packed_extra = context_packer.pack_context(user_input, extra_context, max_tokens=max_tokens, overlap_tokens=overlap_tokens)
+                extra_context_str = "\n\n".join(packed_extra)
+                refine_prompt = f"Refine the previous assistant response to the query:\n{user_input}\n\nPrevious response:\n{response}\n\nAdditional context (may be empty):\n{extra_context_str}\n\nProduce a concise, corrected and improved final answer based on the additional context."
+                refined = ollama_chat(
+                    refine_prompt,
+                    system_message,
+                    vault_embeddings_tensor,
+                    vault_content,
+                    args.model,
+                    conversation_history,
+                    top_k=extra_top_k,
+                )
+                print(NEON_GREEN + "Refined (B) Response: \n\n" + refined + RESET_COLOR)
+                response = refined
+            except Exception as e:
+                print(YELLOW + f"Multi-pass refinement failed: {e}" + RESET_COLOR)
+
+        print(NEON_GREEN + "Final Response: \n\n" + response + RESET_COLOR)
+
+
+if __name__ == '__main__':
+    main()

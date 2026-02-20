@@ -1,8 +1,10 @@
 import os
 from openai import OpenAI
 import argparse
-import settings
-import retrieval
+from app.config import runtime_settings as settings
+from app.retrieval import hybrid_search as retrieval
+
+client = None
 
 # ANSI escape codes for colors
 PINK = '\033[95m'
@@ -62,29 +64,36 @@ def ollama_chat(user_input, system_message, vault_embeddings, vault_content, oll
     # Return the content of the response from the model
     return response.choices[0].message.content
 
-# Parse command-line arguments
-parser = argparse.ArgumentParser(description="Ollama Chat")
-parser.add_argument("--model", default=settings.CONFIG.get("ollama_model", "hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest"), help="Ollama model to use (default from config.yaml)")
-args = parser.parse_args()
+def main():
+    global client
 
-# Configuration for the Ollama API client
-client = OpenAI(
-    base_url=settings.CONFIG.get("ollama_api", {}).get("base_url", "http://localhost:11434/v1"),
-    api_key=settings.CONFIG.get("ollama_api", {}).get("api_key")
-)
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Ollama Chat")
+    parser.add_argument("--model", default=settings.CONFIG.get("ollama_model", "hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest"), help="Ollama model to use (default from config.yaml)")
+    args = parser.parse_args()
 
-# Using data/* storage via retrieval; no vault.txt or in-memory torch embeddings
-vault_content = []
-vault_embeddings_tensor = None
+    # Configuration for the Ollama API client
+    client = OpenAI(
+        base_url=settings.CONFIG.get("ollama_api", {}).get("base_url", "http://localhost:11434/v1"),
+        api_key=settings.CONFIG.get("ollama_api", {}).get("api_key")
+    )
 
-# Conversation loop
-conversation_history = []
-system_message = settings.CONFIG.get("system_message", "You are a helpful assistant that is an expert at extracting the most useful information from a given text")
+    # Using data/* storage via retrieval; no vault.txt or in-memory torch embeddings
+    vault_content = []
+    vault_embeddings_tensor = None
 
-while True:
-    user_input = input(YELLOW + "Ask a question about your documents (or type 'quit' to exit): " + RESET_COLOR)
-    if user_input.lower() == 'quit':
-        break
+    # Conversation loop
+    conversation_history = []
+    system_message = settings.CONFIG.get("system_message", "You are a helpful assistant that is an expert at extracting the most useful information from a given text")
 
-    response = ollama_chat(user_input, system_message, vault_embeddings_tensor, vault_content, args.model, conversation_history)
-    print(NEON_GREEN + "Response: \n\n" + response + RESET_COLOR)
+    while True:
+        user_input = input(YELLOW + "Ask a question about your documents (or type 'quit' to exit): " + RESET_COLOR)
+        if user_input.lower() == 'quit':
+            break
+
+        response = ollama_chat(user_input, system_message, vault_embeddings_tensor, vault_content, args.model, conversation_history)
+        print(NEON_GREEN + "Response: \n\n" + response + RESET_COLOR)
+
+
+if __name__ == '__main__':
+    main()

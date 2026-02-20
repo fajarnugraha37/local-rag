@@ -14,7 +14,7 @@ Status values:
 | T002 | Move config/common/context/retrieval modules to semantic `app/` paths | T001 | done |
 | T003 | Rewrite internal imports in moved core modules to `app.*` absolute imports | T002 | done |
 | T004 | Move ingestion/index/migration modules into `app/` and keep `main()` entrypoints | T003 | done |
-| T005 | Move chat modules into `app/chat/` and expose `main()` in each CLI module | T003 | todo |
+| T005 | Move chat modules into `app/chat/` and expose `main()` in each CLI module | T003 | done |
 | T006 | Move validation/debug scripts into `app/validation` and `app/tools` | T003 | todo |
 | T007 | Create root compatibility shims for all existing CLI filenames | T004,T005,T006 | todo |
 | T008 | Update tests to import from `app.*` modules | T007 | todo |
@@ -102,7 +102,7 @@ python -c "from app.ingestion.file_ingest_gui import write_chunks_file; from app
 ```powershell
 python -c "from app.chat.document_chat_cli import main; from app.chat.email_chat_cli import main as em; print('ok')"
 ```
-- Status: `todo`
+- Status: `done`
 
 ### T006
 - Goal: Move non-production scripts into semantic locations.

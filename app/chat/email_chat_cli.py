@@ -4,8 +4,8 @@ from openai import OpenAI
 import argparse
 import yaml
 import datetime
-import settings
-import retrieval
+from app.config import runtime_settings as settings
+from app.retrieval import hybrid_search as retrieval
 
 # ANSI escape codes for colors
 PINK = '\033[95m'
