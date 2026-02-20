@@ -1,8 +1,7 @@
 import os
 import re
-import json
 from app.config import runtime_settings as settings
-from app.common.content_hashing import sha256_hash
+from app.ingestion.vector_ingest_service import ingest_chunks
 
 # Helper: sentence-aware chunking
 def chunk_sentences(text, max_chars=1000):
@@ -20,52 +19,10 @@ def chunk_sentences(text, max_chars=1000):
         chunks.append(current_chunk)
     return chunks
 
-# Helper: write structured chunk objects to data/chunks.jsonl (deduped)
+# Helper: write structured chunk objects to vector DB (idempotent upsert)
 def write_chunks_file(chunks_list, source_path, chunks_file=None, append_vault=False):
-    repo_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-    if chunks_file is None:
-        chunks_file = os.path.join(repo_dir, 'data', 'chunks.jsonl')
-    os.makedirs(os.path.dirname(chunks_file), exist_ok=True)
-
-    # load existing chunk ids
-    existing = set()
-    if os.path.exists(chunks_file):
-        try:
-            with open(chunks_file, 'r', encoding='utf-8') as cf:
-                for line in cf:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        obj = json.loads(line)
-                        if isinstance(obj, dict) and 'chunk_id' in obj:
-                            existing.add(obj['chunk_id'])
-                    except Exception:
-                        continue
-        except Exception:
-            pass
-
-    new_written = 0
-    with open(chunks_file, 'a', encoding='utf-8') as cf:
-        for chunk_text in chunks_list:
-            text = chunk_text.strip()
-            if not text:
-                continue
-            cid = sha256_hash(text)
-            if cid in existing:
-                continue
-            obj = {
-                'chunk_id': cid,
-                'doc_id': os.path.basename(source_path) if source_path else os.path.basename(__file__),
-                'source': source_path or '',
-                'text': text,
-                'token_count': len(text.split())
-            }
-            cf.write(json.dumps(obj, ensure_ascii=False) + '\n')
-            existing.add(cid)
-            new_written += 1
-
-    print(f"Wrote {new_written} new chunks to {chunks_file}")
+    result = ingest_chunks(chunks_list, source_path=source_path)
+    print(f"Wrote {result['added']} new chunks to vector DB (failed={result['failed']}, skipped={result['skipped']})")
 
 # Function to convert PDF to text and write structured chunks
 def convert_pdf_to_text():

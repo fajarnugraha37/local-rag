@@ -13,6 +13,8 @@ from typing import List
 
 from app.config import runtime_settings as settings
 from app.common.content_hashing import sha256_hash
+from app.ingestion.vector_ingest_service import ingest_chunks, delete_doc
+from app.storage.chroma_vector_store import ChromaVectorStore
 
 
 def chunk_text(text: str, max_chars: int = 1000, overlap: int = 100) -> List[str]:
@@ -82,38 +84,21 @@ def migrate(vault_file: str, chunks_file: str, index_meta_file: str, max_chars: 
         for c in chunk_text(p, max_chars=max_chars, overlap=overlap):
             all_chunks.append(c)
 
-    # prepare chunk dicts
-    chunks_to_add = []
-    for text in all_chunks:
-        cid = sha256_hash(text)
-        chunk_obj = {
-            'chunk_id': cid,
-            'doc_id': os.path.basename(vault_file),
-            'source': vault_file,
-            'text': text,
-            'token_count': len(text.split())
-        }
-        chunks_to_add.append(chunk_obj)
-
     # dedupe within new chunks
     seen = set()
-    unique_new = []
-    for c in chunks_to_add:
-        if c['chunk_id'] in seen:
+    unique_new_texts = []
+    for text in all_chunks:
+        cid = sha256_hash(text)
+        if cid in seen:
             continue
-        seen.add(c['chunk_id'])
-        unique_new.append(c)
+        seen.add(cid)
+        unique_new_texts.append(text)
 
-    # read existing
-    existing_hashes = load_existing_hashes(chunks_file)
-
-    to_write = [c for c in unique_new if c['chunk_id'] not in existing_hashes]
-
-    if to_write:
-        os.makedirs(os.path.dirname(chunks_file), exist_ok=True)
-        with open(chunks_file, 'a', encoding='utf-8') as cf:
-            for c in to_write:
-                cf.write(json.dumps(c, ensure_ascii=False) + "\n")
+    ingest_result = ingest_chunks(
+        unique_new_texts,
+        source_path=vault_file,
+        doc_id=os.path.basename(vault_file),
+    )
 
     # update index meta
     meta = {}
@@ -123,7 +108,11 @@ def migrate(vault_file: str, chunks_file: str, index_meta_file: str, max_chars: 
                 meta = json.load(mf)
         except Exception:
             meta = {}
-    meta['chunks_count'] = count_lines(chunks_file)
+    try:
+        meta['chunks_count'] = ChromaVectorStore().count()
+    except Exception:
+        # Fallback retained for compatibility during migration period.
+        meta['chunks_count'] = count_lines(chunks_file)
     meta['last_migrated_at'] = datetime.datetime.utcnow().isoformat() + 'Z'
     meta.setdefault('version', 1)
     try:
@@ -132,8 +121,13 @@ def migrate(vault_file: str, chunks_file: str, index_meta_file: str, max_chars: 
     except Exception:
         pass
 
-    print(f"Migration complete. Added {len(to_write)} new chunks. Total chunks: {meta.get('chunks_count', 0)}")
-    return len(to_write)
+    print(
+        "Migration complete. "
+        f"Added {ingest_result.get('added', 0)} chunks "
+        f"(failed={ingest_result.get('failed', 0)}, skipped={ingest_result.get('skipped', 0)}). "
+        f"Total vectors: {meta.get('chunks_count', 0)}"
+    )
+    return int(ingest_result.get('added', 0))
 
 
 def main():
@@ -148,8 +142,13 @@ def main():
     parser.add_argument('--index-meta', default=default_index, help='Path to index meta json file')
     parser.add_argument('--max-chars', type=int, default=settings.CONFIG.get('chunk_max_chars', 1000), help='Max characters per chunk')
     parser.add_argument('--overlap', type=int, default=settings.CONFIG.get('chunk_overlap_chars', 100), help='Overlap characters between chunks')
+    parser.add_argument('--delete-doc-id', default=None, help='Delete all vectors for a document ID and exit')
 
     args = parser.parse_args()
+    if args.delete_doc_id:
+        deleted = delete_doc(args.delete_doc_id)
+        print(f"Deleted {deleted} vectors for doc_id={args.delete_doc_id}")
+        return
     migrate(args.vault, args.chunks_file, args.index_meta, args.max_chars, args.overlap)
 
 

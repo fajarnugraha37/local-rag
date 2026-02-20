@@ -1,9 +1,9 @@
 # Tasks: Persistent Vector Database Migration (Feature 004)
 
 ## Progress Tracker
-- `todo`: 6
+- `todo`: 5
 - `doing`: 0
-- `done`: 5
+- `done`: 6
 - `blocked`: 0
 
 ## Dispatch Rule
@@ -93,7 +93,7 @@ python -m pytest -q
 ```
 
 ### T006 — Migrate ingestion to vector upsert and delete-by-doc
-- Status: `todo`
+- Status: `done`
 - Goal: make ingestion write directly to vector DB and support deletion lifecycle.
 - Files to touch: `app/ingestion/file_ingest_gui.py`, `app/ingestion/email_ingest_job.py`, `app/migration/vault_migration.py`, `app/ingestion/vector_ingest_service.py` (new).
 - Steps:
