@@ -1,4 +1,4 @@
-.PHONY: help run-server run-cli chat chat-baseline chat-email ingest ingest-folder list-docs delete-doc ingest-email migrate-vault backfill backfill-namespaces query debug-retrieval validate eval test run-all all
+.PHONY: help fmt lint run-server run-cli chat chat-baseline chat-email ingest ingest-folder list-docs delete-doc ingest-email migrate-vault backfill backfill-namespaces query debug-retrieval validate eval test run-all all
 
 PYTHON ?= python
 APP := $(PYTHON) cmd/app.py
@@ -35,10 +35,18 @@ help:
 	@$(info   make query Q="what are key payment terms?" TOP_K=6)
 	@$(info   make debug-retrieval)
 	@$(info   make validate)
+	@$(info   make fmt)
+	@$(info   make lint)
 	@$(info   make test)
 	@$(info   make eval)
 	@$(info   make all)
 	@:
+
+fmt:
+	$(PYTHON) -m ruff format .
+
+lint:
+	$(PYTHON) -m ruff check .
 
 run-server:
 	$(APP) --server --host 127.0.0.1 --port 8000
