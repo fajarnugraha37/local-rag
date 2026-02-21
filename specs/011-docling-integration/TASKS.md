@@ -18,7 +18,7 @@ Acceptance criteria:
 - Adapter includes metadata (`source_path`, `source_format`, `content_hash`, `extracted_at`).
 Validation commands:
 - `python -m pytest -q tests/test_docling_adapter.py`
-Status: todo
+Status: done
 
 ## T002
 Goal: Wire Docling through extractor strategy contract.
