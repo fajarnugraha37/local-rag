@@ -333,6 +333,49 @@
           ]
         },
         {
+          "name": "Ingest Folder (Server Path)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"path\": \".\",\n  \"dry_run\": true,\n  \"stream\": false,\n  \"respect_gitignore\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingest/folder",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingest",
+                "folder"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('folder summary exists', function () {",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.ok).to.eql(true);",
+                  "  pm.expect(body.request_id).to.be.a('string');",
+                  "  pm.expect(body.summary).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Ingest Upload (Multipart)",
           "request": {
             "method": "POST",

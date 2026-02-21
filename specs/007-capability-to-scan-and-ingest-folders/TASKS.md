@@ -24,7 +24,7 @@ Validation commands:
 - `python -m pytest -q tests/test_folder_scanner.py -k include`
 
 Status:
-- `todo`
+- `done`
 
 ## T002 - Implement Ignore Rules (`.gitignore` + `.ragignore`)
 Goal:
@@ -53,7 +53,7 @@ Validation commands:
 - `python -m pytest -q tests/test_folder_scanner.py -k ragignore`
 
 Status:
-- `todo`
+- `done`
 
 ## T003 - Add File State Store + Incremental Skip
 Goal:
@@ -83,7 +83,7 @@ Validation commands:
 - `python -m pytest -q tests/test_folder_ingest_idempotency.py -k dry_run`
 
 Status:
-- `todo`
+- `done`
 
 ## T004 - Add CLI Surface `ingest-folder`
 Goal:
@@ -115,7 +115,7 @@ Validation commands:
 - `python .\\cmd\\app.py --cli ingest-folder --path . --dry-run`
 
 Status:
-- `todo`
+- `done`
 
 ## T005 - Add Server Endpoint `POST /ingest/folder` + SSE Progress
 Goal:
@@ -146,7 +146,7 @@ Validation commands:
 - `curl -X POST http://127.0.0.1:8000/ingest/folder -H "Content-Type: application/json" -d "{\"path\":\".\",\"dry_run\":true}"`
 
 Status:
-- `todo`
+- `done`
 
 ## T006 - Add Regression and Safety Tests
 Goal:
@@ -177,7 +177,7 @@ Validation commands:
 - `python -m pytest -q`
 
 Status:
-- `todo`
+- `done`
 
 ## Global Acceptance Criteria (Spec 007)
 - Scanning a folder ingests all supported files under it (recursive).

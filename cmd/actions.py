@@ -42,6 +42,11 @@ ACTION_SPECS: Dict[str, ActionSpec] = {
         target="app.ingestion.file_ingest_gui:main",
         description="Ingest many document/config/data formats (--path non-GUI, no --path opens GUI).",
     ),
+    "ingest-folder": ActionSpec(
+        name="ingest-folder",
+        target="app.ingestion.folder_ingest_cli:main",
+        description="Scan and ingest an entire folder recursively with ignore rules + idempotency.",
+    ),
     "ingest-email": ActionSpec(
         name="ingest-email",
         target="app.ingestion.email_ingest_job:main",

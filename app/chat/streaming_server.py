@@ -2,8 +2,10 @@ import argparse
 import contextlib
 import io
 import json
+import os
 import re
 import time
+import uuid
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
@@ -15,6 +17,7 @@ from app.chat.streaming_llm_client import stream_chat_with_continuation
 from app.config import runtime_settings as settings
 from app.context import token_budget_packer as context_packer
 from app.ingestion.vector_ingest_service import delete_doc, ingest_chunks
+from app.ingestion.folder_ingest_service import FolderIngestOptions, ingest_folder
 from app.ingestion.pipeline import build_options, ingest_paths, ingest_uploaded_files
 from app.retrieval import hybrid_search as retrieval
 
@@ -91,6 +94,41 @@ def _chunk_text_for_ingest(text: str, max_chars: int) -> list[str]:
     if current:
         chunks.append(current)
     return chunks
+
+
+def _resolve_allowed_roots() -> list[str]:
+    raw = settings.CONFIG.get("ingest_allowed_roots")
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        values = [raw]
+    elif isinstance(raw, list):
+        values = [item for item in raw if isinstance(item, str)]
+    else:
+        return []
+    return [item for item in (value.strip() for value in values) if item]
+
+
+def _is_safe_folder_path(path: str) -> tuple[bool, str]:
+    raw = re.sub(r"\s+", " ", path or "").strip()
+    if not raw:
+        return False, "path is required"
+    try:
+        abs_path = os.path.abspath(raw)
+    except Exception:
+        return False, "invalid path"
+    normalized_abs = os.path.normpath(abs_path)
+    if os.path.dirname(normalized_abs) == normalized_abs:
+        return False, "scanning filesystem root is not allowed"
+    allowed_roots = _resolve_allowed_roots()
+    if not allowed_roots:
+        return True, ""
+    normalized = os.path.normcase(normalized_abs)
+    for root in allowed_roots:
+        candidate = os.path.normcase(os.path.abspath(root))
+        if normalized == candidate or normalized.startswith(candidate + os.sep):
+            return True, ""
+    return False, "path is outside configured allowed roots"
 
 
 def _parse_multipart_upload(content_type: str, raw_body: bytes) -> tuple[list[tuple[str, bytes]], dict[str, str]]:
@@ -379,6 +417,98 @@ class StreamingHandler(BaseHTTPRequestHandler):
                 return
             except Exception as exc:
                 self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(exc)})
+                return
+
+        if parsed.path == "/ingest/folder":
+            try:
+                body = self._read_json()
+            except ValueError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+                return
+
+            folder_path = str(body.get("path") or "").strip()
+            is_safe, safety_reason = _is_safe_folder_path(folder_path)
+            if not is_safe:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": safety_reason})
+                return
+
+            include_patterns = body.get("include") or []
+            exclude_patterns = body.get("exclude") or []
+            if not isinstance(include_patterns, list) or any(not isinstance(value, str) for value in include_patterns):
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'include' must be an array of strings"})
+                return
+            if not isinstance(exclude_patterns, list) or any(not isinstance(value, str) for value in exclude_patterns):
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'exclude' must be an array of strings"})
+                return
+
+            request_id = str(body.get("request_id") or uuid.uuid4())
+            stream = _parse_bool(body.get("stream"), default=False)
+            recursive = _parse_bool(body.get("recursive"), default=True)
+            dry_run = _parse_bool(body.get("dry_run"), default=False)
+            force = _parse_bool(body.get("force"), default=False)
+            respect_gitignore = _parse_bool(body.get("respect_gitignore"), default=True)
+
+            if stream:
+                self.send_response(HTTPStatus.OK)
+                self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                self.send_header("Cache-Control", "no-cache")
+                self.send_header("Connection", "close")
+                self.send_header("X-Accel-Buffering", "no")
+                self.end_headers()
+
+                def _emit(event_name: str, payload: dict):
+                    packet = dict(payload or {})
+                    packet["request_id"] = request_id
+                    self.wfile.write(_to_sse(event_name, packet))
+                    self.wfile.flush()
+
+                try:
+                    def _on_progress(event_name: str, payload: dict):
+                        # Preserve folder ingest event names; map planning to skipped for streaming contract.
+                        mapped_name = "file_skipped" if event_name == "file_planned" else event_name
+                        _emit(mapped_name, payload)
+
+                    summary = ingest_folder(
+                        FolderIngestOptions(
+                            path=folder_path,
+                            recursive=recursive,
+                            include_patterns=include_patterns,
+                            exclude_patterns=exclude_patterns,
+                            respect_gitignore=respect_gitignore,
+                            dry_run=dry_run,
+                            force=force,
+                            embedding_model=body.get("embedding_model"),
+                            progress_callback=_on_progress,
+                        )
+                    )
+                    _emit("done", {"ok": True, "summary": summary})
+                except (BrokenPipeError, ConnectionResetError):
+                    return
+                except Exception as exc:
+                    try:
+                        _emit("error", {"message": str(exc)})
+                        _emit("done", {"ok": False})
+                    except Exception:
+                        return
+                return
+
+            try:
+                summary = ingest_folder(
+                    FolderIngestOptions(
+                        path=folder_path,
+                        recursive=recursive,
+                        include_patterns=include_patterns,
+                        exclude_patterns=exclude_patterns,
+                        respect_gitignore=respect_gitignore,
+                        dry_run=dry_run,
+                        force=force,
+                        embedding_model=body.get("embedding_model"),
+                    )
+                )
+                self._send_json(HTTPStatus.OK, {"ok": True, "request_id": request_id, "summary": summary})
+                return
+            except Exception as exc:
+                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "request_id": request_id, "error": str(exc)})
                 return
 
         if parsed.path in {"/ingest/upload", "/ingestion/upload"}:

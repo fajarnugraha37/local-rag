@@ -93,6 +93,8 @@ python .\cmd\app.py --cli ingest-files
 python .\cmd\app.py --cli ingest-files --path .\docs\sample.pdf
 python .\cmd\app.py --cli ingest-files --path .\docs\a.txt --path .\docs\b.json
 python .\cmd\app.py --cli ingest-files --path .\ --recursive --include \"*.md\" --include \"*.yaml\" --exclude \"*/.git/*\"
+python .\cmd\app.py --cli ingest-folder --path .\docs --dry-run
+python .\cmd\app.py --cli ingest-folder --path . --include \"docs/**\" --exclude \"**/*.log\" --no-respect-gitignore --force
 python .\cmd\app.py --cli ingest-email --keyword "invoice" --startdate 01.01.2025 --enddate 31.01.2025
 python .\cmd\app.py --cli migrate-vault --vault vault.txt
 
@@ -108,6 +110,7 @@ python .\cmd\app.py --cli debug-retrieval
 python .\cmd\app.py --cli eval --questions eval\questions.jsonl --top-k 6 --output eval\results.json
 ```
 `ingest-files --path ...` supports documents/config/data formats and prints per-file summary.
+`ingest-folder --path ...` performs recursive scan + ignore filtering + incremental skip (`--dry-run`, `--force`).
 
 Supported ingestion formats (case-insensitive):
 - Docs/text: `.md`, `.markdown`, `.mdx`, `.rst`, `.adoc`, `.asciidoc`, `.txt`, `.log`

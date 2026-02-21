@@ -61,6 +61,7 @@ def load_settings(config_file='config.yaml'):
     cfg.setdefault('ingest_zip_max_uncompressed_bytes', 128 * 1024 * 1024)
     cfg.setdefault('ingest_enable_parquet', True)
     cfg.setdefault('ingest_enable_legacy_office', True)
+    cfg.setdefault('ingest_state_path', 'data/ingest_state.json')
 
     # Override with environment variables (if present)
     if os.getenv('OLLAMA_MODEL'):
@@ -172,6 +173,8 @@ def load_settings(config_file='config.yaml'):
     parsed_ingest_enable_legacy_office = _parse_bool_env(os.getenv('INGEST_ENABLE_LEGACY_OFFICE'))
     if parsed_ingest_enable_legacy_office is not None:
         cfg['ingest_enable_legacy_office'] = parsed_ingest_enable_legacy_office
+    if os.getenv('INGEST_STATE_PATH'):
+        cfg['ingest_state_path'] = os.getenv('INGEST_STATE_PATH')
 
     # Nested ollama_api overrides
     if os.getenv('OLLAMA_API_BASE_URL'):
