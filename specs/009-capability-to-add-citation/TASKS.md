@@ -173,6 +173,9 @@
   - `specs/009-capability-to-add-citation/IMPROVEMENT.md`
   - `specs/009-capability-to-add-citation/PLAN.md`
   - `specs/009-capability-to-add-citation/TASKS.md`
+  - `AGENTS.md`
+  - `README.md`
+  - `Makefile`
 - Steps:
   1. Run full suite and fix regressions.
   2. Ensure docs match implemented contracts.
