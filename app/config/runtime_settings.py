@@ -48,6 +48,11 @@ def load_settings(config_file="config.yaml"):
     cfg.setdefault("citations_mode", "inline+sources")
     cfg.setdefault("citation_max_sources", int(cfg.get("top_k", 6)))
     cfg.setdefault("citation_max_snippet_chars", 240)
+    cfg.setdefault("general_knowledge_fallback", False)
+    cfg.setdefault("general_knowledge_min_sources", 2)
+    cfg.setdefault("general_knowledge_min_term_hits", 2)
+    cfg.setdefault("general_knowledge_min_answer_chars", 180)
+    cfg.setdefault("general_knowledge_max_sentences", 6)
     cfg.setdefault("vector_db_provider", "chroma")
     cfg.setdefault("vector_db_persist_dir", "data/chroma")
     cfg.setdefault("sqlite_db_path", "data/app.db")
@@ -64,6 +69,8 @@ def load_settings(config_file="config.yaml"):
     cfg.setdefault("ingest_max_slides", 300)
     cfg.setdefault("ingest_max_sheets", 50)
     cfg.setdefault("ingest_timeout_s", 30)
+    cfg.setdefault("chunk_max_tokens", 480)
+    cfg.setdefault("chunk_overlap_tokens", 48)
     cfg.setdefault("ingest_zip_max_entries", 10000)
     cfg.setdefault("ingest_zip_max_uncompressed_bytes", 128 * 1024 * 1024)
     cfg.setdefault("ingest_docling_enabled", True)
@@ -116,6 +123,37 @@ def load_settings(config_file="config.yaml"):
     if os.getenv("CITATION_MAX_SNIPPET_CHARS"):
         try:
             cfg["citation_max_snippet_chars"] = max(0, int(os.getenv("CITATION_MAX_SNIPPET_CHARS")))
+        except ValueError:
+            pass
+    parsed_gk_fallback = _parse_bool_env(os.getenv("GENERAL_KNOWLEDGE_FALLBACK"))
+    if parsed_gk_fallback is not None:
+        cfg["general_knowledge_fallback"] = parsed_gk_fallback
+    if os.getenv("GENERAL_KNOWLEDGE_MIN_SOURCES"):
+        try:
+            cfg["general_knowledge_min_sources"] = max(
+                0, int(os.getenv("GENERAL_KNOWLEDGE_MIN_SOURCES"))
+            )
+        except ValueError:
+            pass
+    if os.getenv("GENERAL_KNOWLEDGE_MIN_TERM_HITS"):
+        try:
+            cfg["general_knowledge_min_term_hits"] = max(
+                0, int(os.getenv("GENERAL_KNOWLEDGE_MIN_TERM_HITS"))
+            )
+        except ValueError:
+            pass
+    if os.getenv("GENERAL_KNOWLEDGE_MIN_ANSWER_CHARS"):
+        try:
+            cfg["general_knowledge_min_answer_chars"] = max(
+                0, int(os.getenv("GENERAL_KNOWLEDGE_MIN_ANSWER_CHARS"))
+            )
+        except ValueError:
+            pass
+    if os.getenv("GENERAL_KNOWLEDGE_MAX_SENTENCES"):
+        try:
+            cfg["general_knowledge_max_sentences"] = max(
+                1, int(os.getenv("GENERAL_KNOWLEDGE_MAX_SENTENCES"))
+            )
         except ValueError:
             pass
     if os.getenv("MAX_CONTINUATIONS"):
@@ -201,6 +239,16 @@ def load_settings(config_file="config.yaml"):
     if os.getenv("INGEST_TIMEOUT_S"):
         try:
             cfg["ingest_timeout_s"] = int(os.getenv("INGEST_TIMEOUT_S"))
+        except ValueError:
+            pass
+    if os.getenv("CHUNK_MAX_TOKENS"):
+        try:
+            cfg["chunk_max_tokens"] = int(os.getenv("CHUNK_MAX_TOKENS"))
+        except ValueError:
+            pass
+    if os.getenv("CHUNK_OVERLAP_TOKENS"):
+        try:
+            cfg["chunk_overlap_tokens"] = int(os.getenv("CHUNK_OVERLAP_TOKENS"))
         except ValueError:
             pass
     parsed_docling_enabled = _parse_bool_env(os.getenv("INGEST_DOCLING_ENABLED"))

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.document_conversion.models import ConvertedBlock, ConvertedDocument
-from app.ingestion.extractors.base import ExtractorContext, MissingDependencyError
+from app.ingestion.extractors.base import ExtractorContext, MissingDependencyError, UnsupportedFormatError
 from app.ingestion.extractors.docling_extractors import build_docling_extractor
 from app.ingestion.extractors.registry import ExtractorRegistry, build_default_registry
 
@@ -29,7 +29,9 @@ def test_registry_can_call_docling_extractor(monkeypatch) -> None:
 
     from app.document_conversion import docling_adapter
 
-    def _fake_convert_bytes(name: str, raw: bytes) -> ConvertedDocument:  # noqa: ARG001
+    def _fake_convert_bytes(
+        name: str, raw: bytes, *, ocr_enabled: bool = False
+    ) -> ConvertedDocument:  # noqa: ARG001
         return ConvertedDocument(
             text_markdown="# Title\n\nhello",
             metadata={
@@ -62,7 +64,7 @@ def test_docling_dependency_error_maps_to_missing_dependency(monkeypatch) -> Non
 
     from app.document_conversion import docling_adapter
 
-    def _boom(name: str, raw: bytes):  # noqa: ARG001
+    def _boom(name: str, raw: bytes, *, ocr_enabled: bool = False):  # noqa: ARG001
         raise RuntimeError("docling dependency is not available for pdf")
 
     monkeypatch.setattr(docling_adapter, "convert_bytes", _boom)
@@ -72,6 +74,42 @@ def test_docling_dependency_error_maps_to_missing_dependency(monkeypatch) -> Non
         pass
     else:
         raise AssertionError("expected MissingDependencyError")
+
+
+def test_docling_ocr_disabled_maps_to_skipped_unsupported(monkeypatch) -> None:
+    registry = ExtractorRegistry()
+    registry.register_extension(".pdf", build_docling_extractor(doc_type="pdf"))
+
+    from app.document_conversion import docling_adapter
+
+    def _boom(name: str, raw: bytes, *, ocr_enabled: bool = False):  # noqa: ARG001
+        raise RuntimeError("OCR disabled; PDF appears scanned/image-only for 'sample.pdf'.")
+
+    monkeypatch.setattr(docling_adapter, "convert_bytes", _boom)
+    try:
+        registry.extract_from_bytes("sample.pdf", b"%PDF", _ctx())
+    except UnsupportedFormatError:
+        pass
+    else:
+        raise AssertionError("expected UnsupportedFormatError")
+
+
+def test_docling_empty_pdf_without_ocr_maps_to_unsupported(monkeypatch) -> None:
+    registry = ExtractorRegistry()
+    registry.register_extension(".pdf", build_docling_extractor(doc_type="pdf"))
+
+    from app.document_conversion import docling_adapter
+
+    def _boom(name: str, raw: bytes, *, ocr_enabled: bool = False):  # noqa: ARG001
+        raise RuntimeError("docling returned empty output for format 'pdf'")
+
+    monkeypatch.setattr(docling_adapter, "convert_bytes", _boom)
+    try:
+        registry.extract_from_bytes("sample.pdf", b"%PDF", _ctx())
+    except UnsupportedFormatError:
+        pass
+    else:
+        raise AssertionError("expected UnsupportedFormatError")
 
 
 def test_required_extensions_resolve_to_docling_extractor() -> None:

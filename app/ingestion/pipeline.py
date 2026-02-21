@@ -41,6 +41,7 @@ class IngestOptions:
     ingest_timeout_s: int
     chunk_max_tokens: int
     chunk_overlap_tokens: int
+    ocr_enabled: bool
     enable_parquet: bool
     enable_legacy_office: bool
 
@@ -97,11 +98,14 @@ def build_options(**overrides) -> IngestOptions:
             overrides.get("ingest_timeout_s"), cfg.get("ingest_timeout_s", 30)
         ),
         "chunk_max_tokens": _to_int(
-            overrides.get("chunk_max_tokens"), cfg.get("chunk_max_tokens", 200)
+            overrides.get("chunk_max_tokens"), cfg.get("chunk_max_tokens", 480)
         ),
         "chunk_overlap_tokens": _to_int(
             overrides.get("chunk_overlap_tokens"),
             cfg.get("chunk_overlap_tokens", 20),
+        ),
+        "ocr_enabled": _to_bool(
+            overrides.get("ocr_enabled"), cfg.get("ingest_docling_enable_ocr", False)
         ),
         "enable_parquet": _to_bool(
             overrides.get("enable_parquet"), cfg.get("ingest_enable_parquet", True)
@@ -127,7 +131,8 @@ def _context(options: IngestOptions) -> ExtractorContext:
         enable_parquet=options.enable_parquet,
         enable_legacy_office=options.enable_legacy_office,
         extracted_at=datetime.now(timezone.utc).isoformat(),
-    )
+        ingest_docling_enable_ocr=options.ocr_enabled,
+        )
 
 
 def _path_allowed(
@@ -347,14 +352,40 @@ def ingest_uploaded_files(
     extracted = 0
     skipped = 0
 
-    for file_name, raw_bytes in uploaded:
+    total_files = len(uploaded)
+    for index, (file_name, raw_bytes) in enumerate(uploaded, start=1):
         started = time.monotonic()
+        if progress_callback:
+            try:
+                progress_callback(
+                    "file_start",
+                    index - 1,
+                    total_files,
+                    {"file_path": file_name, "file_index": index, "total_files": total_files},
+                )
+            except Exception:
+                pass
         try:
             document = registry.extract_from_bytes(file_name, raw_bytes, ctx)
             fake_path = file_name
             chunks = _chunks_for_document(fake_path, document, options, ctx)
             if not chunks:
                 skipped += 1
+                if progress_callback:
+                    try:
+                        progress_callback(
+                            "file_skipped",
+                            index,
+                            total_files,
+                            {
+                                "file_path": file_name,
+                                "file_index": index,
+                                "total_files": total_files,
+                                "reason": "no_extractable_content",
+                            },
+                        )
+                    except Exception:
+                        pass
                 results.append(
                     {
                         "path": file_name,
@@ -377,6 +408,16 @@ def ingest_uploaded_files(
             )
             extracted += 1
             total_chunks += len(chunks)
+            if progress_callback:
+                try:
+                    progress_callback(
+                        "file_ingested",
+                        index,
+                        total_files,
+                        {"file_path": file_name, "file_index": index, "total_files": total_files},
+                    )
+                except Exception:
+                    pass
             results.append(
                 {
                     "path": file_name,
@@ -391,6 +432,21 @@ def ingest_uploaded_files(
             )
         except UnsupportedFormatError as exc:
             skipped += 1
+            if progress_callback:
+                try:
+                    progress_callback(
+                        "file_skipped",
+                        index,
+                        total_files,
+                        {
+                            "file_path": file_name,
+                            "file_index": index,
+                            "total_files": total_files,
+                            "reason": str(exc),
+                        },
+                    )
+                except Exception:
+                    pass
             results.append(
                 {
                     "path": file_name,
@@ -404,6 +460,21 @@ def ingest_uploaded_files(
             )
         except MissingDependencyError as exc:
             skipped += 1
+            if progress_callback:
+                try:
+                    progress_callback(
+                        "file_skipped",
+                        index,
+                        total_files,
+                        {
+                            "file_path": file_name,
+                            "file_index": index,
+                            "total_files": total_files,
+                            "reason": str(exc),
+                        },
+                    )
+                except Exception:
+                    pass
             results.append(
                 {
                     "path": file_name,
@@ -416,6 +487,21 @@ def ingest_uploaded_files(
                 }
             )
         except Exception as exc:
+            if progress_callback:
+                try:
+                    progress_callback(
+                        "file_failed",
+                        index,
+                        total_files,
+                        {
+                            "file_path": file_name,
+                            "file_index": index,
+                            "total_files": total_files,
+                            "reason": str(exc),
+                        },
+                    )
+                except Exception:
+                    pass
             results.append(
                 {
                     "path": file_name,

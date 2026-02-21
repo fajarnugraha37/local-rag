@@ -24,7 +24,7 @@ def create_ingestion(body: IngestionCreateRequest) -> dict:
     record = _service().create_job(
         namespace=ns,
         source_type=body.source_type,
-        source_spec=body.source_spec,
+        source_spec=body.source_spec.model_dump(exclude_none=True),
     )
     return {"ok": True, "ingestion_id": record["ingestion_id"], "record": record}
 
@@ -44,7 +44,13 @@ async def create_upload_ingestion(request: Request) -> dict:
         return {"ok": False, "error": "No file uploads provided under form field 'file'"}
 
     ns = validate_namespace(fields.get("namespace"), default_to_default=True)
-    source_spec = {"embedding_model": fields.get("embedding_model")}
+    source_spec = {
+        "embedding_model": fields.get("embedding_model"),
+        "chunk_max_tokens": fields.get("chunk_max_tokens"),
+        "chunk_overlap_tokens": fields.get("chunk_overlap_tokens"),
+        "ocr_enabled": fields.get("ocr_enabled"),
+        "ingest_timeout_s": fields.get("ingest_timeout_s"),
+    }
     record = _service().create_job(
         namespace=ns,
         source_type="upload",

@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+import tempfile
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -147,7 +148,17 @@ def _convert_with_docling(name: str, raw: bytes, source_format: str) -> Converte
         raise RuntimeError(f"docling dependency is not available for {source_format}") from exc
 
     converter = DocumentConverter()
-    result = converter.convert(raw)
+    suffix = os.path.splitext(name or "")[1] or ""
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(raw)
+        tmp_path = tmp.name
+    try:
+        result = converter.convert(tmp_path)
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
     markdown = ""
     if hasattr(result, "document") and result.document is not None:
         doc = result.document
@@ -163,13 +174,19 @@ def _convert_with_docling(name: str, raw: bytes, source_format: str) -> Converte
     return ConvertedDocument(text_markdown=markdown, blocks=_markdown_to_blocks(markdown))
 
 
-def convert_bytes(name: str, raw: bytes) -> ConvertedDocument:
+def convert_bytes(name: str, raw: bytes, *, ocr_enabled: bool = False) -> ConvertedDocument:
     source_format = detect_source_format(name, raw)
     extracted_at = _utc_now_iso()
     warnings: List[str] = []
 
     markdown = ""
     blocks: List[ConvertedBlock] = []
+
+    if not ocr_enabled:
+        if source_format in _IMAGE_EXTENSIONS:
+            raise RuntimeError(
+                f"OCR disabled; image ingestion skipped for '{name}'. Re-run with ocr_enabled=true."
+            )
 
     if source_format in {
         "md",
@@ -197,6 +214,8 @@ def convert_bytes(name: str, raw: bytes) -> ConvertedDocument:
             blocks = converted.blocks
             warnings.extend(converted.warnings)
         except Exception as exc:
+            if source_format in {"pdf", "docx", "xlsx", "pptx", *_IMAGE_EXTENSIONS}:
+                raise RuntimeError(str(exc)) from exc
             text_fallback = _decode_text(raw).strip()
             if text_fallback:
                 markdown = text_fallback
@@ -219,14 +238,14 @@ def convert_bytes(name: str, raw: bytes) -> ConvertedDocument:
     )
 
 
-def convert_file(path: str) -> ConvertedDocument:
+def convert_file(path: str, *, ocr_enabled: bool = False) -> ConvertedDocument:
     with open(path, "rb") as handle:
         raw = handle.read()
-    converted = convert_bytes(path, raw)
+    converted = convert_bytes(path, raw, ocr_enabled=ocr_enabled)
     converted.metadata["source_path"] = path
     return converted
 
 
-def convert_batch(paths: List[str]) -> Iterable[ConvertedDocument]:
+def convert_batch(paths: List[str], *, ocr_enabled: bool = False) -> Iterable[ConvertedDocument]:
     for path in paths:
-        yield convert_file(path)
+        yield convert_file(path, ocr_enabled=ocr_enabled)

@@ -1,0 +1,409 @@
+from __future__ import annotations
+
+import json
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+import typer
+
+from app.cli.adapters.service_container import build_services
+from app.cli.idempotency import (
+    build_idempotency_key,
+    build_signature,
+    execute_with_idempotency,
+)
+from app.cli.render.events import render_events
+from app.common.namespaces import validate_namespace
+from app.services.ingestion_service import UploadPayload
+
+
+def _want_json(ctx: typer.Context, as_json: bool = False) -> bool:
+    return bool(as_json or ((ctx.obj or {}).get("json") is True))
+
+
+def _print_payload(payload: dict[str, Any], as_json: bool) -> None:
+    if as_json:
+        typer.echo(json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True))
+        return
+    typer.echo(str(payload))
+
+
+def _render_wait_progress(*, elapsed_s: float, record: dict[str, Any] | None, tick: int) -> None:
+    spinner = ["|", "/", "-", "\\"]
+    mark = spinner[tick % len(spinner)]
+    status = str((record or {}).get("status") or "queued")
+    counters = (record or {}).get("counters") or {}
+    ingested = int(counters.get("ingested") or 0)
+    skipped = int(counters.get("skipped") or 0)
+    failed = int(counters.get("failed") or 0)
+    line = (
+        f"\r{mark} waiting... status={status} "
+        f"ingested={ingested} skipped={skipped} failed={failed} "
+        f"elapsed={int(elapsed_s)}s"
+    )
+    sys.stdout.write(line)
+    sys.stdout.flush()
+
+
+def _render_wait_progress_with_bar(
+    *,
+    elapsed_s: float,
+    record: dict[str, Any] | None,
+    tick: int,
+    percent: int | None,
+    processed: int | None,
+    total: int | None,
+) -> None:
+    spinner = ["|", "/", "-", "\\"]
+    mark = spinner[tick % len(spinner)]
+    status = str((record or {}).get("status") or "queued")
+    counters = (record or {}).get("counters") or {}
+    ingested = int(counters.get("ingested") or 0)
+    skipped = int(counters.get("skipped") or 0)
+    failed = int(counters.get("failed") or 0)
+    if percent is None:
+        line = (
+            f"\r{mark} waiting... status={status} "
+            f"ingested={ingested} skipped={skipped} failed={failed} "
+            f"elapsed={int(elapsed_s)}s"
+        )
+    else:
+        width = 24
+        pct = max(0, min(100, int(percent)))
+        filled = int(width * (pct / 100.0))
+        bar = "#" * filled + "-" * (width - filled)
+        proc = int(processed or 0)
+        tot = int(total or 0)
+        line = (
+            f"\r{mark} [{bar}] {pct:3d}% "
+            f"({proc}/{tot}) status={status} "
+            f"ingested={ingested} skipped={skipped} failed={failed} "
+            f"elapsed={int(elapsed_s)}s"
+        )
+    sys.stdout.write(line)
+    sys.stdout.flush()
+
+
+def _compute_progress_snapshot(
+    *,
+    svc,
+    ingestion_id: str,
+    source_type: str,
+    source_spec: dict[str, Any],
+    record: dict[str, Any] | None,
+    fallback_total: int | None = None,
+) -> tuple[int | None, int | None, int | None]:
+    try:
+        events = svc.list_events(ingestion_id, limit=5000)
+    except Exception:
+        return (None, None, None)
+
+    total = fallback_total
+    if source_type == "folder":
+        for ev in events:
+            if str(ev.get("event") or "") == "scan_done":
+                payload = ev.get("payload") or {}
+                selected = payload.get("selected")
+                if isinstance(selected, int) and selected >= 0:
+                    total = selected
+    elif source_type == "upload" and total is None:
+        # Best effort total for upload based on received files.
+        total = sum(1 for ev in events if str(ev.get("event") or "") == "upload_file_received")
+    elif source_type == "repo" and total is None:
+        # Repo ingestion internally runs folder scan; rely on scan_done if emitted.
+        for ev in events:
+            if str(ev.get("event") or "") == "scan_done":
+                payload = ev.get("payload") or {}
+                selected = payload.get("selected")
+                if isinstance(selected, int) and selected >= 0:
+                    total = selected
+
+    processed = 0
+    processed += sum(1 for ev in events if str(ev.get("event") or "") == "file_ingested")
+    processed += sum(1 for ev in events if str(ev.get("event") or "") == "file_skipped")
+    processed += sum(1 for ev in events if str(ev.get("event") or "") == "file_failed")
+    if processed == 0:
+        counters = (record or {}).get("counters") or {}
+        processed = (
+            int(counters.get("ingested") or 0)
+            + int(counters.get("skipped") or 0)
+            + int(counters.get("failed") or 0)
+        )
+
+    if total is None or total <= 0:
+        return (None, processed if processed > 0 else None, total)
+
+    pct = int(min(100, round((processed / total) * 100)))
+    return (pct, processed, total)
+
+
+def build_ingestions_cli() -> typer.Typer:
+    app = typer.Typer(name="ingest", no_args_is_help=True, help="Ingestion jobs and logs.")
+
+    @app.command("start")
+    def start_ingestion(
+        ctx: typer.Context,
+        namespace: str = typer.Option("default", "--namespace"),
+        source: str = typer.Option(..., "--source", help="folder|repo|files"),
+        path: str = typer.Option("", "--path", help="Folder path for source=folder."),
+        repo: str = typer.Option("", "--repo", help="Repository URL for source=repo."),
+        revision: str = typer.Option("", "--revision", help="Optional git revision."),
+        paths: str = typer.Option("", "--paths", help="Comma-separated file paths for source=files."),
+        embedding_model: str = typer.Option("", "--embedding-model"),
+        chunk_max_tokens: int = typer.Option(0, "--chunk-max-tokens"),
+        chunk_overlap_tokens: int = typer.Option(0, "--chunk-overlap-tokens"),
+        ocr_enabled: bool = typer.Option(False, "--ocr-enabled/--no-ocr-enabled"),
+        parallel_workers: int = typer.Option(1, "--parallel-workers", min=1),
+        dry_run: bool = typer.Option(False, "--dry-run"),
+        force: bool = typer.Option(False, "--force"),
+        include: str = typer.Option("", "--include", help="Comma-separated include globs."),
+        exclude: str = typer.Option("", "--exclude", help="Comma-separated exclude globs."),
+        idempotency_key: str = typer.Option("", "--idempotency-key"),
+        wait: bool = typer.Option(False, "--wait/--no-wait", help="Wait until job reaches terminal state."),
+        wait_timeout_s: int = typer.Option(300, "--wait-timeout-s", min=1, help="Max seconds to wait when --wait is enabled."),
+        wait_poll_interval: float = typer.Option(1.0, "--wait-poll-interval", min=0.2, help="Polling interval in seconds while waiting."),
+        as_json: bool = typer.Option(False, "--json", help="Emit JSON output."),
+    ) -> None:
+        services = build_services()
+        svc = services.ingestion_service
+        repo_id = services.idempotency_repo
+        ns = validate_namespace(namespace, default_to_default=True)
+        source_type = source.strip().lower()
+        total_items_hint: int | None = None
+
+        if source_type not in {"folder", "repo", "files"}:
+            raise typer.BadParameter("--source must be one of: folder, repo, files")
+
+        include_patterns = [s.strip() for s in include.split(",") if s.strip()]
+        exclude_patterns = [s.strip() for s in exclude.split(",") if s.strip()]
+        payload_signature_data: dict[str, Any] = {
+            "namespace": ns,
+            "source": source_type,
+            "path": path,
+            "repo": repo,
+            "revision": revision,
+            "paths": paths,
+            "embedding_model": embedding_model,
+            "chunk_max_tokens": chunk_max_tokens,
+            "chunk_overlap_tokens": chunk_overlap_tokens,
+            "ocr_enabled": ocr_enabled,
+            "parallel_workers": parallel_workers,
+            "dry_run": dry_run,
+            "force": force,
+            "include": include_patterns,
+            "exclude": exclude_patterns,
+        }
+        signature = build_signature(payload_signature_data)
+        auto_key = build_idempotency_key(
+            operation=f"ingest-{source_type}",
+            payload=payload_signature_data,
+        )
+        effective_key = idempotency_key or auto_key
+
+        def _create_response() -> dict[str, Any]:
+            if source_type == "folder":
+                if not path.strip():
+                    raise typer.BadParameter("--path is required when --source folder")
+                record = svc.create_job(
+                    namespace=ns,
+                    source_type="folder",
+                    source_spec={
+                        "path": path,
+                        "recursive": True,
+                        "include": include_patterns,
+                        "exclude": exclude_patterns,
+                        "dry_run": bool(dry_run),
+                        "force": bool(force),
+                        "embedding_model": embedding_model or None,
+                        "chunk_max_tokens": chunk_max_tokens or None,
+                        "chunk_overlap_tokens": chunk_overlap_tokens or None,
+                        "ocr_enabled": bool(ocr_enabled),
+                        "parallel_workers": int(parallel_workers or 1),
+                    },
+                )
+            elif source_type == "repo":
+                if not repo.strip():
+                    raise typer.BadParameter("--repo is required when --source repo")
+                record = svc.create_job(
+                    namespace=ns,
+                    source_type="repo",
+                    source_spec={
+                        "repo": repo,
+                        "revision": revision or None,
+                        "include": include_patterns,
+                        "exclude": exclude_patterns,
+                        "dry_run": bool(dry_run),
+                        "force": bool(force),
+                        "embedding_model": embedding_model or None,
+                        "chunk_max_tokens": chunk_max_tokens or None,
+                        "chunk_overlap_tokens": chunk_overlap_tokens or None,
+                        "ocr_enabled": bool(ocr_enabled),
+                        "parallel_workers": int(parallel_workers or 1),
+                    },
+                )
+            else:
+                file_paths = [s.strip() for s in paths.split(",") if s.strip()]
+                if not file_paths:
+                    raise typer.BadParameter("--paths is required when --source files")
+                total_items_hint = len(file_paths)
+                uploads: list[tuple[str, bytes]] = []
+                for file_path in file_paths:
+                    p = Path(file_path)
+                    if not p.exists() or not p.is_file():
+                        raise typer.BadParameter(f"file does not exist: {file_path}")
+                    uploads.append((p.name, p.read_bytes()))
+                record = svc.create_job(
+                    namespace=ns,
+                    source_type="upload",
+                    source_spec={
+                        "embedding_model": embedding_model or None,
+                        "chunk_max_tokens": chunk_max_tokens or None,
+                        "chunk_overlap_tokens": chunk_overlap_tokens or None,
+                        "ocr_enabled": bool(ocr_enabled),
+                        "parallel_workers": int(parallel_workers or 1),
+                    },
+                    upload_payload=UploadPayload(
+                        files=uploads,
+                        fields={
+                            "namespace": ns,
+                            "chunk_max_tokens": str(chunk_max_tokens) if chunk_max_tokens else "",
+                            "chunk_overlap_tokens": str(chunk_overlap_tokens)
+                            if chunk_overlap_tokens
+                            else "",
+                            "ocr_enabled": str(bool(ocr_enabled)).lower(),
+                        },
+                    ),
+                )
+            return {"ok": True, "ingestion_id": record.get("ingestion_id"), "record": record}
+
+        if idempotency_key:
+            response, replayed = execute_with_idempotency(
+                repo=repo_id,
+                key=effective_key,
+                method="POST",
+                path="/v1/ingestions",
+                signature=signature,
+                ttl_seconds=int(services.config.get("idempotency_ttl_s") or 86400),
+                fn=_create_response,
+            )
+        else:
+            # Auto-generated key is informational by default; avoid stale replay traps.
+            response = _create_response()
+            replayed = False
+        response["idempotency_key"] = effective_key
+        response["idempotency_replayed"] = bool(replayed)
+
+        if wait:
+            ingestion_id = str(response.get("ingestion_id") or "")
+            if ingestion_id:
+                deadline = time.time() + max(1, int(wait_timeout_s))
+                terminal_states = {"done", "failed", "cancelled"}
+                last_record = None
+                started = time.time()
+                tick = 0
+                show_progress = not _want_json(ctx, as_json)
+                while time.time() < deadline:
+                    last_record = svc.get_job(ingestion_id)
+                    if show_progress:
+                        pct, processed, total = _compute_progress_snapshot(
+                            svc=svc,
+                            ingestion_id=ingestion_id,
+                            source_type=str((last_record or {}).get("source_type") or source_type),
+                            source_spec=dict((last_record or {}).get("source_spec") or {}),
+                            record=last_record,
+                            fallback_total=total_items_hint,
+                        )
+                        _render_wait_progress_with_bar(
+                            elapsed_s=time.time() - started,
+                            record=last_record,
+                            tick=tick,
+                            percent=pct,
+                            processed=processed,
+                            total=total,
+                        )
+                        tick += 1
+                    if last_record and str(last_record.get("status") or "") in terminal_states:
+                        break
+                    time.sleep(max(0.2, float(wait_poll_interval)))
+                if show_progress:
+                    sys.stdout.write("\n")
+                    sys.stdout.flush()
+                if last_record:
+                    response["record"] = last_record
+                    response["final_status"] = last_record.get("status")
+                else:
+                    response["final_status"] = "unknown"
+                response["waited"] = True
+                response["wait_timeout_s"] = int(wait_timeout_s)
+                if str(response.get("final_status") or "") not in {"done", "failed", "cancelled"}:
+                    response["wait_timed_out"] = True
+        _print_payload(response, as_json=_want_json(ctx, as_json))
+
+    @app.command("status")
+    def ingestion_status(
+        ctx: typer.Context,
+        ingestion_id: str = typer.Argument(...),
+        as_json: bool = typer.Option(False, "--json", help="Emit JSON output."),
+    ) -> None:
+        svc = build_services().ingestion_service
+        record = svc.get_job(ingestion_id)
+        if record is None:
+            payload = {"ok": False, "error": "not_found"}
+            _print_payload(payload, as_json=_want_json(ctx, as_json))
+            raise typer.Exit(code=1)
+        payload = {"ok": True, "record": record}
+        _print_payload(payload, as_json=_want_json(ctx, as_json))
+
+    @app.command("cancel")
+    def ingestion_cancel(
+        ctx: typer.Context,
+        ingestion_id: str = typer.Argument(...),
+        as_json: bool = typer.Option(False, "--json", help="Emit JSON output."),
+    ) -> None:
+        svc = build_services().ingestion_service
+        cancel_requested = svc.cancel_job(ingestion_id)
+        payload = {
+            "ok": True,
+            "ingestion_id": ingestion_id,
+            "cancel_requested": bool(cancel_requested),
+        }
+        _print_payload(payload, as_json=_want_json(ctx, as_json))
+
+    @app.command("logs")
+    def ingestion_logs(
+        ctx: typer.Context,
+        ingestion_id: str = typer.Argument(...),
+        limit: int = typer.Option(500, "--limit", min=1, max=5000),
+        follow: bool = typer.Option(False, "--follow"),
+        poll_interval: float = typer.Option(1.0, "--poll-interval"),
+        as_json: bool = typer.Option(False, "--json", help="Emit JSON output."),
+    ) -> None:
+        svc = build_services().ingestion_service
+        last_count = 0
+        terminal_states = {"done", "failed", "cancelled"}
+        while True:
+            events = svc.list_events(ingestion_id, limit=limit)
+            if _want_json(ctx, as_json):
+                payload = {"ok": True, "events": events, "count": len(events)}
+                typer.echo(json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True))
+            else:
+                if len(events) > last_count:
+                    typer.echo(render_events(events[last_count:]))
+                    last_count = len(events)
+                elif not follow:
+                    typer.echo("(no events)")
+
+            if not follow:
+                break
+
+            record = svc.get_job(ingestion_id)
+            if record and str(record.get("status") or "") in terminal_states:
+                break
+            time.sleep(max(0.2, float(poll_interval)))
+
+    return app
+
+
+__all__ = ["build_ingestions_cli"]

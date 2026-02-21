@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import os
 from dataclasses import dataclass
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable, Dict, List, Optional
 
 from app.config import runtime_settings as settings
@@ -30,6 +31,7 @@ class FolderIngestOptions:
     state_path: Optional[str] = None
     ingest_options: Optional[IngestOptions] = None
     progress_callback: Optional[ProgressCallback] = None
+    parallel_workers: int = 1
 
 
 def _hash_file(path: str, *, chunk_size: int = 1024 * 1024) -> str:
@@ -114,6 +116,8 @@ def ingest_folder(options: FolderIngestOptions) -> Dict[str, object]:
         or 8 * 1024 * 1024
     )
 
+    to_ingest: List[tuple[object, Optional[str]]] = []
+
     for candidate in candidates:
         if options.progress_callback:
             options.progress_callback("file_found", {"path": candidate.path})
@@ -154,7 +158,9 @@ def ingest_folder(options: FolderIngestOptions) -> Dict[str, object]:
                     "file_planned", {"path": candidate.path, "reason": reason}
                 )
             continue
+        to_ingest.append((candidate, reason))
 
+    def _ingest_candidate(candidate, reason):
         ingest_result = ingest_single_path(
             candidate.path,
             options=options.ingest_options,
@@ -163,33 +169,89 @@ def ingest_folder(options: FolderIngestOptions) -> Dict[str, object]:
             namespace=options.namespace,
         )
         status = str(ingest_result.get("status") or "")
-        if status == "ok":
-            stat = os.stat(candidate.path)
-            store.set(
-                candidate.path,
-                size_bytes=int(stat.st_size),
-                mtime_ns=int(stat.st_mtime_ns),
-                content_hash=_hash_file(candidate.path),
-            )
-            state_changed = True
-            ingested += 1
-            if options.progress_callback:
-                options.progress_callback(
-                    "file_ingested", {"path": candidate.path, "reason": reason}
-                )
-        elif status == "skipped":
-            skipped += 1
-            if options.progress_callback:
-                options.progress_callback(
-                    "file_skipped", {"path": candidate.path, "reason": reason}
-                )
-        else:
-            failed += 1
-            if options.progress_callback:
-                options.progress_callback("file_failed", {"path": candidate.path, "reason": reason})
         entry = {"path": candidate.path, "status": status, "reason": reason}
         entry.update(ingest_result)
-        results.append(entry)
+        return entry
+
+    workers = max(1, int(options.parallel_workers or 1))
+    if workers <= 1:
+        for candidate, reason in to_ingest:
+            entry = _ingest_candidate(candidate, reason)
+            status = str(entry.get("status") or "")
+            if status == "ok":
+                stat = os.stat(candidate.path)
+                store.set(
+                    candidate.path,
+                    size_bytes=int(stat.st_size),
+                    mtime_ns=int(stat.st_mtime_ns),
+                    content_hash=_hash_file(candidate.path),
+                )
+                state_changed = True
+                ingested += 1
+                if options.progress_callback:
+                    options.progress_callback(
+                        "file_ingested", {"path": candidate.path, "reason": reason}
+                    )
+            elif status == "skipped":
+                skipped += 1
+                if options.progress_callback:
+                    options.progress_callback(
+                        "file_skipped", {"path": candidate.path, "reason": reason}
+                    )
+            else:
+                failed += 1
+                if options.progress_callback:
+                    options.progress_callback(
+                        "file_failed", {"path": candidate.path, "reason": reason}
+                    )
+            results.append(entry)
+    else:
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            future_to_item = {
+                executor.submit(_ingest_candidate, candidate, reason): (candidate, reason)
+                for candidate, reason in to_ingest
+            }
+            for future in as_completed(future_to_item):
+                candidate, reason = future_to_item[future]
+                try:
+                    entry = future.result()
+                except Exception as exc:
+                    entry = {
+                        "path": candidate.path,
+                        "status": "failed",
+                        "reason": str(exc),
+                        "warnings": [],
+                        "chunks_count": 0,
+                        "bytes_processed": 0,
+                    }
+                status = str(entry.get("status") or "")
+                if status == "ok":
+                    stat = os.stat(candidate.path)
+                    store.set(
+                        candidate.path,
+                        size_bytes=int(stat.st_size),
+                        mtime_ns=int(stat.st_mtime_ns),
+                        content_hash=_hash_file(candidate.path),
+                    )
+                    state_changed = True
+                    ingested += 1
+                    if options.progress_callback:
+                        options.progress_callback(
+                            "file_ingested", {"path": candidate.path, "reason": reason}
+                        )
+                elif status == "skipped":
+                    skipped += 1
+                    if options.progress_callback:
+                        options.progress_callback(
+                            "file_skipped", {"path": candidate.path, "reason": reason}
+                        )
+                else:
+                    failed += 1
+                    if options.progress_callback:
+                        options.progress_callback(
+                            "file_failed", {"path": candidate.path, "reason": reason}
+                        )
+                results.append(entry)
 
     if state_changed and not options.dry_run:
         store.save()

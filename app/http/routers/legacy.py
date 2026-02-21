@@ -487,6 +487,10 @@ async def ingest_files_endpoint(request: Request) -> JSONResponse:
         max_pages=body.get("max_pages", settings.CONFIG.get("ingest_max_pages", 200)),
         max_slides=body.get("max_slides", settings.CONFIG.get("ingest_max_slides", 300)),
         max_sheets=body.get("max_sheets", settings.CONFIG.get("ingest_max_sheets", 50)),
+        chunk_max_tokens=body.get("chunk_max_tokens"),
+        chunk_overlap_tokens=body.get("chunk_overlap_tokens"),
+        ocr_enabled=body.get("ocr_enabled"),
+        ingest_timeout_s=body.get("ingest_timeout_s"),
     )
     summary = ingest_paths(
         paths,
@@ -541,6 +545,18 @@ async def ingest_folder_endpoint(request: Request) -> Response:
         force=force,
         embedding_model=body.get("embedding_model"),
         namespace=namespace,
+        parallel_workers=max(1, int(body.get("parallel_workers") or 1)),
+        ingest_options=build_options(
+            max_bytes=body.get("max_bytes"),
+            max_rows=body.get("max_rows"),
+            max_pages=body.get("max_pages"),
+            max_slides=body.get("max_slides"),
+            max_sheets=body.get("max_sheets"),
+            chunk_max_tokens=body.get("chunk_max_tokens"),
+            chunk_overlap_tokens=body.get("chunk_overlap_tokens"),
+            ocr_enabled=body.get("ocr_enabled"),
+            ingest_timeout_s=body.get("ingest_timeout_s"),
+        ),
     )
 
     if stream:
@@ -613,6 +629,10 @@ async def ingest_upload_endpoint(request: Request) -> JSONResponse:
         max_pages=fields.get("max_pages", settings.CONFIG.get("ingest_max_pages", 200)),
         max_slides=fields.get("max_slides", settings.CONFIG.get("ingest_max_slides", 300)),
         max_sheets=fields.get("max_sheets", settings.CONFIG.get("ingest_max_sheets", 50)),
+        chunk_max_tokens=fields.get("chunk_max_tokens"),
+        chunk_overlap_tokens=fields.get("chunk_overlap_tokens"),
+        ocr_enabled=fields.get("ocr_enabled"),
+        ingest_timeout_s=fields.get("ingest_timeout_s"),
     )
     summary = ingest_uploaded_files(
         uploaded,

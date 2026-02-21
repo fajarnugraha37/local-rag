@@ -25,7 +25,9 @@ def test_docling_ingestion_smoke_for_required_formats(tmp_path, monkeypatch) -> 
 
     called: list[str] = []
 
-    def _fake_convert_bytes(name: str, raw: bytes) -> ConvertedDocument:  # noqa: ARG001
+    def _fake_convert_bytes(
+        name: str, raw: bytes, *, ocr_enabled: bool = False
+    ) -> ConvertedDocument:  # noqa: ARG001
         called.append(name)
         text = f"# Converted\n\n{name}"
         return ConvertedDocument(

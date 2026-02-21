@@ -16,3 +16,4 @@ olefile
 pathspec
 pytest
 ruff
+typer

@@ -11,6 +11,7 @@ from .base import (
     ExtractorContext,
     ExtractorError,
     MissingDependencyError,
+    UnsupportedFormatError,
 )
 
 
@@ -33,13 +34,27 @@ def extract_docling(
 ) -> ExtractedDocument:
     try:
         converted = (
-            docling_adapter.convert_file(path)
+            docling_adapter.convert_file(path, ocr_enabled=bool(context.ingest_docling_enable_ocr))
             if raw_bytes is None
-            else docling_adapter.convert_bytes(path, raw_bytes)
+            else docling_adapter.convert_bytes(
+                path,
+                raw_bytes,
+                ocr_enabled=bool(context.ingest_docling_enable_ocr),
+            )
         )
     except Exception as exc:
         message = str(exc)
         lowered = message.lower()
+        if lowered.startswith("ocr disabled;"):
+            raise UnsupportedFormatError(message) from exc
+        if (
+            not bool(context.ingest_docling_enable_ocr)
+            and path.lower().endswith(".pdf")
+            and ("empty output" in lowered or "conversion produced empty text" in lowered)
+        ):
+            raise UnsupportedFormatError(
+                f"OCR disabled; no extractable PDF text for '{path}'. Re-run with ocr_enabled=true."
+            ) from exc
         if "docling dependency is not available" in lowered or "no module named" in lowered:
             raise MissingDependencyError(message) from exc
         raise ExtractorError(message) from exc

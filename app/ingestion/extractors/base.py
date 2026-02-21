@@ -34,6 +34,7 @@ class ExtractorContext:
     extracted_at: str
     ingest_docling_enabled: bool = True
     ingest_docling_export_format: str = "markdown"
+    ingest_docling_enable_ocr: bool = False
 
 
 class ExtractorError(RuntimeError):

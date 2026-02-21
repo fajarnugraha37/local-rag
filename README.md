@@ -24,6 +24,18 @@ Key routes:
 ## CLI
 ```powershell
 python .\cmd\app.py --cli --help
+python .\cmd\app.py --cli shell
+python .\cmd\app.py --cli query "test" --json
+python .\cmd\app.py --cli --verbose query "test"
+python .\cmd\app.py --cli query-stream "test"
+python .\cmd\app.py --cli ingest start --source folder --path . --dry-run --json
+python .\cmd\app.py --cli ingest start --source folder --path . --chunk-max-tokens 720 --chunk-overlap-tokens 72 --no-ocr-enabled --parallel-workers 4 --wait
+```
+
+Legacy action modules remain available behind:
+```powershell
+python .\cmd\app.py --cli actions <legacy-action> [args]
+python .\cmd\app.py --cli actions-list
 ```
 
 ## Make targets
@@ -33,6 +45,11 @@ make fmt
 make lint
 make test
 make run-server
+make run-cli
+make shell
+make cli-smoke
+make ingest INGEST_PATH="docs" OCR_ENABLED=false CHUNK_MAX_TOKENS=720 CHUNK_OVERLAP_TOKENS=72 PARALLEL_WORKERS=4
+make query-verbose Q="what are key payment terms?" TOP_K=6
 make idempotency-purge
 make purge-soft-deletes SOFT_DELETE_RETENTION_DAYS=30
 ```
@@ -44,3 +61,30 @@ make purge-soft-deletes SOFT_DELETE_RETENTION_DAYS=30
 - `docs/configuration.md`
 - `docs/development.md`
 - `docs/cli.md`
+
+## Configuration
+- Main config: `config.yaml` (env overrides supported).
+- Optional general-knowledge fallback (when sources are thin):
+  - `general_knowledge_fallback` and related tuning keys in `docs/configuration.md`.
+
+## OCR Prerequisites (RapidOCR + ONNX Runtime)
+OCR-enabled ingestion for scanned PDFs/images depends on RapidOCR with ONNX Runtime.
+
+Install:
+```powershell
+python -m pip install "rapidocr-onnxruntime"
+```
+
+Verify:
+```powershell
+python -c "import rapidocr_onnxruntime; print('ok')"
+```
+
+Windows note:
+- Hugging Face cache may warn about symlinks. This is non-fatal.
+- To reduce cache issues/noise:
+  - enable Windows Developer Mode, or run terminal as Administrator
+  - or suppress warning:
+```powershell
+setx HF_HUB_DISABLE_SYMLINKS_WARNING 1
+```

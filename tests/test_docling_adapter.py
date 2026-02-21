@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-from app.document_conversion.docling_adapter import (
-    convert_bytes,
-    convert_file,
-    detect_source_format,
-)
+from app.document_conversion.docling_adapter import convert_bytes, convert_file, detect_source_format
+from app.document_conversion.models import ConvertedBlock, ConvertedDocument
 
 
 def test_convert_bytes_markdown_has_required_metadata() -> None:
@@ -39,3 +36,21 @@ def test_convert_file_produces_non_empty_output(tmp_path) -> None:
     assert converted.text_markdown
     assert converted.metadata["source_path"] == str(path)
     assert converted.metadata["source_format"] == "vtt"
+
+
+def test_convert_bytes_pdf_tries_docling_without_ocr(monkeypatch) -> None:
+    from app.document_conversion import docling_adapter
+
+    called = {"value": False}
+
+    def _fake_convert_with_docling(name: str, raw: bytes, source_format: str) -> ConvertedDocument:  # noqa: ARG001
+        called["value"] = True
+        return ConvertedDocument(
+            text_markdown="Extracted PDF text",
+            blocks=[ConvertedBlock(text="Extracted PDF text", locator={}, metadata={})],
+        )
+
+    monkeypatch.setattr(docling_adapter, "_convert_with_docling", _fake_convert_with_docling)
+    converted = convert_bytes("sample.pdf", b"%PDF-sample", ocr_enabled=False)
+    assert called["value"] is True
+    assert "Extracted PDF text" in converted.text_markdown

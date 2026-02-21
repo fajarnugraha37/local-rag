@@ -1,9 +1,9 @@
 # Configuration
 
 Config file: `config.yaml`
-Env overlays: `app/config/runtime_settings.py`
+Environment overlays: `app/config/runtime_settings.py`
 
-## FastAPI/Server
+## Server/Database
 - `sqlite_db_path`
 - `idempotency_ttl_s`
 - `soft_delete_retention_days`
@@ -13,6 +13,7 @@ Env overlays: `app/config/runtime_settings.py`
 - `ollama_api.base_url`
 - `ollama_api.api_key`
 - `embedding_model`
+- `embedding_dim`
 
 ## Retrieval/Citations
 - `top_k`
@@ -20,6 +21,18 @@ Env overlays: `app/config/runtime_settings.py`
 - `citations_mode`
 - `citation_max_sources`
 - `citation_max_snippet_chars`
+- `general_knowledge_fallback`
+- `general_knowledge_min_sources`
+- `general_knowledge_min_term_hits`
+- `general_knowledge_min_answer_chars`
+- `general_knowledge_max_sentences`
+
+### General Knowledge Fallback (Optional)
+- `general_knowledge_fallback` (bool): enable general-knowledge expansion when sources are thin.
+- `general_knowledge_min_sources` (int): minimum source count to avoid fallback.
+- `general_knowledge_min_term_hits` (int): minimum query-term hits across sources.
+- `general_knowledge_min_answer_chars` (int): minimum source-based answer length before appending fallback.
+- `general_knowledge_max_sentences` (int): maximum sentences allowed when fallback is used.
 
 ## Streaming
 - `enable_streaming`
@@ -32,9 +45,11 @@ Env overlays: `app/config/runtime_settings.py`
 ## Ingestion
 - `ingest_max_bytes`, `ingest_max_rows`, `ingest_max_objects`
 - `ingest_max_pages`, `ingest_max_slides`, `ingest_max_sheets`
+- `chunk_max_tokens`, `chunk_overlap_tokens`
 - `ingest_zip_max_entries`, `ingest_zip_max_uncompressed_bytes`
 - `ingest_enable_parquet`, `ingest_enable_legacy_office`
-- Docling keys:
+- `ingest_state_path`, `doc_registry_path`
+- Docling:
   - `ingest_docling_enabled`
   - `ingest_docling_export_format`
   - `ingest_docling_device`
@@ -43,6 +58,16 @@ Env overlays: `app/config/runtime_settings.py`
   - `ingest_docling_max_pages`, `ingest_docling_max_slides`
   - `ingest_docling_max_tables`, `ingest_docling_max_images`
 
-## Purge Helpers
+## CLI Notes
+- CLI commands are direct-to-service (no HTTP hop).
+- Use `--json` for automation-safe output.
+- Use `--idempotency-key` for `ingest start` to replay duplicate requests.
+- Faster ingestion knobs:
+  - `--chunk-max-tokens`
+  - `--chunk-overlap-tokens`
+  - `--ocr-enabled/--no-ocr-enabled`
+  - `--parallel-workers` (folder/repo source)
+
+## Maintenance Helpers
 - `make idempotency-purge`
 - `make purge-soft-deletes SOFT_DELETE_RETENTION_DAYS=30`

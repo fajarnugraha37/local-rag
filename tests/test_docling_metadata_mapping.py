@@ -27,7 +27,9 @@ def _ctx() -> ExtractorContext:
 def test_locator_metadata_survives_extractor_boundary(monkeypatch) -> None:
     from app.document_conversion import docling_adapter
 
-    def _fake_convert_bytes(name: str, raw: bytes) -> ConvertedDocument:  # noqa: ARG001
+    def _fake_convert_bytes(
+        name: str, raw: bytes, *, ocr_enabled: bool = False
+    ) -> ConvertedDocument:  # noqa: ARG001
         return ConvertedDocument(
             text_markdown="# Intro\nParagraph",
             metadata={
