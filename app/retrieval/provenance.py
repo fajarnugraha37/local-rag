@@ -52,18 +52,45 @@ def normalize_snippet(value: Any, max_chars: int = 240) -> str:
 
 def normalize_locator(metadata: Optional[Dict[str, Any]]) -> str:
     data = metadata or {}
+    page_range = data.get("page_range")
+    if page_range not in (None, ""):
+        return f"pages {page_range}"
     page = data.get("page_number")
     if page not in (None, ""):
         return f"page {page}"
     slide = data.get("slide_number")
     if slide not in (None, ""):
         return f"slide {slide}"
+
+    heading = data.get("heading_path")
+    if heading not in (None, ""):
+        return f"section {heading}"
+
+    section_id = data.get("section_id")
+    if section_id not in (None, ""):
+        return f"section {section_id}"
+
     sheet = data.get("sheet_name")
+    row_range = data.get("row_range")
+    if sheet not in (None, "") and row_range not in (None, ""):
+        return f"sheet {sheet} rows {row_range}"
     row = data.get("row_number")
     if sheet not in (None, "") and row not in (None, ""):
         return f"sheet {sheet} row {row}"
     if sheet not in (None, ""):
         return f"sheet {sheet}"
+
+    xml_schema = data.get("xml_schema")
+    section_path = data.get("section_path")
+    tag_path = data.get("tag_path")
+    if xml_schema not in (None, "") and section_path not in (None, ""):
+        return f"{xml_schema} {section_path}"
+    if xml_schema not in (None, "") and tag_path not in (None, ""):
+        return f"{xml_schema} {tag_path}"
+
+    if bool(data.get("ocr")):
+        return "ocr"
+
     chunk_index = data.get("chunk_index")
     if chunk_index not in (None, ""):
         return f"chunk {chunk_index}"

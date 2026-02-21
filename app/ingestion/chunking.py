@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from app.context import token_chunking
 
@@ -91,3 +91,40 @@ def normalize_extension(file_name: str) -> Dict[str, str]:
         match = re.search(r"(\.[^.]+)$", lower)
         extension = match.group(1) if match else ""
     return {"extension": extension, "special_name": special_name}
+
+
+def _join_path(value: Any) -> str:
+    if isinstance(value, (list, tuple)):
+        return " > ".join(str(item).strip() for item in value if str(item).strip())
+    return str(value).strip()
+
+
+def _normalize_range(value: Any) -> str:
+    if isinstance(value, (list, tuple)) and len(value) >= 2:
+        left = str(value[0]).strip()
+        right = str(value[1]).strip()
+        if left and right:
+            return f"{left}-{right}"
+    return str(value).strip()
+
+
+def normalize_locator_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
+    normalized: Dict[str, Any] = {}
+    for key, value in (metadata or {}).items():
+        if value is None:
+            continue
+        if key in {"heading_path", "section_path", "tag_path"}:
+            out = _join_path(value)
+            if out:
+                normalized[key] = out
+            continue
+        if key in {"page_range", "row_range"}:
+            out = _normalize_range(value)
+            if out:
+                normalized[key] = out
+            continue
+        if isinstance(value, (str, int, float, bool)):
+            normalized[key] = value
+            continue
+        normalized[key] = str(value)
+    return normalized

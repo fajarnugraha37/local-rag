@@ -90,7 +90,7 @@ Acceptance criteria:
 - Retrieval source locator formatting remains valid.
 Validation commands:
 - `python -m pytest -q tests/test_docling_metadata_mapping.py tests/test_citation_source_mapping.py`
-Status: todo
+Status: done
 
 ## T006
 Goal: Ensure CLI and server ingestion routes consistently use Docling path.

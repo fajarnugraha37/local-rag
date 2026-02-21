@@ -209,9 +209,9 @@ def _chunks_for_document(
                 "chunk_index": chunk_index,
             }
             if doc.metadata:
-                metadata.update(doc.metadata)
+                metadata.update(chunking.normalize_locator_metadata(doc.metadata))
             if unit.metadata:
-                metadata.update(unit.metadata)
+                metadata.update(chunking.normalize_locator_metadata(unit.metadata))
             chunks.append({"text": text_chunk, "metadata": metadata})
     return chunks
 
