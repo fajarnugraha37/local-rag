@@ -137,6 +137,16 @@ class ChromaVectorStore:
         self.collection.delete(ids=ids)
         return len(ids)
 
+    def delete_by_filters(self, filters: Optional[Dict[str, Any]] = None) -> int:
+        if not filters:
+            return 0
+        existing = self.collection.get(where=filters, include=[])
+        ids = existing.get('ids') or []
+        if not ids:
+            return 0
+        self.collection.delete(ids=ids)
+        return len(ids)
+
     def count(self) -> int:
         return int(self.collection.count())
 

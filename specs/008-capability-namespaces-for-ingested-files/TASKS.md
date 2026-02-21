@@ -136,7 +136,7 @@ Validation commands:
 - `python -m pytest -q tests/test_cli_doc_management.py`
 
 Status:
-- `todo`
+- `done`
 
 ## T006 - Server Management Endpoints (`GET /docs`, `DELETE /docs/{doc_id}`)
 Goal:

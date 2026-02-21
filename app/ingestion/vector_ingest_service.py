@@ -176,9 +176,27 @@ def ingest_chunks(
     return summary
 
 
-def delete_doc(doc_id: str, *, store: Optional[ChromaVectorStore] = None) -> int:
+def delete_doc(
+    doc_id: str,
+    *,
+    namespace: Optional[str] = None,
+    all_namespaces: bool = False,
+    store: Optional[ChromaVectorStore] = None,
+) -> int:
     vector_store = store or ChromaVectorStore()
-    return vector_store.delete_by_doc_id(doc_id)
+    if not doc_id:
+        return 0
+    if all_namespaces:
+        return vector_store.delete_by_doc_id(doc_id)
+    resolved_namespace = validate_namespace(namespace, default_to_default=True)
+    return vector_store.delete_by_filters(
+        {
+            "$and": [
+                {"doc_id": str(doc_id)},
+                {"namespace": resolved_namespace},
+            ]
+        }
+    )
 
 
 __all__ = ["ingest_chunks", "delete_doc"]

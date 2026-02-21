@@ -47,6 +47,16 @@ ACTION_SPECS: Dict[str, ActionSpec] = {
         target="app.ingestion.folder_ingest_cli:main",
         description="Scan and ingest an entire folder recursively with ignore rules + idempotency.",
     ),
+    "list-docs": ActionSpec(
+        name="list-docs",
+        target="app.ingestion.list_docs_cli:main",
+        description="List ingested documents from registry (optionally by namespace).",
+    ),
+    "delete-doc": ActionSpec(
+        name="delete-doc",
+        target="app.ingestion.delete_doc_cli:main",
+        description="Delete ingested document by doc_id (default namespace or all namespaces).",
+    ),
     "ingest-email": ActionSpec(
         name="ingest-email",
         target="app.ingestion.email_ingest_job:main",
