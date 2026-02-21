@@ -72,6 +72,11 @@ ACTION_SPECS: Dict[str, ActionSpec] = {
         target="app.migration.backfill_vector_db:main",
         description="Backfill legacy chunks/embeddings JSONL into vector DB.",
     ),
+    "backfill-namespaces": ActionSpec(
+        name="backfill-namespaces",
+        target="app.migration.backfill_namespaces:main",
+        description="Backfill missing namespace metadata and rebuild doc registry from vectors.",
+    ),
     "query": ActionSpec(
         name="query",
         target="app.retrieval.hybrid_search:main",

@@ -219,7 +219,7 @@ Validation commands:
 - `python -m pytest -q tests/test_namespace_migration.py`
 
 Status:
-- `todo`
+- `done`
 
 ## T009 - End-to-End Acceptance Coverage
 Goal:

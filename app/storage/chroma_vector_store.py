@@ -150,6 +150,26 @@ class ChromaVectorStore:
     def count(self) -> int:
         return int(self.collection.count())
 
+    def get_page(self, *, offset: int = 0, limit: int = 1000) -> Dict[str, Any]:
+        safe_offset = max(0, int(offset))
+        safe_limit = max(1, int(limit))
+        result = self.collection.get(
+            offset=safe_offset,
+            limit=safe_limit,
+            include=['documents', 'metadatas'],
+        )
+        return {
+            'ids': result.get('ids') or [],
+            'documents': result.get('documents') or [],
+            'metadatas': result.get('metadatas') or [],
+        }
+
+    def update_metadatas(self, ids: List[str], metadatas: List[Dict[str, Any]]) -> int:
+        if not ids:
+            return 0
+        self.collection.update(ids=ids, metadatas=metadatas)
+        return len(ids)
+
     def health(self) -> Dict[str, Any]:
         return {
             'provider': 'chroma',
