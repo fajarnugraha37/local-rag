@@ -130,7 +130,7 @@ Acceptance criteria:
 Validation commands:
 - `python -m pytest -q tests/test_runtime_settings_docling.py`
 - `python -m pytest -q`
-Status: todo
+Status: done
 
 ## T008
 Goal: Add and update tests proving docling path is used.

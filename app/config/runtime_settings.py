@@ -63,6 +63,15 @@ def load_settings(config_file="config.yaml"):
     cfg.setdefault("ingest_timeout_s", 30)
     cfg.setdefault("ingest_zip_max_entries", 10000)
     cfg.setdefault("ingest_zip_max_uncompressed_bytes", 128 * 1024 * 1024)
+    cfg.setdefault("ingest_docling_enabled", True)
+    cfg.setdefault("ingest_docling_export_format", "markdown")
+    cfg.setdefault("ingest_docling_device", "cpu")
+    cfg.setdefault("ingest_docling_enable_ocr", False)
+    cfg.setdefault("ingest_docling_timeout_s", 30)
+    cfg.setdefault("ingest_docling_max_pages", 200)
+    cfg.setdefault("ingest_docling_max_slides", 300)
+    cfg.setdefault("ingest_docling_max_tables", 2000)
+    cfg.setdefault("ingest_docling_max_images", 200)
     cfg.setdefault("ingest_enable_parquet", True)
     cfg.setdefault("ingest_enable_legacy_office", True)
     cfg.setdefault("ingest_state_path", "data/ingest_state.json")
@@ -177,6 +186,41 @@ def load_settings(config_file="config.yaml"):
     if os.getenv("INGEST_TIMEOUT_S"):
         try:
             cfg["ingest_timeout_s"] = int(os.getenv("INGEST_TIMEOUT_S"))
+        except ValueError:
+            pass
+    parsed_docling_enabled = _parse_bool_env(os.getenv("INGEST_DOCLING_ENABLED"))
+    if parsed_docling_enabled is not None:
+        cfg["ingest_docling_enabled"] = parsed_docling_enabled
+    if os.getenv("INGEST_DOCLING_EXPORT_FORMAT"):
+        cfg["ingest_docling_export_format"] = os.getenv("INGEST_DOCLING_EXPORT_FORMAT")
+    if os.getenv("INGEST_DOCLING_DEVICE"):
+        cfg["ingest_docling_device"] = os.getenv("INGEST_DOCLING_DEVICE")
+    parsed_docling_ocr = _parse_bool_env(os.getenv("INGEST_DOCLING_ENABLE_OCR"))
+    if parsed_docling_ocr is not None:
+        cfg["ingest_docling_enable_ocr"] = parsed_docling_ocr
+    if os.getenv("INGEST_DOCLING_TIMEOUT_S"):
+        try:
+            cfg["ingest_docling_timeout_s"] = int(os.getenv("INGEST_DOCLING_TIMEOUT_S"))
+        except ValueError:
+            pass
+    if os.getenv("INGEST_DOCLING_MAX_PAGES"):
+        try:
+            cfg["ingest_docling_max_pages"] = int(os.getenv("INGEST_DOCLING_MAX_PAGES"))
+        except ValueError:
+            pass
+    if os.getenv("INGEST_DOCLING_MAX_SLIDES"):
+        try:
+            cfg["ingest_docling_max_slides"] = int(os.getenv("INGEST_DOCLING_MAX_SLIDES"))
+        except ValueError:
+            pass
+    if os.getenv("INGEST_DOCLING_MAX_TABLES"):
+        try:
+            cfg["ingest_docling_max_tables"] = int(os.getenv("INGEST_DOCLING_MAX_TABLES"))
+        except ValueError:
+            pass
+    if os.getenv("INGEST_DOCLING_MAX_IMAGES"):
+        try:
+            cfg["ingest_docling_max_images"] = int(os.getenv("INGEST_DOCLING_MAX_IMAGES"))
         except ValueError:
             pass
     if os.getenv("INGEST_ZIP_MAX_ENTRIES"):

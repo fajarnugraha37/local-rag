@@ -50,6 +50,15 @@ ingest_max_sheets: 50
 ingest_timeout_s: 30
 ingest_zip_max_entries: 10000
 ingest_zip_max_uncompressed_bytes: 134217728
+ingest_docling_enabled: true
+ingest_docling_export_format: "markdown"
+ingest_docling_device: "cpu"
+ingest_docling_enable_ocr: false
+ingest_docling_timeout_s: 30
+ingest_docling_max_pages: 200
+ingest_docling_max_slides: 300
+ingest_docling_max_tables: 2000
+ingest_docling_max_images: 200
 ingest_enable_parquet: true
 ingest_enable_legacy_office: true
 ingest_state_path: "data/ingest_state.json"
