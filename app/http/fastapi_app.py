@@ -11,6 +11,8 @@ from app.http.routers.documents import router as documents_router
 from app.http.routers.ingestions import router as ingestions_router
 from app.http.routers.legacy import router as legacy_router
 from app.http.routers.namespaces import router as namespaces_router
+from app.http.routers.query import router as query_router
+from app.http.routers.runs import router as runs_router
 from app.http.routers.system import router as system_router
 from app.repositories.sqlite.db import init_db
 from app.repositories.sqlite.idempotency_repo import IdempotencyRepository
@@ -37,5 +39,7 @@ def create_app() -> FastAPI:
     app.include_router(namespaces_router)
     app.include_router(documents_router)
     app.include_router(ingestions_router)
+    app.include_router(query_router)
+    app.include_router(runs_router)
     app.include_router(legacy_router)
     return app

@@ -137,7 +137,7 @@
   - Streaming and non-streaming endpoints return run metadata and citations.
 - Validation commands:
   - `python -m pytest -q tests/test_fastapi_query_runs.py tests/test_fastapi_sse.py`
-- Status: todo
+- Status: done
 
 ## T009: Retrieval + Rerank APIs
 - Goal: Add `/v1/retrieve` and `/v1/rerank` endpoints.
@@ -218,6 +218,7 @@
 - SQLite repositories used for server state (namespaces, docs, jobs, runs, feedback, idempotency).
 - Old server implementation removed.
 - Tests pass.
+
 
 
 
