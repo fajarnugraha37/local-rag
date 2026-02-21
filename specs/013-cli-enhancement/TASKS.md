@@ -16,7 +16,7 @@
   - `python -c "from app.cli.main import app"` succeeds.
 - Validation:
   - `python .\cmd\app.py --cli --help`
-- Status: todo
+- Status: done
 
 ## T002: Service Container
 - Goal: Provide a central wiring helper for CLI to access services directly.
