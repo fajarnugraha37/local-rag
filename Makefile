@@ -1,7 +1,7 @@
 .PHONY: help run-server run-cli chat chat-baseline chat-email ingest ingest-folder list-docs delete-doc ingest-email migrate-vault backfill backfill-namespaces query debug-retrieval validate eval test run-all all
 
 PYTHON ?= python
-APP := $(PYTHON) cmd\app.py
+APP := $(PYTHON) cmd/app.py
 TOP_K ?= 6
 Q ?= what are key payment terms?
 KEYWORD ?= invoice
