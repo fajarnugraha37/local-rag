@@ -7,7 +7,7 @@ from app.common.content_hashing import sha256_hash
 from app.common.namespaces import validate_namespace
 from app.config import runtime_settings as settings
 from app.ingestion.doc_registry_store import DocRegistryStore
-from app.indexing.embedding_service import embed_text
+from app.embeddings.service import embed_text
 from app.storage.chroma_vector_store import ChromaVectorStore
 from app.storage.vector_ids import chunk_id as stable_chunk_id
 from app.storage.vector_ids import doc_id as stable_doc_id

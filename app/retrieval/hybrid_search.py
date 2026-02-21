@@ -11,7 +11,7 @@ from collections import defaultdict
 
 from app.common.namespaces import coerce_namespace, merge_namespace_filters
 from app.config import runtime_settings as settings
-from app.indexing.embedding_service import embed_text
+from app.embeddings.service import embed_text
 from app.retrieval import heuristic_reranker as reranker
 from app.retrieval.provenance import (
     assign_source_indices,
