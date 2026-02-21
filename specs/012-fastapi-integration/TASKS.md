@@ -47,7 +47,7 @@
   - App starts and responds to `/health` and `/healthz`.
 - Validation commands:
   - `python -c "from app.http.fastapi_app import create_app; app=create_app()"`
-- Status: todo
+- Status: done
 
 ## T004: Legacy Endpoint Parity (FastAPI)
 - Goal: Re-implement all existing endpoints with identical behavior.
