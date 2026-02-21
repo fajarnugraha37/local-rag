@@ -208,7 +208,7 @@
   - Docs match FastAPI behavior and Make targets run.
 - Validation commands:
   - `make fmt`, `make lint`, `make test`, `make run-server`.
-- Status: todo
+- Status: done
 
 ## Global Acceptance Criteria
 - All legacy endpoints are preserved with identical behavior.
@@ -218,6 +218,7 @@
 - SQLite repositories used for server state (namespaces, docs, jobs, runs, feedback, idempotency).
 - Old server implementation removed.
 - Tests pass.
+
 
 
 

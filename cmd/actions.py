@@ -144,4 +144,3 @@ def format_actions_table() -> str:
     for spec in list_actions():
         lines.append(f"  {spec.name:<16} {spec.description}")
     return "\n".join(lines)
-
