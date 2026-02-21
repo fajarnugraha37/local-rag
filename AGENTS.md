@@ -5,10 +5,16 @@
 - `cmd/server/entrypoint.py`: server-mode wrapper.
 - `cmd/cli/entrypoint.py`: CLI-mode wrapper.
 - `cmd/actions.py`: shared action registry and dispatch (add new actions here).
-- `app/`: core implementation modules (`chat`, `ingestion`, `retrieval`, `storage`, `migration`, `context`, `config`).
+- `app/http/`: HTTP/SSE server bootstrap, request parsing, and route handlers.
+- `app/chat/`: chat orchestration and CLI wrappers (server compatibility entrypoint remains in `app/chat/streaming_server.py`).
+- `app/ingestion/`: extraction, scanning, pipeline and ingestion services.
+- `app/cli/`: thin CLI wrappers for ingestion commands.
+- `app/embeddings/`: canonical embedding service module.
+- `app/`: other core implementation modules (`retrieval`, `storage`, `migration`, `context`, `config`, `logging`).
 - `tests/`: pytest smoke/integration-like tests.
 - `eval/run_eval.py`: retrieval evaluation runner.
 - `data/chroma/`: persistent Chroma data.
+- `docs/`: canonical documentation set (`architecture`, `rag-pipeline`, `configuration`, `development`, `cli`, `server`, `contributing`).
 
 ## Build, Test, and Development Commands
 - `python .\cmd\app.py --help`: launcher help.
@@ -29,8 +35,14 @@
 - Keep command wiring thin in `cmd/*`; business logic stays in `app/*`.
 - Do not add new root-level entrypoint scripts.
 - For new runnable capabilities, add one action in `cmd/actions.py` and call existing `app/*` logic.
-- For HTTP APIs, add routes in `app/chat/streaming_server.py` and mirror them in `tests/postman/*`.
+- For HTTP APIs, add routes in `app/http/handlers/*` and wire dispatch in `app/http/server.py` (keep `app/chat/streaming_server.py` as compatibility shell).
 - For ingestion formats, register extractors in `app/ingestion/extractors/registry.py` and keep parsing/chunking shared through `app/ingestion/pipeline.py`.
+
+## Module Boundaries
+- Keep orchestration/presentation in wrapper modules (`cmd/*`, `app/cli/*`, `app/chat/*` CLI files).
+- Keep reusable business logic in service modules (`app/http/handlers/*`, `app/ingestion/*`, `app/retrieval/*`, `app/embeddings/*`).
+- Preserve compatibility import paths when moving modules (add shims instead of breaking old imports).
+- Keep HTTP response envelopes consistent (`ok` + `error` on failures).
 
 ## Testing Guidelines
 - Add tests under `tests/` using `test_*.py` naming.
@@ -41,10 +53,22 @@
   - `python .\cmd\app.py --cli --help`
 - Run `python -m pytest -q` before PRs.
 
+## Validation Sequence
+- For CLI/server contract changes, run:
+  - `python .\cmd\app.py --help`
+  - `python .\cmd\app.py --cli --help`
+  - `python .\cmd\app.py --server --help`
+- For quality gate:
+  - `make fmt`
+  - `make lint`
+  - `make test`
+- Add targeted tests for touched modules before full test suite.
+
 ## Commit & Pull Request Guidelines
 - Use imperative commit titles (example: `Centralize launcher under cmd/app.py`).
 - Keep PRs scoped to one feature/cutover.
 - Include validation commands and outcomes in PR description.
+- Prefer safe, small diffs that preserve behavior unless behavior change is explicitly required.
 
 ## Security & Configuration Tips
 - Keep secrets in `.env`; never commit credentials.

@@ -2,6 +2,15 @@
 
 Local-first RAG for documents and email with persistent vector storage (Chroma), hybrid retrieval, and optional SSE streaming chat.
 
+## Documentation
+- `docs/architecture.md`
+- `docs/rag-pipeline.md`
+- `docs/configuration.md`
+- `docs/development.md`
+- `docs/cli.md`
+- `docs/server.md`
+- `docs/contributing.md`
+
 ## Unified Entrypoint (Required)
 The project now uses a single launcher:
 
@@ -131,6 +140,8 @@ Legacy `.doc/.ppt/.xls` extraction is best-effort (OLE parsing). Unsupported bin
 make help
 make run-server
 make run-cli
+make fmt
+make lint
 make chat
 make ingest
 make query Q="what are key payment terms?" TOP_K=6

@@ -40,6 +40,7 @@ help:
 	@$(info   make test)
 	@$(info   make eval)
 	@$(info   make all)
+	@$(info   make run-all)
 	@:
 
 fmt:
