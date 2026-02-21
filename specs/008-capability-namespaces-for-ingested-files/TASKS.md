@@ -248,7 +248,7 @@ Validation commands:
 - `python -m pytest -q`
 
 Status:
-- `todo`
+- `done`
 
 ## Global Acceptance Criteria (Spec 008)
 - Ingestion assigns namespace correctly (default + custom).
