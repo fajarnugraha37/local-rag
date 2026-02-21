@@ -6,7 +6,15 @@ import re
 from typing import List, Optional
 
 from .base import ExtractedDocument, ExtractedUnit, ExtractorContext
-from .utils import batch_lines, json_pretty, normalize_text, read_bytes, read_text, safe_decode, strip_json_comments
+from .utils import (
+    batch_lines,
+    json_pretty,
+    normalize_text,
+    read_bytes,
+    read_text,
+    safe_decode,
+    strip_json_comments,
+)
 
 
 def extract_json(
@@ -67,7 +75,9 @@ def extract_json_lines(
     return ExtractedDocument(doc_type="jsonl", units=units, warnings=warnings)
 
 
-def extract_svg(path: str, raw_bytes: Optional[bytes], context: ExtractorContext) -> ExtractedDocument:
+def extract_svg(
+    path: str, raw_bytes: Optional[bytes], context: ExtractorContext
+) -> ExtractedDocument:
     if raw_bytes is None:
         raw = read_bytes(path, max_bytes=context.max_bytes)
     else:

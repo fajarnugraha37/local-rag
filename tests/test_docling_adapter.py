@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from app.document_conversion.docling_adapter import convert_bytes, convert_file, detect_source_format
+from app.document_conversion.docling_adapter import (
+    convert_bytes,
+    convert_file,
+    detect_source_format,
+)
 
 
 def test_convert_bytes_markdown_has_required_metadata() -> None:
@@ -17,7 +21,9 @@ def test_convert_bytes_markdown_has_required_metadata() -> None:
 
 def test_detect_source_format_xml_hints_and_docling_json() -> None:
     jats = b'<?xml version="1.0"?><article xmlns="http://jats.nlm.nih.gov">x</article>'
-    uspto = b'<?xml version="1.0"?><us-patent-grant><patent-title>x</patent-title></us-patent-grant>'
+    uspto = (
+        b'<?xml version="1.0"?><us-patent-grant><patent-title>x</patent-title></us-patent-grant>'
+    )
     docling_json = b'{"schema_name":"docling_document","texts":["a"]}'
 
     assert detect_source_format("sample.xml", jats) == "xml-jats"

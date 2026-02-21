@@ -45,14 +45,18 @@ class DocumentService:
         next_cursor = None
         if len(records) == limit and records:
             tail = records[-1]
-            next_cursor = _encode_cursor(str(tail.get("updated_at") or ""), str(tail.get("doc_id") or ""))
+            next_cursor = _encode_cursor(
+                str(tail.get("updated_at") or ""), str(tail.get("doc_id") or "")
+            )
         return {
             "records": records,
             "count": len(records),
             "next_cursor": next_cursor,
         }
 
-    def get_document(self, namespace: str, doc_id: str, include_deleted: bool = False) -> dict[str, Any] | None:
+    def get_document(
+        self, namespace: str, doc_id: str, include_deleted: bool = False
+    ) -> dict[str, Any] | None:
         return self.repo.get(namespace, doc_id, include_deleted=include_deleted)
 
     def delete_document(self, namespace: str, doc_id: str, hard_delete: bool = False) -> bool:

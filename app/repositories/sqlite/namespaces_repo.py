@@ -72,7 +72,9 @@ class NamespacesRepository:
         return cur.rowcount > 0
 
     def purge_soft_deleted(self, retention_days: int = 30) -> int:
-        threshold = (datetime.now(timezone.utc) - timedelta(days=max(0, int(retention_days)))).isoformat()
+        threshold = (
+            datetime.now(timezone.utc) - timedelta(days=max(0, int(retention_days)))
+        ).isoformat()
         with connect(self.db_path) as conn:
             cur = conn.execute(
                 "DELETE FROM namespaces WHERE deleted_at IS NOT NULL AND deleted_at <= ?",

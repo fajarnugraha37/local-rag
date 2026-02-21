@@ -27,7 +27,9 @@ def _scalar_safe_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def extract_docling(
-    path: str, raw_bytes: Optional[bytes], context: ExtractorContext  # noqa: ARG001
+    path: str,
+    raw_bytes: Optional[bytes],
+    context: ExtractorContext,  # noqa: ARG001
 ) -> ExtractedDocument:
     try:
         converted = (
@@ -67,4 +69,3 @@ def extract_docling(
 
 def build_docling_extractor(name: str = "docling", doc_type: str = "docling") -> Extractor:
     return Extractor(name=name, doc_type=doc_type, extract=extract_docling)
-

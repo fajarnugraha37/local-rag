@@ -52,7 +52,9 @@ class DocumentsRepository:
             )
         return self.get(namespace, doc_id, include_deleted=True) or {}
 
-    def get(self, namespace: str, doc_id: str, include_deleted: bool = False) -> dict[str, Any] | None:
+    def get(
+        self, namespace: str, doc_id: str, include_deleted: bool = False
+    ) -> dict[str, Any] | None:
         query = "SELECT * FROM documents WHERE namespace = ? AND doc_id = ?"
         params: list[Any] = [namespace, doc_id]
         if not include_deleted:
@@ -110,7 +112,9 @@ class DocumentsRepository:
         return cur.rowcount > 0
 
     def purge_soft_deleted(self, retention_days: int = 30) -> int:
-        threshold = (datetime.now(timezone.utc) - timedelta(days=max(0, int(retention_days)))).isoformat()
+        threshold = (
+            datetime.now(timezone.utc) - timedelta(days=max(0, int(retention_days)))
+        ).isoformat()
         with connect(self.db_path) as conn:
             cur = conn.execute(
                 "DELETE FROM documents WHERE deleted_at IS NOT NULL AND deleted_at <= ?",

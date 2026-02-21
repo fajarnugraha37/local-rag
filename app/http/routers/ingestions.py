@@ -55,7 +55,9 @@ async def create_upload_ingestion(request: Request) -> dict:
 
 
 @router.get("")
-def list_ingestions(namespace: str | None = Query(default=None), limit: int = Query(default=100, ge=1, le=500)) -> dict:
+def list_ingestions(
+    namespace: str | None = Query(default=None), limit: int = Query(default=100, ge=1, le=500)
+) -> dict:
     ns = validate_namespace(namespace, default_to_default=True) if namespace else None
     rows = _service().list_jobs(namespace=ns, limit=limit)
     return {"ok": True, "records": rows, "count": len(rows)}

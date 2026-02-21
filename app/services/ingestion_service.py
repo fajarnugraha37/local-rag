@@ -125,7 +125,9 @@ class IngestionService:
             self.repo.add_event(ingestion_id, "failed", {"error": str(exc)})
             self.repo.update_status(ingestion_id, "failed", last_error=str(exc))
 
-    def _run_folder(self, ingestion_id: str, namespace: str, source_spec: dict[str, Any]) -> dict[str, Any]:
+    def _run_folder(
+        self, ingestion_id: str, namespace: str, source_spec: dict[str, Any]
+    ) -> dict[str, Any]:
         path = str(source_spec.get("path") or "").strip()
         if not path:
             raise ValueError("folder source_spec.path is required")
@@ -149,12 +151,16 @@ class IngestionService:
         )
         return ingest_folder(options)
 
-    def _run_repo(self, ingestion_id: str, namespace: str, source_spec: dict[str, Any]) -> dict[str, Any]:
+    def _run_repo(
+        self, ingestion_id: str, namespace: str, source_spec: dict[str, Any]
+    ) -> dict[str, Any]:
         repo_url = str(source_spec.get("repo") or "").strip()
         if not repo_url:
             raise ValueError("repo source_spec.repo is required")
         revision = str(source_spec.get("revision") or "").strip()
-        work_root = Path(str(settings.CONFIG.get("ingest_repo_workspace") or "data/ingestions/repos"))
+        work_root = Path(
+            str(settings.CONFIG.get("ingest_repo_workspace") or "data/ingestions/repos")
+        )
         work_root.mkdir(parents=True, exist_ok=True)
         clone_dir = work_root / ingestion_id
 
@@ -198,21 +204,32 @@ class IngestionService:
             for name, blob in upload_payload.files:
                 file_name = os.path.basename(name) or "upload.bin"
                 uploaded.append((file_name, blob))
-                self.repo.add_event(ingestion_id, "upload_file_received", {"name": file_name, "size": len(blob)})
+                self.repo.add_event(
+                    ingestion_id, "upload_file_received", {"name": file_name, "size": len(blob)}
+                )
 
             options = build_options(
                 max_bytes=upload_payload.fields.get(
                     "max_bytes", settings.CONFIG.get("ingest_max_bytes", 8 * 1024 * 1024)
                 ),
-                max_rows=upload_payload.fields.get("max_rows", settings.CONFIG.get("ingest_max_rows", 2000)),
-                max_pages=upload_payload.fields.get("max_pages", settings.CONFIG.get("ingest_max_pages", 200)),
-                max_slides=upload_payload.fields.get("max_slides", settings.CONFIG.get("ingest_max_slides", 300)),
-                max_sheets=upload_payload.fields.get("max_sheets", settings.CONFIG.get("ingest_max_sheets", 50)),
+                max_rows=upload_payload.fields.get(
+                    "max_rows", settings.CONFIG.get("ingest_max_rows", 2000)
+                ),
+                max_pages=upload_payload.fields.get(
+                    "max_pages", settings.CONFIG.get("ingest_max_pages", 200)
+                ),
+                max_slides=upload_payload.fields.get(
+                    "max_slides", settings.CONFIG.get("ingest_max_slides", 300)
+                ),
+                max_sheets=upload_payload.fields.get(
+                    "max_sheets", settings.CONFIG.get("ingest_max_sheets", 50)
+                ),
             )
             return ingest_uploaded_files(
                 uploaded,
                 options=options,
-                embedding_model=source_spec.get("embedding_model") or upload_payload.fields.get("embedding_model"),
+                embedding_model=source_spec.get("embedding_model")
+                or upload_payload.fields.get("embedding_model"),
                 namespace=namespace,
             )
         finally:

@@ -12,7 +12,9 @@ class NamespaceService:
     def list_namespaces(self, include_deleted: bool = False) -> list[dict[str, Any]]:
         return self.repo.list(include_deleted=include_deleted)
 
-    def create_namespace(self, namespace: str, defaults: dict[str, Any] | None = None) -> dict[str, Any]:
+    def create_namespace(
+        self, namespace: str, defaults: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         return self.repo.create(namespace, defaults=defaults)
 
     def delete_namespace(self, namespace: str, dry_run: bool = False) -> dict[str, Any]:
@@ -28,4 +30,9 @@ class NamespaceService:
                 "would_delete": existing.get("deleted_at") is None,
             }
         deleted = self.repo.soft_delete(namespace)
-        return {"namespace": namespace, "deleted": bool(deleted), "not_found": False, "dry_run": False}
+        return {
+            "namespace": namespace,
+            "deleted": bool(deleted),
+            "not_found": False,
+            "dry_run": False,
+        }

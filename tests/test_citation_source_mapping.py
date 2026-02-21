@@ -83,5 +83,10 @@ def test_scored_chunks_emits_provenance_and_dedupes_chunk_ids(tmp_path, monkeypa
 def test_normalize_locator_supports_docling_locators() -> None:
     assert normalize_locator({"page_range": "4-6"}) == "pages 4-6"
     assert normalize_locator({"heading_path": "Intro > Scope"}) == "section Intro > Scope"
-    assert normalize_locator({"sheet_name": "Data", "row_range": "10-20"}) == "sheet Data rows 10-20"
-    assert normalize_locator({"xml_schema": "jats", "section_path": "body > sec-1"}) == "jats body > sec-1"
+    assert (
+        normalize_locator({"sheet_name": "Data", "row_range": "10-20"}) == "sheet Data rows 10-20"
+    )
+    assert (
+        normalize_locator({"xml_schema": "jats", "section_path": "body > sec-1"})
+        == "jats body > sec-1"
+    )

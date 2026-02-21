@@ -117,7 +117,9 @@ class IngestionsRepository:
             )
         return cur.rowcount > 0
 
-    def add_event(self, ingestion_id: str, event: str, payload: dict[str, Any] | None = None) -> None:
+    def add_event(
+        self, ingestion_id: str, event: str, payload: dict[str, Any] | None = None
+    ) -> None:
         with connect(self.db_path) as conn:
             conn.execute(
                 "INSERT INTO ingestion_events(ingestion_id, ts, event, payload_json) VALUES(?, ?, ?, ?)",

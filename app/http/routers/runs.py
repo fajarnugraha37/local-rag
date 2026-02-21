@@ -38,7 +38,9 @@ def get_run_events(run_id: str, limit: int = Query(default=1000, ge=1, le=5000))
 
 
 @router.get("/{run_id}/replay")
-def replay_run_events(run_id: str, limit: int = Query(default=1000, ge=1, le=5000)) -> StreamingResponse:
+def replay_run_events(
+    run_id: str, limit: int = Query(default=1000, ge=1, le=5000)
+) -> StreamingResponse:
     events = _svc().get_events(run_id, limit=limit)
 
     def event_iter():
@@ -50,5 +52,6 @@ def replay_run_events(run_id: str, limit: int = Query(default=1000, ge=1, le=500
         "Connection": "close",
         "X-Accel-Buffering": "no",
     }
-    return StreamingResponse(event_iter(), media_type="text/event-stream; charset=utf-8", headers=headers)
-
+    return StreamingResponse(
+        event_iter(), media_type="text/event-stream; charset=utf-8", headers=headers
+    )

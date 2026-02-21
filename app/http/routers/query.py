@@ -58,7 +58,9 @@ async def query_stream(body: QueryRequest) -> StreamingResponse:
         "Connection": "close",
         "X-Accel-Buffering": "no",
     }
-    return StreamingResponse(event_iter(), media_type="text/event-stream; charset=utf-8", headers=headers)
+    return StreamingResponse(
+        event_iter(), media_type="text/event-stream; charset=utf-8", headers=headers
+    )
 
 
 class RetrieveRequest(BaseModel):
@@ -99,4 +101,3 @@ def rerank(body: RerankRequest) -> dict:
         weights=body.weights,
     )
     return {"ok": True, **result}
-

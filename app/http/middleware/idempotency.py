@@ -68,9 +68,9 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         )
 
         response = await call_next(request)
-        if isinstance(response, Response) and not response.headers.get("content-type", "").startswith(
-            "text/event-stream"
-        ):
+        if isinstance(response, Response) and not response.headers.get(
+            "content-type", ""
+        ).startswith("text/event-stream"):
             body_bytes = b""
             if hasattr(response, "body") and response.body is not None:
                 body_bytes = response.body

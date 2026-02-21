@@ -260,7 +260,9 @@ def docs_get(request: Request) -> JSONResponse:
     except ValueError as exc:
         return _err(400, str(exc))
 
-    store = DocRegistryStore(str(settings.CONFIG.get("doc_registry_path", "data/doc_registry.json")))
+    store = DocRegistryStore(
+        str(settings.CONFIG.get("doc_registry_path", "data/doc_registry.json"))
+    )
     payload = store.list_docs(namespace=namespace, limit=limit, cursor=cursor)
     return JSONResponse(status_code=200, content={"ok": True, **payload})
 
@@ -283,7 +285,9 @@ def docs_delete(doc_id: str, request: Request) -> JSONResponse:
             return _err(400, str(exc))
 
     vectors_deleted = delete_doc(doc_id, namespace=namespace, all_namespaces=all_namespaces)
-    registry_store = DocRegistryStore(str(settings.CONFIG.get("doc_registry_path", "data/doc_registry.json")))
+    registry_store = DocRegistryStore(
+        str(settings.CONFIG.get("doc_registry_path", "data/doc_registry.json"))
+    )
     registry_deleted = 0
     if all_namespaces:
         page = registry_store.list_docs(limit=100000)
@@ -393,7 +397,9 @@ async def chat_stream(request: Request) -> Response:
         "Connection": "close",
         "X-Accel-Buffering": "no",
     }
-    return StreamingResponse(event_iter(), media_type="text/event-stream; charset=utf-8", headers=headers)
+    return StreamingResponse(
+        event_iter(), media_type="text/event-stream; charset=utf-8", headers=headers
+    )
 
 
 @router.post("/ingest/chunks")
@@ -459,9 +465,13 @@ async def ingest_files_endpoint(request: Request) -> JSONResponse:
         return _err(400, "'paths' must be a non-empty array of strings")
     include_patterns = body.get("include") or []
     exclude_patterns = body.get("exclude") or []
-    if not isinstance(include_patterns, list) or any(not isinstance(v, str) for v in include_patterns):
+    if not isinstance(include_patterns, list) or any(
+        not isinstance(v, str) for v in include_patterns
+    ):
         return _err(400, "'include' must be an array of strings")
-    if not isinstance(exclude_patterns, list) or any(not isinstance(v, str) for v in exclude_patterns):
+    if not isinstance(exclude_patterns, list) or any(
+        not isinstance(v, str) for v in exclude_patterns
+    ):
         return _err(400, "'exclude' must be an array of strings")
     try:
         namespace = validate_namespace(body.get("namespace"), default_to_default=True)
@@ -501,9 +511,13 @@ async def ingest_folder_endpoint(request: Request) -> Response:
 
     include_patterns = body.get("include") or []
     exclude_patterns = body.get("exclude") or []
-    if not isinstance(include_patterns, list) or any(not isinstance(v, str) for v in include_patterns):
+    if not isinstance(include_patterns, list) or any(
+        not isinstance(v, str) for v in include_patterns
+    ):
         return _err(400, "'include' must be an array of strings")
-    if not isinstance(exclude_patterns, list) or any(not isinstance(v, str) for v in exclude_patterns):
+    if not isinstance(exclude_patterns, list) or any(
+        not isinstance(v, str) for v in exclude_patterns
+    ):
         return _err(400, "'exclude' must be an array of strings")
 
     request_id = str(body.get("request_id") or uuid.uuid4())
@@ -659,4 +673,3 @@ async def retrieval_query_endpoint(request: Request) -> JSONResponse:
         sources=sources,
         citation_stats=rendered.get("stats", {}),
     )
-

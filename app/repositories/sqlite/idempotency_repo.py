@@ -31,7 +31,9 @@ class IdempotencyRepository:
                 (key, method, path, signature, _now_iso(), expires_at),
             )
 
-    def set_response(self, key: str, method: str, path: str, status: int, response_body: str) -> bool:
+    def set_response(
+        self, key: str, method: str, path: str, status: int, response_body: str
+    ) -> bool:
         with connect(self.db_path) as conn:
             cur = conn.execute(
                 "UPDATE idempotency SET status = ?, response_body = ? WHERE key = ? AND method = ? AND path = ?",
