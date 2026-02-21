@@ -1,4 +1,4 @@
-.PHONY: help install setup fmt lint run-server run-cli chat chat-baseline chat-email ingest ingest-folder list-docs delete-doc ingest-email migrate-vault backfill backfill-namespaces query debug-retrieval validate ingest-smoke eval test run-all all
+.PHONY: help install setup fmt lint run-server run-cli chat chat-baseline chat-email ingest ingest-folder list-docs delete-doc ingest-email migrate-vault backfill backfill-namespaces query debug-retrieval validate ingest-smoke eval test idempotency-purge purge-soft-deletes run-all all
 
 PYTHON ?= python
 APP := $(PYTHON) cmd/app.py
@@ -15,6 +15,7 @@ FOLDER_PATH ?=
 DOC_ID ?=
 NAMESPACE ?=
 ALL_NAMESPACES ?= false
+SOFT_DELETE_RETENTION_DAYS ?= 30
 
 help:
 	@$(info Available targets:)
@@ -41,6 +42,8 @@ help:
 	@$(info   make lint)
 	@$(info   make test)
 	@$(info   make ingest-smoke)
+	@$(info   make idempotency-purge)
+	@$(info   make purge-soft-deletes SOFT_DELETE_RETENTION_DAYS=30)
 	@$(info   make eval)
 	@$(info   make all)
 	@$(info   make run-all)
@@ -157,6 +160,12 @@ test:
 
 ingest-smoke:
 	$(PYTHON) -m pytest -q tests/test_smoke_ingest.py tests/test_docling_ingestion_smoke.py
+
+idempotency-purge:
+	$(PYTHON) -c "from app.config.runtime_settings import CONFIG; from app.repositories.sqlite.idempotency_repo import IdempotencyRepository; repo=IdempotencyRepository(str(CONFIG.get('sqlite_db_path','data/app.db'))); print({'deleted': repo.delete_expired()})"
+
+purge-soft-deletes:
+	$(PYTHON) -c "from app.config.runtime_settings import CONFIG; from app.repositories.sqlite.documents_repo import DocumentsRepository; from app.repositories.sqlite.namespaces_repo import NamespacesRepository; db=str(CONFIG.get('sqlite_db_path','data/app.db')); days=int('$(SOFT_DELETE_RETENTION_DAYS)'); docs=DocumentsRepository(db).purge_soft_deleted(retention_days=days); nss=NamespacesRepository(db).purge_soft_deleted(retention_days=days); print({'documents_deleted': docs, 'namespaces_deleted': nss, 'retention_days': days})"
 
 eval:
 	$(APP) --cli eval --questions eval\questions.jsonl --top-k $(TOP_K) --output eval\results.json

@@ -1,632 +1,290 @@
 {
   "info": {
     "name": "Easy Local RAG Server",
-    "description": "Postman collection for centralized server mode (python .\\cmd\\app.py --server). Covers health, SSE chat, ingestion, retrieval, and HTTP action execution.",
+    "description": "Comprehensive Postman collection for FastAPI server mode (legacy compatibility + v1 APIs).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_postman_id": "4c4b8a70-2f33-4f01-b090-c1f9d9a1b2a9"
   },
   "item": [
     {
-      "name": "Server",
+      "name": "System",
       "item": [
+        {"name": "Health", "request": {"method": "GET", "url": "{{baseUrl}}/health"}},
+        {"name": "Healthz", "request": {"method": "GET", "url": "{{baseUrl}}/healthz"}},
+        {"name": "Readyz", "request": {"method": "GET", "url": "{{baseUrl}}/readyz"}},
+        {"name": "Version", "request": {"method": "GET", "url": "{{baseUrl}}/version"}},
+        {"name": "Capabilities", "request": {"method": "GET", "url": "{{baseUrl}}/v1/capabilities"}},
+        {"name": "Config GET", "request": {"method": "GET", "url": "{{baseUrl}}/v1/config"}},
         {
-          "name": "Health",
+          "name": "Config PATCH",
           "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/health",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "health"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('ok=true', function () { pm.expect(pm.response.json().ok).to.eql(true); });"
-                ]
-              }
-            }
-          ]
+            "method": "PATCH",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"updates\": {\n    \"top_k\": 6,\n    \"enable_streaming\": true\n  }\n}"},
+            "url": "{{baseUrl}}/v1/config"
+          }
         },
-        {
-          "name": "List Actions",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/actions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "actions"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('includes http_supported_actions', function () {",
-                  "  var body = pm.response.json();",
-                  "  pm.expect(Array.isArray(body.http_supported_actions)).to.eql(true);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        }
+        {"name": "Swagger UI", "request": {"method": "GET", "url": "{{baseUrl}}/api/docs"}},
+        {"name": "ReDoc", "request": {"method": "GET", "url": "{{baseUrl}}/api/redoc"}}
       ]
     },
     {
-      "name": "Chat SSE",
+      "name": "Legacy Compatibility",
       "item": [
+        {"name": "Actions", "request": {"method": "GET", "url": "{{baseUrl}}/actions"}},
+        {"name": "Action Alias", "request": {"method": "GET", "url": "{{baseUrl}}/action"}},
         {
-          "name": "SSE Chat Stream - Basic",
+          "name": "Actions Run",
           "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "text/event-stream"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/chat/stream?question={{question}}&top_k={{top_k}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "chat",
-                "stream"
-              ],
-              "query": [
-                {
-                  "key": "question",
-                  "value": "{{question}}"
-                },
-                {
-                  "key": "top_k",
-                  "value": "{{top_k}}"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('content-type is SSE', function () {",
-                  "  var ct = pm.response.headers.get('Content-Type') || '';",
-                  "  pm.expect(ct.toLowerCase()).to.include('text/event-stream');",
-                  "});"
-                ]
-              }
-            }
-          ]
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"action\": \"query\",\n  \"args\": [\"--help\"]\n}"},
+            "url": "{{baseUrl}}/actions/run"
+          }
         },
         {
-          "name": "SSE Chat Stream - Missing Question (400)",
+          "name": "Action Run Alias",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"action\": \"query\",\n  \"args\": [\"--help\"]\n}"},
+            "url": "{{baseUrl}}/action/run"
+          }
+        },
+        {"name": "Docs List", "request": {"method": "GET", "url": "{{baseUrl}}/docs?limit=20"}},
+        {"name": "Docs Delete", "request": {"method": "DELETE", "url": "{{baseUrl}}/docs/{{doc_id}}?namespace={{namespace}}"}},
+        {
+          "name": "Chat Stream SSE",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/chat/stream",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "chat",
-                "stream"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 400 for missing question', function () { pm.response.to.have.status(400); });"
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "Ingestion",
-      "item": [
+            "header": [{"key": "Accept", "value": "text/event-stream"}],
+            "url": "{{baseUrl}}/chat/stream?question={{question}}&top_k={{top_k}}"
+          }
+        },
         {
           "name": "Ingest Chunks",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"chunks\": [\n    \"Payment terms are net 30 days.\",\n    \"Late fee applies after due date.\"\n  ],\n  \"source_path\": \"postman/manual\",\n  \"doc_id\": \"postman_doc_001\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/ingest/chunks",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "ingest",
-                "chunks"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('ingest response has result', function () {",
-                  "  var body = pm.response.json();",
-                  "  pm.expect(body.ok).to.eql(true);",
-                  "  pm.expect(body.result).to.be.an('object');",
-                  "});"
-                ]
-              }
-            }
-          ]
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"chunks\": [\"alpha\", \"beta\"],\n  \"doc_id\": \"postman_doc_legacy_chunks\",\n  \"source_path\": \"postman/legacy\",\n  \"namespace\": \"{{namespace}}\"\n}"},
+            "url": "{{baseUrl}}/ingest/chunks"
+          }
         },
         {
           "name": "Ingest Text",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"text\": \"Invoice policy: payment due within 14 days. Support contact is finance@example.com\",\n  \"doc_id\": \"postman_doc_002\",\n  \"source_path\": \"postman/text\",\n  \"max_chars\": 300\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/ingest/text",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "ingest",
-                "text"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('ingest text returns chunk_count', function () {",
-                  "  var body = pm.response.json();",
-                  "  pm.expect(body.ok).to.eql(true);",
-                  "  pm.expect(body.chunk_count).to.be.a('number');",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Delete Document Vectors",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"doc_id\": \"postman_doc_001\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/vectors/delete-doc",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "vectors",
-                "delete-doc"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('delete returns deleted count', function () {",
-                  "  var body = pm.response.json();",
-                  "  pm.expect(body.ok).to.eql(true);",
-                  "  pm.expect(body.deleted).to.be.a('number');",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "List Documents",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/docs?limit=20",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "docs"
-              ],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "20"
-                }
-              ]
-            }
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"text\": \"payment due in 14 days\",\n  \"doc_id\": \"postman_doc_legacy_text\",\n  \"source_path\": \"postman/legacy\",\n  \"namespace\": \"{{namespace}}\"\n}"},
+            "url": "{{baseUrl}}/ingest/text"
           }
         },
         {
-          "name": "Delete Document (Namespace Default)",
+          "name": "Ingest Files",
           "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/docs/postman_doc_001?namespace=default",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "docs",
-                "postman_doc_001"
-              ],
-              "query": [
-                {
-                  "key": "namespace",
-                  "value": "default"
-                }
-              ]
-            }
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"paths\": [\"README.md\"],\n  \"recursive\": false,\n  \"namespace\": \"{{namespace}}\"\n}"},
+            "url": "{{baseUrl}}/ingest/files"
           }
         },
         {
-          "name": "Ingest Files (Server Paths)",
+          "name": "Ingestion Files Alias",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"paths\": [\"README.md\"],\n  \"recursive\": false\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/ingest/files",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "ingest",
-                "files"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('summary exists', function () { var body = pm.response.json(); pm.expect(body.ok).to.eql(true); pm.expect(body.summary).to.be.an('object'); });"
-                ]
-              }
-            }
-          ]
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"paths\": [\"README.md\"],\n  \"recursive\": false,\n  \"namespace\": \"{{namespace}}\"\n}"},
+            "url": "{{baseUrl}}/ingestion/files"
+          }
         },
         {
-          "name": "Ingest Folder (Server Path)",
+          "name": "Ingest Folder JSON",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"path\": \".\",\n  \"dry_run\": true,\n  \"stream\": false,\n  \"respect_gitignore\": true\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/ingest/folder",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "ingest",
-                "folder"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('folder summary exists', function () {",
-                  "  var body = pm.response.json();",
-                  "  pm.expect(body.ok).to.eql(true);",
-                  "  pm.expect(body.request_id).to.be.a('string');",
-                  "  pm.expect(body.summary).to.be.an('object');",
-                  "});"
-                ]
-              }
-            }
-          ]
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"path\": \".\",\n  \"dry_run\": true,\n  \"stream\": false,\n  \"namespace\": \"{{namespace}}\"\n}"},
+            "url": "{{baseUrl}}/ingest/folder"
+          }
         },
         {
-          "name": "Ingest Upload (Multipart)",
+          "name": "Ingest Folder SSE",
           "request": {
             "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": "{{uploadFilePath}}"
-                },
-                {
-                  "key": "max_rows",
-                  "type": "text",
-                  "value": "1000"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{baseUrl}}/ingest/upload",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "ingest",
-                "upload"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('upload summary exists', function () { var body = pm.response.json(); pm.expect(body.ok).to.eql(true); pm.expect(body.summary).to.be.an('object'); });"
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "Retrieval",
-      "item": [
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Accept", "value": "text/event-stream"}],
+            "body": {"mode": "raw", "raw": "{\n  \"path\": \".\",\n  \"dry_run\": true,\n  \"stream\": true,\n  \"request_id\": \"postman-req-1\",\n  \"namespace\": \"{{namespace}}\"\n}"},
+            "url": "{{baseUrl}}/ingest/folder"
+          }
+        },
+        {
+          "name": "Ingest Upload",
+          "request": {
+            "method": "POST",
+            "body": {"mode": "formdata", "formdata": [{"key": "file", "type": "file", "src": "{{uploadFilePath}}"}, {"key": "namespace", "type": "text", "value": "{{namespace}}"}]},
+            "url": "{{baseUrl}}/ingest/upload"
+          }
+        },
+        {
+          "name": "Ingestion Upload Alias",
+          "request": {
+            "method": "POST",
+            "body": {"mode": "formdata", "formdata": [{"key": "file", "type": "file", "src": "{{uploadFilePath}}"}, {"key": "namespace", "type": "text", "value": "{{namespace}}"}]},
+            "url": "{{baseUrl}}/ingestion/upload"
+          }
+        },
+        {
+          "name": "Vectors Delete Doc",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"doc_id\": \"{{doc_id}}\"\n}"},
+            "url": "{{baseUrl}}/vectors/delete-doc"
+          }
+        },
         {
           "name": "Retrieval Query",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"query\": \"payment terms\",\n  \"top_k\": 3,\n  \"rerank\": true\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/retrieval/query",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "retrieval",
-                "query"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('response has results array', function () {",
-                  "  var body = pm.response.json();",
-                  "  pm.expect(body.ok).to.eql(true);",
-                  "  pm.expect(Array.isArray(body.results)).to.eql(true);",
-                  "  pm.expect(typeof body.answer).to.eql('string');",
-                  "  pm.expect(Array.isArray(body.sources)).to.eql(true);",
-                  "  pm.expect(body.citation_stats).to.be.an('object');",
-                  "});"
-                ]
-              }
-            }
-          ]
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"query\": \"payment terms\",\n  \"top_k\": 3,\n  \"rerank\": true\n}"},
+            "url": "{{baseUrl}}/retrieval/query"
+          }
         }
       ]
     },
     {
-      "name": "Actions",
+      "name": "V1 Namespaces",
+      "item": [
+        {"name": "List Namespaces", "request": {"method": "GET", "url": "{{baseUrl}}/v1/namespaces"}},
+        {
+          "name": "Create Namespace",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Idempotency-Key", "value": "ns-create-1"}],
+            "body": {"mode": "raw", "raw": "{\n  \"namespace\": \"postman_ns\",\n  \"defaults\": {\"top_k\": 5}\n}"},
+            "url": "{{baseUrl}}/v1/namespaces"
+          }
+        },
+        {"name": "Delete Namespace Dry Run", "request": {"method": "DELETE", "url": "{{baseUrl}}/v1/namespaces/postman_ns?dry_run=true"}},
+        {"name": "Delete Namespace", "request": {"method": "DELETE", "url": "{{baseUrl}}/v1/namespaces/postman_ns"}}
+      ]
+    },
+    {
+      "name": "V1 Documents",
+      "item": [
+        {"name": "List Documents", "request": {"method": "GET", "url": "{{baseUrl}}/v1/documents?limit=20"}},
+        {"name": "Get Document", "request": {"method": "GET", "url": "{{baseUrl}}/v1/documents/{{namespace}}/{{doc_id}}"}},
+        {"name": "Delete Document Soft", "request": {"method": "DELETE", "url": "{{baseUrl}}/v1/documents/{{namespace}}/{{doc_id}}"}},
+        {"name": "Delete Document Hard", "request": {"method": "DELETE", "url": "{{baseUrl}}/v1/documents/{{namespace}}/{{doc_id}}?hard_delete=true"}},
+        {
+          "name": "Bulk Delete Documents",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"doc_ids\": [\"{{doc_id}}\"],\n  \"hard_delete\": false\n}"},
+            "url": "{{baseUrl}}/v1/documents:bulk_delete"
+          }
+        }
+      ]
+    },
+    {
+      "name": "V1 Ingestions",
       "item": [
         {
-          "name": "Run Action - Query Help",
+          "name": "Create Ingestion (Folder)",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"action\": \"query\",\n  \"args\": [\"--help\"]\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/actions/run",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "actions",
-                "run"
-              ]
-            }
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"source_type\": \"folder\",\n  \"source_spec\": {\n    \"path\": \".\",\n    \"dry_run\": true\n  }\n}"},
+            "url": "{{baseUrl}}/v1/ingestions"
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('action execution returned stdout', function () {",
-                  "  var body = pm.response.json();",
-                  "  pm.expect(body.result).to.be.an('object');",
-                  "  pm.expect(body.result.exit_code).to.eql(0);",
-                  "});"
-                ]
-              }
-            }
-          ]
+          "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": ["var b=pm.response.json(); if (b && b.ingestion_id) { pm.environment.set('ingestion_id', b.ingestion_id); }"]}}]
         },
         {
-          "name": "Run Action - Unsupported (400)",
+          "name": "Create Ingestion (Repo)",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"action\": \"chat\",\n  \"args\": []\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/actions/run",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "actions",
-                "run"
-              ]
-            }
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"namespace\": \"{{namespace}}\",\n  \"source_type\": \"repo\",\n  \"source_spec\": {\n    \"repo\": \"{{repo_url}}\",\n    \"revision\": \"\",\n    \"dry_run\": true\n  }\n}"},
+            "url": "{{baseUrl}}/v1/ingestions"
+          }
+        },
+        {
+          "name": "Create Ingestion (Upload)",
+          "request": {
+            "method": "POST",
+            "body": {"mode": "formdata", "formdata": [{"key": "file", "type": "file", "src": "{{uploadFilePath}}"}, {"key": "namespace", "type": "text", "value": "{{namespace}}"}]},
+            "url": "{{baseUrl}}/v1/ingestions/upload"
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 400', function () { pm.response.to.have.status(400); });"
-                ]
-              }
-            }
-          ]
+          "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": ["var b=pm.response.json(); if (b && b.ingestion_id) { pm.environment.set('ingestion_id', b.ingestion_id); }"]}}]
+        },
+        {"name": "List Ingestions", "request": {"method": "GET", "url": "{{baseUrl}}/v1/ingestions"}},
+        {"name": "Get Ingestion", "request": {"method": "GET", "url": "{{baseUrl}}/v1/ingestions/{{ingestion_id}}"}},
+        {"name": "Get Ingestion Events", "request": {"method": "GET", "url": "{{baseUrl}}/v1/ingestions/{{ingestion_id}}/events"}},
+        {"name": "Cancel Ingestion", "request": {"method": "POST", "url": "{{baseUrl}}/v1/ingestions/{{ingestion_id}}/cancel"}}
+      ]
+    },
+    {
+      "name": "V1 Query + Runs",
+      "item": [
+        {
+          "name": "Query",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"query\": \"{{question}}\",\n  \"top_k\": {{top_k}},\n  \"rerank\": true\n}"},
+            "url": "{{baseUrl}}/v1/query"
+          },
+          "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": ["var b=pm.response.json(); if (b && b.run_id) { pm.environment.set('run_id', b.run_id); } if (b && b.trace_id) { pm.environment.set('trace_id', b.trace_id); }"]}}]
+        },
+        {
+          "name": "Query Stream SSE",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Accept", "value": "text/event-stream"}],
+            "body": {"mode": "raw", "raw": "{\n  \"query\": \"{{question}}\",\n  \"top_k\": {{top_k}},\n  \"rerank\": true\n}"},
+            "url": "{{baseUrl}}/v1/query/stream"
+          }
+        },
+        {"name": "Get Run", "request": {"method": "GET", "url": "{{baseUrl}}/v1/runs/{{run_id}}"}},
+        {"name": "Get Run Steps", "request": {"method": "GET", "url": "{{baseUrl}}/v1/runs/{{run_id}}/steps"}},
+        {"name": "Get Run Events", "request": {"method": "GET", "url": "{{baseUrl}}/v1/runs/{{run_id}}/events"}},
+        {"name": "Replay Run SSE", "request": {"method": "GET", "header": [{"key": "Accept", "value": "text/event-stream"}], "url": "{{baseUrl}}/v1/runs/{{run_id}}/replay"}}
+      ]
+    },
+    {
+      "name": "V1 Retrieve + Rerank",
+      "item": [
+        {
+          "name": "Retrieve",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"query\": \"{{question}}\",\n  \"top_k\": {{top_k}},\n  \"rerank\": true\n}"},
+            "url": "{{baseUrl}}/v1/retrieve"
+          }
+        },
+        {
+          "name": "Rerank Candidates",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"query\": \"payment\",\n  \"top_k\": 2,\n  \"candidates\": [\n    {\"chunk_id\":\"a1\",\"doc_id\":\"doc-a\",\"text\":\"payment due in 14 days\",\"dense_score\":0.2,\"bm25_score\":0.3},\n    {\"chunk_id\":\"b1\",\"doc_id\":\"doc-b\",\"text\":\"support contact\",\"dense_score\":0.1,\"bm25_score\":0.1}\n  ]\n}"},
+            "url": "{{baseUrl}}/v1/rerank"
+          }
         }
       ]
     }
   ],
   "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://127.0.0.1:8000"
-    },
-    {
-      "key": "question",
-      "value": "Summarize the indexed documents"
-    },
-    {
-      "key": "top_k",
-      "value": "3"
-    },
-    {
-      "key": "uploadFilePath",
-      "value": ""
-    }
+    {"key": "baseUrl", "value": "http://127.0.0.1:8000"},
+    {"key": "question", "value": "Summarize indexed documents"},
+    {"key": "top_k", "value": "3"},
+    {"key": "namespace", "value": "default"},
+    {"key": "doc_id", "value": "postman_doc_legacy_chunks"},
+    {"key": "uploadFilePath", "value": ""},
+    {"key": "repo_url", "value": "https://github.com/octocat/Hello-World.git"},
+    {"key": "ingestion_id", "value": ""},
+    {"key": "run_id", "value": ""},
+    {"key": "trace_id", "value": ""}
   ]
 }

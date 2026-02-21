@@ -69,4 +69,3 @@ def test_docling_ingestion_smoke_for_required_formats(tmp_path, monkeypatch) -> 
     assert summary["extracted"] == len(uploaded)
     assert summary["total_chunks"] > 0
     assert len(called) == len(uploaded)
-

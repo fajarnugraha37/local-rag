@@ -1,34 +1,27 @@
 # Server Reference
 
-Launch server:
+Run server:
 ```powershell
 python .\cmd\app.py --server --host 127.0.0.1 --port 8000
 ```
 
-## Main Endpoints
-- `GET /health`
-- `GET /actions` and `GET /action`
-- `GET /docs`
+FastAPI docs:
+- `GET /api/docs`
+- `GET /api/redoc`
+
+## Endpoint Groups
+- Health/system: `/health`, `/healthz`, `/readyz`, `/version`, `/v1/capabilities`, `/v1/config`
+- Legacy compatibility: `/actions`, `/docs`, `/chat/stream`, `/ingest/*`, `/retrieval/query`, `/vectors/delete-doc`
+- v1 APIs: `/v1/namespaces`, `/v1/documents`, `/v1/ingestions`, `/v1/query`, `/v1/runs`, `/v1/retrieve`, `/v1/rerank`
+
+## SSE Endpoints
 - `GET /chat/stream`
-- `POST /ingest/chunks`
-- `POST /ingest/text`
-- `POST /ingest/files`
-- `POST /ingest/folder`
-- `POST /ingest/upload`
-- `POST /vectors/delete-doc`
-- `POST /retrieval/query`
-- `POST /actions/run`
-- `DELETE /docs/{doc_id}`
+- `POST /v1/query/stream`
+- `GET /v1/runs/{run_id}/replay`
 
-## Response Shape
-- Success payloads include `ok: true` where applicable.
-- Error payloads include `ok: false` and `error` message.
+Typical event names:
+- `meta`, `final_delta`, `sources`, `citation_stats`, `done`, `error`
 
-## SSE Notes (`/chat/stream`)
-- Emits streamed delta events and completion events.
-- Emits `sources` and `citation_stats` events on completion.
-- Keepalive/meta events may be emitted for long generations.
-
-## Ingestion Notes
-- `/ingest/folder` supports streaming progress events.
-- Namespace validation applies to ingest and doc management APIs.
+## Notes
+- Legacy `GET /docs` remains available for backward compatibility.
+- Swagger is intentionally moved away from `/docs` to avoid route collision.

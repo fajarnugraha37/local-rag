@@ -1,45 +1,43 @@
 # Architecture
 
 ## Overview
-Easy Local RAG is a local-first Python application with a single launcher (`cmd/app.py`) and two runtime modes:
-- CLI mode (`--cli`) for chat, ingestion, retrieval, migration, and evaluation actions.
-- Server mode (`--server`) for HTTP/SSE APIs.
+The runtime is FastAPI-first with a unified launcher (`cmd/app.py`).
 
-Core flow:
-1. Ingest source documents/emails into chunk records.
-2. Generate embeddings and upsert into persistent Chroma vector storage.
-3. Run hybrid retrieval for user queries.
-4. Build citation-aware prompts and produce responses via streaming or non-streaming chat.
+- `--server` mode starts `app.http.fastapi_server:main` (uvicorn).
+- `--cli` mode dispatches actions from `cmd/actions.py`.
 
-## Main Packages
-- `app/chat`: chat orchestration, streaming client, CLI wrappers, citation prompting/formatting.
-- `app/http`: HTTP/SSE server, request parsing, route handlers.
-- `app/ingestion`: extraction bridge, chunking, folder scanning, ingest pipeline/services.
-- `app/document_conversion`: Docling adapter and normalized conversion models.
-- `app/embeddings`: embedding service abstraction over Ollama embeddings.
-- `app/retrieval`: hybrid retrieval, reranking, provenance helpers.
-- `app/storage`: Chroma vector-store wrapper and vector-id helpers.
-- `app/migration`: backfill and legacy migration flows.
-- `app/config`: runtime settings loader and defaults.
+## HTTP Layer
+Core modules:
+- `app/http/fastapi_app.py`: app factory, lifespan, middleware, router registration.
+- `app/http/fastapi_server.py`: server runner.
+- `app/http/middleware/request_id.py`: request id middleware.
+- `app/http/middleware/idempotency.py`: idempotency-key middleware.
+- `app/http/routers/*`: route groups.
+- `app/http/sse_utils.py`: SSE frame helper.
 
-## Entrypoints
-- `cmd/app.py` is the required launcher.
-- CLI actions are registered in `cmd/actions.py`.
-- Server action points to `app/chat/streaming_server.py` (compatibility entrypoint), which delegates to `app/http/server.py`.
+## Persistence
+SQLite repositories in `app/repositories/sqlite/*`:
+- namespaces, documents, ingestions, runs, idempotency, feedback.
 
-## Data Stores
-- Persistent vectors: `data/chroma/`.
-- Registry/state metadata: `data/doc_registry.json` (configured path), folder ingest state files.
-- Legacy migration inputs: `data/chunks.jsonl`, `data/embeddings.jsonl`, `data/index_meta.json`.
+Vector/document data:
+- Chroma vectors: `data/chroma/`
+- Doc registry JSON is still used by legacy-compatible doc routes.
+
+## Services
+- `app/services/namespace_service.py`
+- `app/services/document_service.py`
+- `app/services/ingestion_service.py`
+- `app/services/query_service.py`
+- `app/services/run_service.py`
+
+## Extraction + Retrieval
+- Docling conversion: `app/document_conversion/docling_adapter.py`
+- Ingestion pipeline: `app/ingestion/pipeline.py`
+- Hybrid retrieval: `app/retrieval/hybrid_search.py`
+- Heuristic rerank: `app/retrieval/heuristic_reranker.py`
 
 ## Extension Points
-- Add new non-document extractors in `app/ingestion/extractors/` and register in extractor registry.
-- Add new document formats via `app/document_conversion/docling_adapter.py` and Docling routing.
-- Add new CLI actions in `cmd/actions.py`.
-- Add new HTTP routes in `app/http/handlers/*` and wire in `app/http/server.py`.
-- Add retrieval logic in `app/retrieval/*` while preserving result/source shape used by citation code.
-
-## Docling-First Extraction
-- Migrated document formats route through `app/ingestion/extractors/docling_extractors.py`.
-- The bridge calls `app/document_conversion/docling_adapter.py` to produce `ConvertedDocument` / `ConvertedBlock`.
-- Pipeline chunking uses normalized markdown text with locator metadata preserved for citations.
+- Add API routes in `app/http/routers/*`.
+- Add schemas in `app/http/schemas/*`.
+- Add backend orchestration in `app/services/*`.
+- Add repository logic in `app/repositories/sqlite/*`.

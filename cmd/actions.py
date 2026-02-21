@@ -19,8 +19,8 @@ class ActionSpec:
 ACTION_SPECS: Dict[str, ActionSpec] = {
     "server": ActionSpec(
         name="server",
-        target="app.chat.streaming_server:main",
-        description="Start HTTP + SSE streaming server.",
+        target="app.http.fastapi_server:main",
+        description="Start FastAPI server (legacy + v1 endpoints).",
     ),
     "chat": ActionSpec(
         name="chat",

@@ -50,6 +50,9 @@ def load_settings(config_file="config.yaml"):
     cfg.setdefault("citation_max_snippet_chars", 240)
     cfg.setdefault("vector_db_provider", "chroma")
     cfg.setdefault("vector_db_persist_dir", "data/chroma")
+    cfg.setdefault("sqlite_db_path", "data/app.db")
+    cfg.setdefault("idempotency_ttl_s", 86400)
+    cfg.setdefault("soft_delete_retention_days", 30)
     cfg.setdefault("vector_db_collection", "easy_local_rag")
     cfg.setdefault("vector_db_batch_size", 64)
     cfg.setdefault("vector_db_timeout_s", 30)
@@ -136,6 +139,18 @@ def load_settings(config_file="config.yaml"):
         cfg["vector_db_provider"] = os.getenv("VECTOR_DB_PROVIDER")
     if os.getenv("VECTOR_DB_PERSIST_DIR"):
         cfg["vector_db_persist_dir"] = os.getenv("VECTOR_DB_PERSIST_DIR")
+    if os.getenv("SQLITE_DB_PATH"):
+        cfg["sqlite_db_path"] = os.getenv("SQLITE_DB_PATH")
+    if os.getenv("IDEMPOTENCY_TTL_S"):
+        try:
+            cfg["idempotency_ttl_s"] = int(os.getenv("IDEMPOTENCY_TTL_S"))
+        except ValueError:
+            pass
+    if os.getenv("SOFT_DELETE_RETENTION_DAYS"):
+        try:
+            cfg["soft_delete_retention_days"] = int(os.getenv("SOFT_DELETE_RETENTION_DAYS"))
+        except ValueError:
+            pass
     if os.getenv("VECTOR_DB_COLLECTION"):
         cfg["vector_db_collection"] = os.getenv("VECTOR_DB_COLLECTION")
     if os.getenv("VECTOR_DB_BATCH_SIZE"):

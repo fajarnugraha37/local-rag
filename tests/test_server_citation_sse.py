@@ -1,12 +1,11 @@
-import http.client
-import threading
+from fastapi.testclient import TestClient
 
-from http.server import ThreadingHTTPServer
-
-from app.chat import streaming_server
+from app.http.fastapi_app import create_app
 
 
 def test_chat_sse_emits_sources_and_stats_before_done(monkeypatch):
+    from app.http.routers import legacy
+
     def fake_scored_chunks(query, top_k=3, rerank=True, filters=None, namespaces=None):
         return [
             {
@@ -36,21 +35,15 @@ def test_chat_sse_emits_sources_and_stats_before_done(monkeypatch):
         def __init__(self, *args, **kwargs):
             pass
 
-    monkeypatch.setattr(streaming_server.retrieval, "scored_chunks", fake_scored_chunks)
-    monkeypatch.setattr(streaming_server, "stream_chat_with_continuation", fake_stream)
-    monkeypatch.setattr(streaming_server, "OpenAI", _DummyOpenAI)
+    monkeypatch.setattr(legacy.retrieval, "scored_chunks", fake_scored_chunks)
+    monkeypatch.setattr(legacy, "stream_chat_with_continuation", fake_stream)
+    monkeypatch.setattr(legacy, "OpenAI", _DummyOpenAI)
 
-    server = ThreadingHTTPServer(("127.0.0.1", 0), streaming_server.StreamingHandler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    host, port = server.server_address
+    with TestClient(create_app()) as client:
+        resp = client.get("/chat/stream?question=test&top_k=3")
+        payload = resp.text
 
-    conn = http.client.HTTPConnection(host, port)
-    conn.request("GET", "/chat/stream?question=test&top_k=3")
-    resp = conn.getresponse()
-    payload = resp.read().decode("utf-8")
-
-    assert resp.status == 200
+    assert resp.status_code == 200
     assert "event: final_delta" in payload
     assert "event: sources" in payload
     assert "event: citation_stats" in payload
@@ -65,7 +58,3 @@ def test_chat_sse_emits_sources_and_stats_before_done(monkeypatch):
     assert '"sources": [{' in payload
     assert '"citation_index": 1' in payload
     assert '"stats": {' in payload
-
-    conn.close()
-    server.shutdown()
-    server.server_close()

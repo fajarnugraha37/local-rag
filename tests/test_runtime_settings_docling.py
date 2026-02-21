@@ -14,4 +14,3 @@ def test_docling_defaults_are_present(tmp_path) -> None:
     assert cfg["ingest_docling_max_slides"] == 300
     assert cfg["ingest_docling_max_tables"] == 2000
     assert cfg["ingest_docling_max_images"] == 200
-

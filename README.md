@@ -1,198 +1,46 @@
-# Easy Local RAG (Ollama + Hybrid Retrieval)
+# Easy Local RAG
 
-Local-first RAG for documents and email with persistent vector storage (Chroma), hybrid retrieval, and optional SSE streaming chat.
+Local-first RAG with FastAPI server, Docling-based ingestion, and hybrid retrieval.
 
-## Documentation
-- `docs/architecture.md`
-- `docs/rag-pipeline.md`
-- `docs/configuration.md`
-- `docs/development.md`
-- `docs/cli.md`
-- `docs/server.md`
-- `docs/contributing.md`
-
-## Unified Entrypoint (Required)
-The project now uses a single launcher:
-
+## Entrypoint
 ```powershell
-python .\cmd\app.py --server [server args]
-python .\cmd\app.py --cli [action args]
+python .\cmd\app.py --server [args]
+python .\cmd\app.py --cli [args]
 ```
 
-Legacy root-level scripts were removed. Use `cmd/app.py` only.
-
-## Setup
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-ollama pull hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest
-ollama pull mxbai-embed-large
-```
-
-## Server Mode (HTTP + SSE)
+## Server
 ```powershell
 python .\cmd\app.py --server --host 127.0.0.1 --port 8000
 ```
-- Health: `GET /health`
-- Action inventory: `GET /actions` (alias: `GET /action`)
-- Stream: `GET /chat/stream?question=...&top_k=...&max_continuations=...&per_call_max_tokens=...`
-- Ingest chunks: `POST /ingest/chunks`
-- Ingest raw text: `POST /ingest/text`
-- Ingest files by server-local paths: `POST /ingest/files`
-- Ingest uploaded files (multipart): `POST /ingest/upload`
-- Delete vectors by doc: `POST /vectors/delete-doc`
-- Retrieval query: `POST /retrieval/query`
-- Run non-interactive CLI actions via HTTP: `POST /actions/run`
 
-Example:
-```powershell
-curl -N "http://127.0.0.1:8000/chat/stream?question=What%20is%20the%20summary%3F&top_k=3"
-```
+Docs:
+- Swagger: `http://127.0.0.1:8000/api/docs`
+- ReDoc: `http://127.0.0.1:8000/api/redoc`
 
-HTTP JSON examples:
-```powershell
-# list actions
-curl "http://127.0.0.1:8000/actions"
+Key routes:
+- Legacy compatibility: `/actions`, `/docs`, `/chat/stream`, `/ingest/*`, `/retrieval/query`
+- v1 APIs: `/v1/namespaces`, `/v1/documents`, `/v1/ingestions`, `/v1/query`, `/v1/runs`, `/v1/retrieve`, `/v1/rerank`
 
-# ingest chunks
-curl -X POST "http://127.0.0.1:8000/ingest/chunks" `
-  -H "Content-Type: application/json" `
-  -d "{\"chunks\":[\"payment due in 30 days\"],\"doc_id\":\"demo_doc\"}"
-
-# retrieval query
-curl -X POST "http://127.0.0.1:8000/retrieval/query" `
-  -H "Content-Type: application/json" `
-  -d "{\"query\":\"payment terms\",\"top_k\":3,\"rerank\":true}"
-
-# ingest server-local files
-curl -X POST "http://127.0.0.1:8000/ingest/files" `
-  -H "Content-Type: application/json" `
-  -d "{\"paths\":[\"README.md\"],\"recursive\":false}"
-
-# ingest uploaded file(s)
-curl -X POST "http://127.0.0.1:8000/ingest/upload" `
-  -F "file=@README.md"
-```
-
-Postman assets:
-- `tests/postman/easy-local-rag-server.postman_collection.json`
-- `tests/postman/easy-local-rag-local.postman_environment.json`
-
-## CLI Mode
-List commands:
+## CLI
 ```powershell
 python .\cmd\app.py --cli --help
 ```
 
-Common commands:
-```powershell
-# Main chat (rewrite + optional multi-pass)
-python .\cmd\app.py --cli chat --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest --top-k 6 --multi-pass
-
-# Streaming chat
-python .\cmd\app.py --cli chat --stream --max-continuations 2 --per-call-max-tokens 1024
-python .\cmd\app.py --cli chat --citations --citations-mode inline+sources --max-sources 6 --max-snippet-chars 240
-python .\cmd\app.py --cli chat --no-citations
-
-# Baseline chat / email chat
-python .\cmd\app.py --cli chat-baseline --stream --citations-mode inline
-python .\cmd\app.py --cli chat-email --stream --citations-mode none
-
-# Ingestion
-python .\cmd\app.py --cli ingest-files
-python .\cmd\app.py --cli ingest-files --path .\docs\sample.pdf
-python .\cmd\app.py --cli ingest-files --path .\docs\a.txt --path .\docs\b.json
-python .\cmd\app.py --cli ingest-files --path .\ --recursive --include \"*.md\" --include \"*.yaml\" --exclude \"*/.git/*\"
-python .\cmd\app.py --cli ingest-folder --path .\docs --dry-run
-python .\cmd\app.py --cli ingest-folder --path . --include \"docs/**\" --exclude \"**/*.log\" --no-respect-gitignore --force
-python .\cmd\app.py --cli ingest-email --keyword "invoice" --startdate 01.01.2025 --enddate 31.01.2025
-python .\cmd\app.py --cli migrate-vault --vault vault.txt
-
-# Backfill legacy JSONL to vector DB
-python .\cmd\app.py --cli backfill-vectors --batch-size 64
-
-# Retrieval and validation
-python .\cmd\app.py --cli query --query "what are key payment terms?" --top-k 6
-python .\cmd\app.py --cli validate-phase4 --query "common case overview" --top-k 8
-python .\cmd\app.py --cli debug-retrieval
-
-# Eval
-python .\cmd\app.py --cli eval --questions eval\questions.jsonl --top-k 6 --output eval\results.json
-```
-`ingest-files --path ...` supports documents/config/data formats and prints per-file summary.
-`ingest-folder --path ...` performs recursive scan + ignore filtering + incremental skip (`--dry-run`, `--force`).
-
-Supported ingestion formats (case-insensitive):
-- Docling-routed document formats: `.pdf`, `.docx`, `.xlsx`, `.pptx`, `.md`, `.markdown`, `.mdx`, `.adoc`, `.asciidoc`, `.tex`, `.html`, `.htm`, `.xhtml`, `.csv`, `.tsv`, `.xml` (including JATS/USPTO hints), `.vtt`, `.png`, `.jpg`, `.jpeg`, `.tiff`, `.bmp`, `.webp`, `.docling.json`
-- Other supported text/config/data formats: `.rst`, `.txt`, `.log`, `.yaml`, `.yml`, `.toml`, `.ini`, `.conf`, `.env`, `.properties`, `.sql`, `.proto`, `.graphql`, `.gql`, `.sh`, `.bash`, `.ps1`, `.gitignore`, `.gitattributes`, `.editorconfig`, `.npmrc`, `.yarnrc`, `Dockerfile`, `Makefile`, `.json`, `.jsonc`, `.jsonl`, `.ndjson`, `.parquet`, `.feather`, `.arrow`, `.ipynb`, `.har`, `.svg`
-- Legacy best-effort formats (non-docling): `.doc`, `.ppt`, `.xls`
-
-Install/upgrade dependencies:
-```powershell
-pip install -r requirements.txt
-```
-Legacy `.doc/.ppt/.xls` extraction is best-effort (OLE parsing). Unsupported binaries are skipped with warnings, not fatal.
-
-## Make Targets
+## Make targets
 ```powershell
 make help
-make install
-make setup
-make run-server
-make run-cli
 make fmt
 make lint
-make ingest-smoke
-make chat
-make ingest
-make query Q="what are key payment terms?" TOP_K=6
 make test
-make eval
-make all
+make run-server
+make idempotency-purge
+make purge-soft-deletes SOFT_DELETE_RETENTION_DAYS=30
 ```
 
-## Data and Configuration
-- Runtime config: `config.yaml`
-- Env overrides: `app/config/runtime_settings.py`
-- Vector DB data: `data/chroma/`
-- Legacy migration artifacts (input only): `data/chunks.jsonl`, `data/embeddings.jsonl`, `data/index_meta.json`
-
-Streaming/continuation config keys:
-- `enable_streaming`
-- `enable_thinking_summary`
-- `per_call_max_tokens`
-- `max_continuations`
-- `flush_interval_ms`
-- `provider_timeout_s`
-- `continuation_instruction`
-
-Citation config keys:
-- `citations`
-- `citations_mode` (`inline|inline+sources|none`)
-- `citation_max_sources`
-- `citation_max_snippet_chars`
-
-Ingestion config keys:
-- `ingest_max_bytes`, `ingest_max_rows`, `ingest_max_objects`
-- `ingest_max_pages`, `ingest_max_slides`, `ingest_max_sheets`
-- `ingest_zip_max_entries`, `ingest_zip_max_uncompressed_bytes`
-- `ingest_enable_parquet`, `ingest_enable_legacy_office`
-- `ingest_docling_enabled`, `ingest_docling_export_format`, `ingest_docling_device`, `ingest_docling_enable_ocr`
-- `ingest_docling_timeout_s`, `ingest_docling_max_pages`, `ingest_docling_max_slides`
-- `ingest_docling_max_tables`, `ingest_docling_max_images`
-
-## Backup / Restore
-```powershell
-# backup
-Copy-Item -Recurse -Force data\chroma data\chroma.backup
-
-# restore
-Remove-Item -Recurse -Force data\chroma
-Copy-Item -Recurse -Force data\chroma.backup data\chroma
-```
-
-## Test
-```powershell
-python -m pytest -q
-```
+## Docs
+- `docs/api.md`
+- `docs/server.md`
+- `docs/architecture.md`
+- `docs/configuration.md`
+- `docs/development.md`
+- `docs/cli.md`

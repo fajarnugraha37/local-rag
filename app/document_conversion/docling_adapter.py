@@ -214,7 +214,9 @@ def convert_bytes(name: str, raw: bytes) -> ConvertedDocument:
         "content_hash": _content_hash(raw),
         "extracted_at": extracted_at,
     }
-    return ConvertedDocument(text_markdown=markdown, metadata=metadata, blocks=blocks, warnings=warnings)
+    return ConvertedDocument(
+        text_markdown=markdown, metadata=metadata, blocks=blocks, warnings=warnings
+    )
 
 
 def convert_file(path: str) -> ConvertedDocument:
@@ -228,4 +230,3 @@ def convert_file(path: str) -> ConvertedDocument:
 def convert_batch(paths: List[str]) -> Iterable[ConvertedDocument]:
     for path in paths:
         yield convert_file(path)
-
