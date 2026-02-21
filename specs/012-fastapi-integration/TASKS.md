@@ -117,7 +117,7 @@
   - `/v1/ingestions` returns job id, status updates, cancel works.
 - Validation commands:
   - `python -m pytest -q tests/test_fastapi_ingestions.py`
-- Status: todo
+- Status: done
 
 ## T008: Query + Runs + SSE
 - Goal: Implement query endpoints with run storage and SSE event replay.
@@ -218,5 +218,6 @@
 - SQLite repositories used for server state (namespaces, docs, jobs, runs, feedback, idempotency).
 - Old server implementation removed.
 - Tests pass.
+
 
 

@@ -8,6 +8,7 @@ from app.config.runtime_settings import CONFIG
 from app.http.middleware.idempotency import IdempotencyMiddleware
 from app.http.middleware.request_id import RequestIdMiddleware
 from app.http.routers.documents import router as documents_router
+from app.http.routers.ingestions import router as ingestions_router
 from app.http.routers.legacy import router as legacy_router
 from app.http.routers.namespaces import router as namespaces_router
 from app.http.routers.system import router as system_router
@@ -35,5 +36,6 @@ def create_app() -> FastAPI:
     app.include_router(system_router)
     app.include_router(namespaces_router)
     app.include_router(documents_router)
+    app.include_router(ingestions_router)
     app.include_router(legacy_router)
     return app
