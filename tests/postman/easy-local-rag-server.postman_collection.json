@@ -515,6 +515,9 @@
                   "  var body = pm.response.json();",
                   "  pm.expect(body.ok).to.eql(true);",
                   "  pm.expect(Array.isArray(body.results)).to.eql(true);",
+                  "  pm.expect(typeof body.answer).to.eql('string');",
+                  "  pm.expect(Array.isArray(body.sources)).to.eql(true);",
+                  "  pm.expect(body.citation_stats).to.be.an('object');",
                   "});"
                 ]
               }

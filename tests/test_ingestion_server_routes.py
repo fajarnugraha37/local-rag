@@ -418,3 +418,49 @@ def test_docs_delete_endpoint_namespace_and_all(monkeypatch, tmp_path):
     conn.close()
     server.shutdown()
     server.server_close()
+
+
+def test_retrieval_query_returns_answer_sources_and_citation_stats(monkeypatch):
+    def fake_scored_chunks(query_text, top_k=6, rerank=True, filters=None, namespaces=None):
+        return [
+            {
+                "chunk_id": "c1",
+                "text": "Payment is due in 14 days.",
+                "source": {
+                    "source_id": "S1",
+                    "citation_index": 1,
+                    "namespace": "default",
+                    "doc_id": "doc-1",
+                    "path": "docs/a.txt",
+                    "title": "Invoice Terms",
+                    "locator": "page 1",
+                    "snippet": "Payment is due in 14 days.",
+                },
+            }
+        ]
+
+    monkeypatch.setattr(streaming_server.retrieval, "scored_chunks", fake_scored_chunks)
+    server = _start_server(monkeypatch)
+    host, port = server.server_address
+    conn = http.client.HTTPConnection(host, port)
+
+    conn.request(
+        "POST",
+        "/retrieval/query",
+        body=json.dumps({"query": "payment terms", "top_k": 3, "rerank": True}),
+        headers={"Content-Type": "application/json"},
+    )
+    resp = conn.getresponse()
+    payload = json.loads(resp.read().decode("utf-8"))
+
+    assert resp.status == 200
+    assert payload["ok"] is True
+    assert "answer" in payload and isinstance(payload["answer"], str)
+    assert "sources" in payload and isinstance(payload["sources"], list)
+    assert len(payload["sources"]) == 1
+    assert payload["sources"][0]["citation_index"] == 1
+    assert "citation_stats" in payload and isinstance(payload["citation_stats"], dict)
+
+    conn.close()
+    server.shutdown()
+    server.server_close()

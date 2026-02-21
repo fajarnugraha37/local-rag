@@ -15,6 +15,7 @@ from openai import OpenAI
 from cmd.actions import ACTION_SPECS, run_action
 from app.common.namespaces import validate_namespace
 from app.chat.citation_prompting import build_citation_prompt
+from app.chat.citation_formatter import render_citation_output
 from app.chat.streaming_llm_client import stream_chat_with_continuation
 from app.config import runtime_settings as settings
 from app.ingestion.doc_registry_store import DocRegistryStore
@@ -66,6 +67,39 @@ def _build_messages(question: str, system_message: str, top_k: int):
 def _to_sse(event_name: str, payload: dict) -> bytes:
     body = json.dumps(payload, ensure_ascii=False)
     return f"event: {event_name}\ndata: {body}\n\n".encode("utf-8")
+
+
+def _extract_sources(results: list[dict], max_sources: int = 8) -> list[dict]:
+    sources: list[dict] = []
+    seen = set()
+    for row in results:
+        src = row.get("source")
+        if not isinstance(src, dict):
+            continue
+        idx = src.get("citation_index")
+        key = (idx, src.get("doc_id"), src.get("path"))
+        if key in seen:
+            continue
+        seen.add(key)
+        sources.append(src)
+        if len(sources) >= max_sources:
+            break
+    return sources
+
+
+def _build_retrieval_answer(sources: list[dict]) -> str:
+    if not sources:
+        return "No relevant sources found."
+    lines = ["Retrieved relevant sources:"]
+    for src in sources:
+        idx = src.get("citation_index")
+        title = src.get("title") or src.get("doc_id") or "Untitled"
+        snippet = str(src.get("snippet") or "").strip()
+        if snippet:
+            lines.append(f"- {title}: {snippet} [{idx}]")
+        else:
+            lines.append(f"- {title} [{idx}]")
+    return "\n".join(lines)
 
 
 def _chunk_text_for_ingest(text: str, max_chars: int) -> list[str]:
@@ -655,7 +689,28 @@ class StreamingHandler(BaseHTTPRequestHandler):
                 return
             try:
                 results = retrieval.scored_chunks(query_text, top_k=top_k, rerank=rerank, filters=filters)
-                self._send_json(HTTPStatus.OK, {"ok": True, "count": len(results), "results": results})
+                max_sources = int(settings.CONFIG.get("citation_max_sources", top_k))
+                max_snippet_chars = int(settings.CONFIG.get("citation_max_snippet_chars", 240))
+                sources = _extract_sources(results, max_sources=max_sources)
+                answer = _build_retrieval_answer(sources)
+                rendered = render_citation_output(
+                    answer,
+                    sources,
+                    mode="inline",
+                    max_sources=max_sources,
+                    max_snippet_chars=max_snippet_chars,
+                )
+                self._send_json(
+                    HTTPStatus.OK,
+                    {
+                        "ok": True,
+                        "count": len(results),
+                        "results": results,
+                        "answer": rendered.get("answer", answer),
+                        "sources": sources,
+                        "citation_stats": rendered.get("stats", {}),
+                    },
+                )
                 return
             except Exception as exc:
                 self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(exc)})
