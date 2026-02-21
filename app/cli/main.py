@@ -7,9 +7,11 @@ import typer
 from click.exceptions import ClickException
 
 from app.cli.commands.documents import build_documents_cli
+from app.cli.commands.feedback import build_feedback_cli
 from app.cli.commands.ingestions import build_ingestions_cli
 from app.cli.commands.namespaces import build_namespaces_cli
 from app.cli.commands.query import register_query_commands
+from app.cli.commands.retrieve import register_retrieval_commands
 from app.cli.commands.runs import build_runs_cli
 from app.cli.commands.system import build_system_cli
 from cmd.actions import format_actions_table, list_actions, run_action
@@ -24,14 +26,17 @@ app = typer.Typer(
 _SYSTEM_COMMANDS, _CONFIG_APP = build_system_cli()
 _NAMESPACES_APP = build_namespaces_cli()
 _DOCUMENTS_APP = build_documents_cli()
+_FEEDBACK_APP = build_feedback_cli()
 _INGESTIONS_APP = build_ingestions_cli()
 _RUNS_APP = build_runs_cli()
 app.add_typer(_CONFIG_APP, name="config")
 app.add_typer(_NAMESPACES_APP, name="ns")
 app.add_typer(_DOCUMENTS_APP, name="doc")
+app.add_typer(_FEEDBACK_APP, name="feedback")
 app.add_typer(_INGESTIONS_APP, name="ingest")
 app.add_typer(_RUNS_APP, name="run")
 register_query_commands(app)
+register_retrieval_commands(app)
 
 
 def _build_context(json_output: bool, verbose: bool) -> dict[str, Any]:

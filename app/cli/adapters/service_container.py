@@ -7,6 +7,7 @@ from app.config.runtime_settings import CONFIG
 from app.repositories.sqlite.feedback_repo import FeedbackRepository
 from app.repositories.sqlite.idempotency_repo import IdempotencyRepository
 from app.services.document_service import DocumentService
+from app.services.feedback_service import FeedbackService
 from app.services.ingestion_service import IngestionService
 from app.services.namespace_service import NamespaceService
 from app.services.query_service import QueryService
@@ -22,6 +23,7 @@ class CliServices:
     ingestion_service: IngestionService
     query_service: QueryService
     run_service: RunService
+    feedback_service: FeedbackService
     idempotency_repo: IdempotencyRepository
     feedback_repo: FeedbackRepository
 
@@ -43,6 +45,7 @@ def build_services(config: dict[str, Any] | None = None) -> CliServices:
         ingestion_service=IngestionService(db_path),
         query_service=QueryService(db_path, cfg),
         run_service=RunService(db_path),
+        feedback_service=FeedbackService(db_path),
         idempotency_repo=IdempotencyRepository(db_path),
         feedback_repo=FeedbackRepository(db_path),
     )

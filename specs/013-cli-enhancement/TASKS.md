@@ -109,7 +109,7 @@
   - Commands return structured output and support `--json`.
 - Validation:
   - `python .\cmd\app.py --cli retrieve "test" --json`
-- Status: todo
+- Status: done
 
 ## T008: Interactive Shell
 - Goal: Implement `rag shell` interactive menu.
