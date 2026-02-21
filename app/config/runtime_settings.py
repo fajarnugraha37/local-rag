@@ -62,6 +62,7 @@ def load_settings(config_file='config.yaml'):
     cfg.setdefault('ingest_enable_parquet', True)
     cfg.setdefault('ingest_enable_legacy_office', True)
     cfg.setdefault('ingest_state_path', 'data/ingest_state.json')
+    cfg.setdefault('doc_registry_path', 'data/doc_registry.json')
 
     # Override with environment variables (if present)
     if os.getenv('OLLAMA_MODEL'):
@@ -175,6 +176,8 @@ def load_settings(config_file='config.yaml'):
         cfg['ingest_enable_legacy_office'] = parsed_ingest_enable_legacy_office
     if os.getenv('INGEST_STATE_PATH'):
         cfg['ingest_state_path'] = os.getenv('INGEST_STATE_PATH')
+    if os.getenv('DOC_REGISTRY_PATH'):
+        cfg['doc_registry_path'] = os.getenv('DOC_REGISTRY_PATH')
 
     # Nested ollama_api overrides
     if os.getenv('OLLAMA_API_BASE_URL'):

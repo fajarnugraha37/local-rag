@@ -49,6 +49,7 @@ ingest_zip_max_uncompressed_bytes: 134217728
 ingest_enable_parquet: true
 ingest_enable_legacy_office: true
 ingest_state_path: "data/ingest_state.json"
+doc_registry_path: "data/doc_registry.json"
 
 # Retrieval tuning defaults
 retrieval_dense_top: 100

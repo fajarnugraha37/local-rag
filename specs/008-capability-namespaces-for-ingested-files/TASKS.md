@@ -81,7 +81,7 @@ Validation commands:
 - `python -m pytest -q tests/test_doc_registry_store.py`
 
 Status:
-- `todo`
+- `done`
 
 ## T004 - Retrieval Namespace Scoping
 Goal:

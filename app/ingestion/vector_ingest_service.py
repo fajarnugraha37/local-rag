@@ -3,8 +3,10 @@ from __future__ import annotations
 import os
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
+from app.common.content_hashing import sha256_hash
 from app.common.namespaces import validate_namespace
 from app.config import runtime_settings as settings
+from app.ingestion.doc_registry_store import DocRegistryStore
 from app.indexing.embedding_service import embed_text
 from app.storage.chroma_vector_store import ChromaVectorStore
 from app.storage.vector_ids import chunk_id as stable_chunk_id
@@ -68,6 +70,7 @@ def ingest_chunks(
     batch: List[Dict[str, object]] = []
     processed = 0
     chunk_occurrence: Dict[str, int] = {}
+    ingested_texts: List[str] = []
 
     try:
         total = len(chunks_list)  # type: ignore[arg-type]
@@ -131,6 +134,7 @@ def ingest_chunks(
                 "metadata": metadata,
             }
         )
+        ingested_texts.append(text)
 
         if len(batch) >= batch_size:
             added += vector_store.upsert(batch)
@@ -146,6 +150,25 @@ def ingest_chunks(
 
     if batch:
         added += vector_store.upsert(batch)
+
+    if processed > 0 and added > 0:
+        registry_path = str(settings.CONFIG.get("doc_registry_path", "data/doc_registry.json"))
+        registry = DocRegistryStore(registry_path=registry_path)
+        all_text = "\n".join(ingested_texts).strip()
+        source_type = "file" if source_path else "inline"
+        source_title = os.path.basename(source_path) if source_path else resolved_doc_id
+        registry.upsert(
+            namespace=resolved_namespace,
+            doc_id=resolved_doc_id,
+            source_path=str(source_path or ""),
+            source_type=source_type,
+            title=source_title,
+            content_hash=sha256_hash(all_text) if all_text else "",
+            chunk_count=added,
+            size_bytes=len(all_text.encode("utf-8")) if all_text else 0,
+            tags=[],
+        )
+        registry.save()
 
     summary = {"added": added, "skipped": skipped, "failed": failed}
     if progress_callback:
