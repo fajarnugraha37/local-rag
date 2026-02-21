@@ -7,6 +7,7 @@ import re
 import sys
 from typing import Sequence
 
+from app.common.namespaces import DEFAULT_NAMESPACE, validate_namespace
 from app.config import runtime_settings as settings
 from app.ingestion.pipeline import build_options, ingest_paths
 from app.ingestion.vector_ingest_service import ingest_chunks
@@ -109,12 +110,37 @@ def ingest_file_path(file_path: str, *, namespace: str | None = None):
 def _launch_gui() -> None:
     try:
         import tkinter as tk
-        from tkinter import filedialog
+        from tkinter import filedialog, messagebox
     except Exception:
         print("GUI components not available. Use --path to ingest from CLI.")
         return
 
+    root = tk.Tk()
+    root.title("Ingest files into Easy Local RAG")
+
+    container = tk.Frame(root)
+    container.pack(pady=12, padx=16, fill="x")
+
+    namespace_label = tk.Label(container, text="Namespace")
+    namespace_label.pack(anchor="w")
+
+    namespace_var = tk.StringVar(value=DEFAULT_NAMESPACE)
+    namespace_entry = tk.Entry(container, textvariable=namespace_var, width=48)
+    namespace_entry.pack(anchor="w", fill="x", pady=(4, 12))
+
+    def _get_namespace_or_show_error() -> str | None:
+        raw_namespace = (namespace_var.get() or "").strip()
+        try:
+            # Empty input maps to default namespace.
+            return validate_namespace(raw_namespace or None, default_to_default=True)
+        except ValueError as exc:
+            messagebox.showerror("Invalid namespace", str(exc))
+            return None
+
     def select_and_ingest():
+        namespace = _get_namespace_or_show_error()
+        if namespace is None:
+            return
         selected = filedialog.askopenfilenames(
             filetypes=[
                 ("All Supported", "*.*"),
@@ -131,9 +157,13 @@ def _launch_gui() -> None:
             recursive=False,
             include_patterns=[],
             exclude_patterns=[],
+            namespace=namespace,
         )
 
     def select_folder_and_ingest():
+        namespace = _get_namespace_or_show_error()
+        if namespace is None:
+            return
         selected = filedialog.askdirectory()
         if not selected:
             return
@@ -142,16 +172,14 @@ def _launch_gui() -> None:
             recursive=True,
             include_patterns=[],
             exclude_patterns=[],
+            namespace=namespace,
         )
 
-    root = tk.Tk()
-    root.title("Ingest files into Easy Local RAG")
+    upload_button = tk.Button(container, text="Select Files and Ingest", command=select_and_ingest)
+    upload_button.pack(pady=(0, 12), fill="x")
 
-    upload_button = tk.Button(root, text="Select Files and Ingest", command=select_and_ingest)
-    upload_button.pack(pady=16, padx=16)
-
-    folder_button = tk.Button(root, text="Select Folder and Ingest (Recursive)", command=select_folder_and_ingest)
-    folder_button.pack(pady=0, padx=16)
+    folder_button = tk.Button(container, text="Select Folder and Ingest (Recursive)", command=select_folder_and_ingest)
+    folder_button.pack(pady=0, fill="x")
 
     root.mainloop()
 
