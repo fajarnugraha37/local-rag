@@ -64,7 +64,7 @@
   - Existing server tests pass with FastAPI.
 - Validation commands:
   - `python -m pytest -q tests/test_ingestion_server_routes.py tests/test_server_citation_sse.py`
-- Status: todo
+- Status: done
 
 ## T005: System Endpoints
 - Goal: Add `/healthz`, `/readyz`, `/version`, `/v1/capabilities`, `/v1/config`.
