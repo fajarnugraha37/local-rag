@@ -13,9 +13,11 @@ from urllib.parse import parse_qs, urlparse
 from openai import OpenAI
 
 from cmd.actions import ACTION_SPECS, run_action
+from app.common.namespaces import validate_namespace
 from app.chat.streaming_llm_client import stream_chat_with_continuation
 from app.config import runtime_settings as settings
 from app.context import token_budget_packer as context_packer
+from app.ingestion.doc_registry_store import DocRegistryStore
 from app.ingestion.vector_ingest_service import delete_doc, ingest_chunks
 from app.ingestion.folder_ingest_service import FolderIngestOptions, ingest_folder
 from app.ingestion.pipeline import build_options, ingest_paths, ingest_uploaded_files
@@ -244,6 +246,29 @@ class StreamingHandler(BaseHTTPRequestHandler):
                 },
             )
             return
+
+        if parsed.path == "/docs":
+            query = parse_qs(parsed.query)
+            namespace_raw = (query.get("namespace") or [None])[0]
+            cursor = (query.get("cursor") or [None])[0]
+            try:
+                limit = int((query.get("limit") or [50])[0])
+            except (TypeError, ValueError):
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'limit' must be an integer"})
+                return
+            try:
+                namespace = validate_namespace(namespace_raw, default_to_default=True) if namespace_raw is not None else None
+            except ValueError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+                return
+            try:
+                store = DocRegistryStore(str(settings.CONFIG.get("doc_registry_path", "data/doc_registry.json")))
+                payload = store.list_docs(namespace=namespace, limit=limit, cursor=cursor)
+                self._send_json(HTTPStatus.OK, {"ok": True, **payload})
+                return
+            except Exception as exc:
+                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(exc)})
+                return
 
         if parsed.path != "/chat/stream":
             self.send_error(HTTPStatus.NOT_FOUND, "Not found")
@@ -626,6 +651,62 @@ class StreamingHandler(BaseHTTPRequestHandler):
 
         self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not_found"})
 
+    def do_DELETE(self):
+        parsed = urlparse(self.path)
+        if not parsed.path.startswith("/docs/"):
+            self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not_found"})
+            return
+
+        doc_id = parsed.path[len("/docs/"):].strip()
+        if not doc_id:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'doc_id' is required"})
+            return
+
+        query = parse_qs(parsed.query)
+        all_namespaces = _parse_bool((query.get("all_namespaces") or ["false"])[0], default=False)
+        namespace_raw = (query.get("namespace") or [None])[0]
+
+        if all_namespaces:
+            namespace = None
+        else:
+            try:
+                namespace = validate_namespace(namespace_raw, default_to_default=True)
+            except ValueError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+                return
+
+        try:
+            vectors_deleted = delete_doc(doc_id, namespace=namespace, all_namespaces=all_namespaces)
+            registry_store = DocRegistryStore(str(settings.CONFIG.get("doc_registry_path", "data/doc_registry.json")))
+            registry_deleted = 0
+            if all_namespaces:
+                page = registry_store.list_docs(limit=100000)
+                for row in page.get("records", []):
+                    if str(row.get("doc_id")) != str(doc_id):
+                        continue
+                    if registry_store.delete(str(row.get("namespace")), str(doc_id)):
+                        registry_deleted += 1
+            else:
+                registry_deleted = 1 if registry_store.delete(str(namespace), str(doc_id)) else 0
+            if registry_deleted > 0:
+                registry_store.save()
+            self._send_json(
+                HTTPStatus.OK,
+                {
+                    "ok": True,
+                    "doc_id": doc_id,
+                    "namespace": namespace,
+                    "all_namespaces": all_namespaces,
+                    "vectors_deleted": int(vectors_deleted),
+                    "registry_deleted": int(registry_deleted),
+                    "not_found": (vectors_deleted == 0 and registry_deleted == 0),
+                },
+            )
+            return
+        except Exception as exc:
+            self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(exc)})
+            return
+
     def log_message(self, format, *args):
         # Keep server output concise.
         return
@@ -641,6 +722,7 @@ def main():
     print(f"SSE server listening on http://{args.host}:{args.port}")
     print("GET  /health")
     print("GET  /actions")
+    print("GET  /docs")
     print("GET  /chat/stream?question=...&top_k=...&model=...")
     print("POST /ingest/chunks")
     print("POST /ingest/text")
@@ -649,6 +731,7 @@ def main():
     print("POST /vectors/delete-doc")
     print("POST /retrieval/query")
     print("POST /actions/run")
+    print("DELETE /docs/{doc_id}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

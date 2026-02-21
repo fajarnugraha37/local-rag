@@ -162,7 +162,7 @@ Validation commands:
 - `python -m pytest -q tests/test_ingestion_server_routes.py -k \"docs or delete\"`
 
 Status:
-- `todo`
+- `done`
 
 ## T007 - Namespace Parameters in Server Ingestion Endpoints
 Goal:

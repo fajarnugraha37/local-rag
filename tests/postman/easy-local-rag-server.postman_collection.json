@@ -295,6 +295,61 @@
           ]
         },
         {
+          "name": "List Documents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/docs?limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "docs"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Document (Namespace Default)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/docs/postman_doc_001?namespace=default",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "docs",
+                "postman_doc_001"
+              ],
+              "query": [
+                {
+                  "key": "namespace",
+                  "value": "default"
+                }
+              ]
+            }
+          }
+        },
+        {
           "name": "Ingest Files (Server Paths)",
           "request": {
             "method": "POST",

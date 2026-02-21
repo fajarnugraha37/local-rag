@@ -6,6 +6,7 @@ import threading
 from http.server import ThreadingHTTPServer
 
 from app.chat import streaming_server
+from app.ingestion.doc_registry_store import DocRegistryStore
 
 
 def _start_server(monkeypatch):
@@ -209,6 +210,97 @@ def test_ingest_folder_rejects_outside_allowed_roots(monkeypatch, tmp_path):
     assert resp.status == 400
     assert body["ok"] is False
     assert "outside configured allowed roots" in body["error"]
+
+    conn.close()
+    server.shutdown()
+    server.server_close()
+
+
+def test_docs_list_endpoint_global_and_scoped(monkeypatch, tmp_path):
+    monkeypatch.setitem(streaming_server.settings.CONFIG, "doc_registry_path", str(tmp_path / "doc_registry.json"))
+    store = DocRegistryStore(str(tmp_path / "doc_registry.json"))
+    store.upsert(namespace="alpha", doc_id="doc-a", source_path="/tmp/a.txt", chunk_count=2)
+    store.upsert(namespace="beta", doc_id="doc-b", source_path="/tmp/b.txt", chunk_count=1)
+    store.save()
+
+    server = _start_server(monkeypatch)
+    host, port = server.server_address
+    conn = http.client.HTTPConnection(host, port)
+
+    conn.request("GET", "/docs?limit=10")
+    resp = conn.getresponse()
+    payload = json.loads(resp.read().decode("utf-8"))
+    assert resp.status == 200
+    assert payload["ok"] is True
+    ids = {(row["namespace"], row["doc_id"]) for row in payload["records"]}
+    assert ("alpha", "doc-a") in ids
+    assert ("beta", "doc-b") in ids
+
+    conn.request("GET", "/docs?namespace=alpha&limit=10")
+    resp2 = conn.getresponse()
+    payload2 = json.loads(resp2.read().decode("utf-8"))
+    assert resp2.status == 200
+    assert payload2["ok"] is True
+    assert all(row["namespace"] == "alpha" for row in payload2["records"])
+
+    conn.close()
+    server.shutdown()
+    server.server_close()
+
+
+def test_docs_delete_endpoint_namespace_and_all(monkeypatch, tmp_path):
+    monkeypatch.setitem(streaming_server.settings.CONFIG, "doc_registry_path", str(tmp_path / "doc_registry.json"))
+    store = DocRegistryStore(str(tmp_path / "doc_registry.json"))
+    store.upsert(namespace="alpha", doc_id="doc-x", source_path="/tmp/a.txt", chunk_count=2)
+    store.upsert(namespace="default", doc_id="doc-x", source_path="/tmp/d.txt", chunk_count=1)
+    store.save()
+
+    def fake_delete(doc_id, namespace=None, all_namespaces=False):
+        if doc_id != "doc-x":
+            return 0
+        if all_namespaces:
+            return 2
+        if namespace == "alpha":
+            return 1
+        if namespace == "default":
+            return 1
+        return 0
+
+    monkeypatch.setattr(streaming_server, "delete_doc", fake_delete)
+    server = _start_server(monkeypatch)
+    host, port = server.server_address
+    conn = http.client.HTTPConnection(host, port)
+
+    conn.request("DELETE", "/docs/doc-x?namespace=alpha")
+    resp = conn.getresponse()
+    payload = json.loads(resp.read().decode("utf-8"))
+    assert resp.status == 200
+    assert payload["ok"] is True
+    assert payload["vectors_deleted"] == 1
+    assert payload["registry_deleted"] == 1
+    assert payload["all_namespaces"] is False
+
+    reload_store = DocRegistryStore(str(tmp_path / "doc_registry.json"))
+    assert reload_store.get("alpha", "doc-x") is None
+    assert reload_store.get("default", "doc-x") is not None
+
+    conn.request("DELETE", "/docs/doc-x?all_namespaces=true")
+    resp2 = conn.getresponse()
+    payload2 = json.loads(resp2.read().decode("utf-8"))
+    assert resp2.status == 200
+    assert payload2["ok"] is True
+    assert payload2["all_namespaces"] is True
+    assert payload2["registry_deleted"] >= 1
+
+    reload_store2 = DocRegistryStore(str(tmp_path / "doc_registry.json"))
+    assert reload_store2.get("default", "doc-x") is None
+
+    conn.request("DELETE", "/docs/missing-doc")
+    resp3 = conn.getresponse()
+    payload3 = json.loads(resp3.read().decode("utf-8"))
+    assert resp3.status == 200
+    assert payload3["ok"] is True
+    assert payload3["not_found"] is True
 
     conn.close()
     server.shutdown()
