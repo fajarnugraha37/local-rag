@@ -48,3 +48,14 @@ python .\cmd\app.py --cli actions-list
 ## Query Output Modes
 - Default `query`: metadata-focused retrieval section (doc/chunk IDs and counts), no chunk content dump.
 - `--verbose query`: includes snippet previews for retrieved chunks.
+
+## Ingestion Performance Flags
+- `--chunk-max-tokens`: bigger chunks reduce embedding calls.
+- `--chunk-overlap-tokens`: controls overlap between chunks.
+- `--ocr-enabled/--no-ocr-enabled`: skip OCR-heavy docs unless explicitly enabled.
+- `--parallel-workers`: folder/repo ingestion worker count for parallel file processing.
+
+Example:
+```powershell
+python .\cmd\app.py --cli ingest start --source folder --path . --chunk-max-tokens 720 --chunk-overlap-tokens 72 --no-ocr-enabled --parallel-workers 4 --wait
+```

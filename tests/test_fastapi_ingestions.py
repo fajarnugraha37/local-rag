@@ -111,3 +111,51 @@ def test_fastapi_ingestions_upload_and_cancel(tmp_path, monkeypatch):
 
         rec = _wait_status(client, ing_id)
         assert rec["status"] == "cancelled"
+
+
+def test_fastapi_ingestions_folder_tuning_knobs_forwarded(tmp_path, monkeypatch):
+    db_path = tmp_path / "app.db"
+    monkeypatch.setitem(settings.CONFIG, "sqlite_db_path", str(db_path))
+
+    from app.services import ingestion_service as svc_mod
+
+    seen = {}
+
+    def capture_folder(options):
+        seen["parallel_workers"] = options.parallel_workers
+        seen["chunk_max_tokens"] = options.ingest_options.chunk_max_tokens
+        seen["chunk_overlap_tokens"] = options.ingest_options.chunk_overlap_tokens
+        seen["ocr_enabled"] = options.ingest_options.ocr_enabled
+        return {"path": options.path, "ingested": 0, "skipped": 0, "failed": 0, "files": []}
+
+    monkeypatch.setattr(svc_mod, "ingest_folder", capture_folder)
+
+    root = tmp_path / "docs3"
+    root.mkdir()
+    (root / "a.txt").write_text("hello", encoding="utf-8")
+
+    with TestClient(create_app()) as client:
+        create = client.post(
+            "/v1/ingestions",
+            json={
+                "namespace": "default",
+                "source_type": "folder",
+                "source_spec": {
+                    "path": str(root),
+                    "dry_run": True,
+                    "parallel_workers": 3,
+                    "chunk_max_tokens": 720,
+                    "chunk_overlap_tokens": 72,
+                    "ocr_enabled": True,
+                },
+            },
+        )
+        assert create.status_code == 200
+        ing_id = create.json()["ingestion_id"]
+        rec = _wait_status(client, ing_id)
+        assert rec["status"] == "done"
+
+    assert seen["parallel_workers"] == 3
+    assert seen["chunk_max_tokens"] == 720
+    assert seen["chunk_overlap_tokens"] == 72
+    assert seen["ocr_enabled"] is True

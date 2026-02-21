@@ -15,6 +15,10 @@ DOC_ID ?=
 NAMESPACE ?=
 ALL_NAMESPACES ?= false
 SOFT_DELETE_RETENTION_DAYS ?= 30
+CHUNK_MAX_TOKENS ?=
+CHUNK_OVERLAP_TOKENS ?=
+OCR_ENABLED ?= false
+PARALLEL_WORKERS ?= 1
 
 help:
 	@$(info Available targets:)
@@ -35,8 +39,8 @@ help:
 	@$(info   make all)
 	@$(info   make run-all)
 	@$(info v1 ingestion/docs:)
-	@$(info   make ingest INGEST_PATH="path\\to\\folder_or_file" NAMESPACE="default")
-	@$(info   make ingest-folder FOLDER_PATH="path\\to\\folder" NAMESPACE="default")
+	@$(info   make ingest INGEST_PATH="path\\to\\folder_or_file" NAMESPACE="default" OCR_ENABLED=false CHUNK_MAX_TOKENS=480 PARALLEL_WORKERS=4)
+	@$(info   make ingest-folder FOLDER_PATH="path\\to\\folder" NAMESPACE="default" OCR_ENABLED=false CHUNK_MAX_TOKENS=480 PARALLEL_WORKERS=4)
 	@$(info   make list-docs NAMESPACE="default")
 	@$(info   make delete-doc DOC_ID="doc-id" NAMESPACE="default")
 	@$(info Legacy action wrappers:)
@@ -98,15 +102,15 @@ endif
 ingest:
 ifeq ($(strip $(INGEST_PATH)),)
 ifneq ($(strip $(NAMESPACE)),)
-	$(APP) --cli ingest start --source folder --path . --namespace "$(NAMESPACE)" --wait
+	$(APP) --cli ingest start --source folder --path . --namespace "$(NAMESPACE)" --wait $(if $(filter true TRUE 1 yes on,$(OCR_ENABLED)),--ocr-enabled,--no-ocr-enabled) --parallel-workers $(PARALLEL_WORKERS) $(if $(CHUNK_MAX_TOKENS),--chunk-max-tokens $(CHUNK_MAX_TOKENS),) $(if $(CHUNK_OVERLAP_TOKENS),--chunk-overlap-tokens $(CHUNK_OVERLAP_TOKENS),)
 else
-	$(APP) --cli ingest start --source folder --path . --namespace default --wait
+	$(APP) --cli ingest start --source folder --path . --namespace default --wait $(if $(filter true TRUE 1 yes on,$(OCR_ENABLED)),--ocr-enabled,--no-ocr-enabled) --parallel-workers $(PARALLEL_WORKERS) $(if $(CHUNK_MAX_TOKENS),--chunk-max-tokens $(CHUNK_MAX_TOKENS),) $(if $(CHUNK_OVERLAP_TOKENS),--chunk-overlap-tokens $(CHUNK_OVERLAP_TOKENS),)
 endif
 else
 ifneq ($(strip $(NAMESPACE)),)
-	$(APP) --cli ingest start --source folder --path "$(INGEST_PATH)" --namespace "$(NAMESPACE)" --wait
+	$(APP) --cli ingest start --source folder --path "$(INGEST_PATH)" --namespace "$(NAMESPACE)" --wait $(if $(filter true TRUE 1 yes on,$(OCR_ENABLED)),--ocr-enabled,--no-ocr-enabled) --parallel-workers $(PARALLEL_WORKERS) $(if $(CHUNK_MAX_TOKENS),--chunk-max-tokens $(CHUNK_MAX_TOKENS),) $(if $(CHUNK_OVERLAP_TOKENS),--chunk-overlap-tokens $(CHUNK_OVERLAP_TOKENS),)
 else
-	$(APP) --cli ingest start --source folder --path "$(INGEST_PATH)" --namespace default --wait
+	$(APP) --cli ingest start --source folder --path "$(INGEST_PATH)" --namespace default --wait $(if $(filter true TRUE 1 yes on,$(OCR_ENABLED)),--ocr-enabled,--no-ocr-enabled) --parallel-workers $(PARALLEL_WORKERS) $(if $(CHUNK_MAX_TOKENS),--chunk-max-tokens $(CHUNK_MAX_TOKENS),) $(if $(CHUNK_OVERLAP_TOKENS),--chunk-overlap-tokens $(CHUNK_OVERLAP_TOKENS),)
 endif
 endif
 
@@ -115,9 +119,9 @@ ifeq ($(strip $(FOLDER_PATH)),)
 	$(error FOLDER_PATH is required. Example: make ingest-folder FOLDER_PATH="docs")
 endif
 ifneq ($(strip $(NAMESPACE)),)
-	$(APP) --cli ingest start --source folder --path "$(FOLDER_PATH)" --namespace "$(NAMESPACE)" --wait
+	$(APP) --cli ingest start --source folder --path "$(FOLDER_PATH)" --namespace "$(NAMESPACE)" --wait $(if $(filter true TRUE 1 yes on,$(OCR_ENABLED)),--ocr-enabled,--no-ocr-enabled) --parallel-workers $(PARALLEL_WORKERS) $(if $(CHUNK_MAX_TOKENS),--chunk-max-tokens $(CHUNK_MAX_TOKENS),) $(if $(CHUNK_OVERLAP_TOKENS),--chunk-overlap-tokens $(CHUNK_OVERLAP_TOKENS),)
 else
-	$(APP) --cli ingest start --source folder --path "$(FOLDER_PATH)" --namespace default --wait
+	$(APP) --cli ingest start --source folder --path "$(FOLDER_PATH)" --namespace default --wait $(if $(filter true TRUE 1 yes on,$(OCR_ENABLED)),--ocr-enabled,--no-ocr-enabled) --parallel-workers $(PARALLEL_WORKERS) $(if $(CHUNK_MAX_TOKENS),--chunk-max-tokens $(CHUNK_MAX_TOKENS),) $(if $(CHUNK_OVERLAP_TOKENS),--chunk-overlap-tokens $(CHUNK_OVERLAP_TOKENS),)
 endif
 
 list-docs:

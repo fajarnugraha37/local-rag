@@ -33,6 +33,7 @@ Environment overlays: `app/config/runtime_settings.py`
 ## Ingestion
 - `ingest_max_bytes`, `ingest_max_rows`, `ingest_max_objects`
 - `ingest_max_pages`, `ingest_max_slides`, `ingest_max_sheets`
+- `chunk_max_tokens`, `chunk_overlap_tokens`
 - `ingest_zip_max_entries`, `ingest_zip_max_uncompressed_bytes`
 - `ingest_enable_parquet`, `ingest_enable_legacy_office`
 - `ingest_state_path`, `doc_registry_path`
@@ -49,6 +50,11 @@ Environment overlays: `app/config/runtime_settings.py`
 - CLI commands are direct-to-service (no HTTP hop).
 - Use `--json` for automation-safe output.
 - Use `--idempotency-key` for `ingest start` to replay duplicate requests.
+- Faster ingestion knobs:
+  - `--chunk-max-tokens`
+  - `--chunk-overlap-tokens`
+  - `--ocr-enabled/--no-ocr-enabled`
+  - `--parallel-workers` (folder/repo source)
 
 ## Maintenance Helpers
 - `make idempotency-purge`

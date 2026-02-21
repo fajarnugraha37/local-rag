@@ -40,8 +40,8 @@ finalize_max_tokens: 400
 finalize_temperature: 0.0
 
 # Chunking defaults (token counts)
-chunk_max_tokens: 200
-chunk_overlap_tokens: 20
+chunk_max_tokens: 480
+chunk_overlap_tokens: 48
 
 # Ingestion safety + parser limits
 ingest_max_bytes: 8388608

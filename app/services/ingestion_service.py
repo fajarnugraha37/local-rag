@@ -222,6 +222,18 @@ class IngestionService:
             force=bool(source_spec.get("force", False)),
             embedding_model=source_spec.get("embedding_model"),
             namespace=namespace,
+            parallel_workers=int(source_spec.get("parallel_workers") or 1),
+            ingest_options=build_options(
+                chunk_max_tokens=source_spec.get("chunk_max_tokens"),
+                chunk_overlap_tokens=source_spec.get("chunk_overlap_tokens"),
+                ocr_enabled=source_spec.get("ocr_enabled"),
+                max_bytes=source_spec.get("max_bytes"),
+                max_rows=source_spec.get("max_rows"),
+                max_pages=source_spec.get("max_pages"),
+                max_slides=source_spec.get("max_slides"),
+                max_sheets=source_spec.get("max_sheets"),
+                ingest_timeout_s=source_spec.get("ingest_timeout_s"),
+            ),
             progress_callback=_on_progress,
         )
         return ingest_folder(options)
@@ -299,13 +311,46 @@ class IngestionService:
                 max_sheets=upload_payload.fields.get(
                     "max_sheets", settings.CONFIG.get("ingest_max_sheets", 50)
                 ),
+                chunk_max_tokens=upload_payload.fields.get("chunk_max_tokens"),
+                chunk_overlap_tokens=upload_payload.fields.get("chunk_overlap_tokens"),
+                ocr_enabled=upload_payload.fields.get("ocr_enabled"),
+                ingest_timeout_s=upload_payload.fields.get("ingest_timeout_s"),
             )
-            return ingest_uploaded_files(
-                uploaded,
-                options=options,
-                embedding_model=source_spec.get("embedding_model")
-                or upload_payload.fields.get("embedding_model"),
-                namespace=namespace,
-            )
+            def _on_upload_progress(stage: str, current: int, total: int, stats: dict[str, Any]):
+                payload = {
+                    "stage": stage,
+                    "current": int(current),
+                    "total": int(total),
+                    "stats": dict(stats or {}),
+                }
+                self.repo.add_event(ingestion_id, stage, payload)
+                if stage in {"file_ingested", "file_skipped", "file_failed"}:
+                    record = self.repo.get(ingestion_id) or {}
+                    counters = dict(record.get("counters") or {})
+                    if stage == "file_ingested":
+                        counters["ingested"] = int(counters.get("ingested") or 0) + 1
+                    elif stage == "file_skipped":
+                        counters["skipped"] = int(counters.get("skipped") or 0) + 1
+                    elif stage == "file_failed":
+                        counters["failed"] = int(counters.get("failed") or 0) + 1
+                    self.repo.update_status(ingestion_id, str(record.get("status") or "running"), counters=counters)
+            try:
+                return ingest_uploaded_files(
+                    uploaded,
+                    options=options,
+                    embedding_model=source_spec.get("embedding_model")
+                    or upload_payload.fields.get("embedding_model"),
+                    namespace=namespace,
+                    progress_callback=_on_upload_progress,
+                )
+            except TypeError:
+                # Compatibility for tests or monkeypatched callables that do not accept progress_callback.
+                return ingest_uploaded_files(
+                    uploaded,
+                    options=options,
+                    embedding_model=source_spec.get("embedding_model")
+                    or upload_payload.fields.get("embedding_model"),
+                    namespace=namespace,
+                )
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)

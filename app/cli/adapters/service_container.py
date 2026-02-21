@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.config.runtime_settings import CONFIG
+from app.repositories.sqlite.db import init_db
 from app.repositories.sqlite.feedback_repo import FeedbackRepository
 from app.repositories.sqlite.idempotency_repo import IdempotencyRepository
 from app.services.document_service import DocumentService
@@ -36,6 +37,7 @@ def resolve_db_path(config: dict[str, Any] | None = None) -> str:
 def build_services(config: dict[str, Any] | None = None) -> CliServices:
     cfg = dict(config or CONFIG)
     db_path = resolve_db_path(cfg)
+    init_db(db_path)
 
     return CliServices(
         db_path=db_path,

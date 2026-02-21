@@ -152,6 +152,10 @@ def build_ingestions_cli() -> typer.Typer:
         revision: str = typer.Option("", "--revision", help="Optional git revision."),
         paths: str = typer.Option("", "--paths", help="Comma-separated file paths for source=files."),
         embedding_model: str = typer.Option("", "--embedding-model"),
+        chunk_max_tokens: int = typer.Option(0, "--chunk-max-tokens"),
+        chunk_overlap_tokens: int = typer.Option(0, "--chunk-overlap-tokens"),
+        ocr_enabled: bool = typer.Option(False, "--ocr-enabled/--no-ocr-enabled"),
+        parallel_workers: int = typer.Option(1, "--parallel-workers", min=1),
         dry_run: bool = typer.Option(False, "--dry-run"),
         force: bool = typer.Option(False, "--force"),
         include: str = typer.Option("", "--include", help="Comma-separated include globs."),
@@ -182,6 +186,10 @@ def build_ingestions_cli() -> typer.Typer:
             "revision": revision,
             "paths": paths,
             "embedding_model": embedding_model,
+            "chunk_max_tokens": chunk_max_tokens,
+            "chunk_overlap_tokens": chunk_overlap_tokens,
+            "ocr_enabled": ocr_enabled,
+            "parallel_workers": parallel_workers,
             "dry_run": dry_run,
             "force": force,
             "include": include_patterns,
@@ -209,6 +217,10 @@ def build_ingestions_cli() -> typer.Typer:
                         "dry_run": bool(dry_run),
                         "force": bool(force),
                         "embedding_model": embedding_model or None,
+                        "chunk_max_tokens": chunk_max_tokens or None,
+                        "chunk_overlap_tokens": chunk_overlap_tokens or None,
+                        "ocr_enabled": bool(ocr_enabled),
+                        "parallel_workers": int(parallel_workers or 1),
                     },
                 )
             elif source_type == "repo":
@@ -225,6 +237,10 @@ def build_ingestions_cli() -> typer.Typer:
                         "dry_run": bool(dry_run),
                         "force": bool(force),
                         "embedding_model": embedding_model or None,
+                        "chunk_max_tokens": chunk_max_tokens or None,
+                        "chunk_overlap_tokens": chunk_overlap_tokens or None,
+                        "ocr_enabled": bool(ocr_enabled),
+                        "parallel_workers": int(parallel_workers or 1),
                     },
                 )
             else:
@@ -241,8 +257,24 @@ def build_ingestions_cli() -> typer.Typer:
                 record = svc.create_job(
                     namespace=ns,
                     source_type="upload",
-                    source_spec={"embedding_model": embedding_model or None},
-                    upload_payload=UploadPayload(files=uploads, fields={"namespace": ns}),
+                    source_spec={
+                        "embedding_model": embedding_model or None,
+                        "chunk_max_tokens": chunk_max_tokens or None,
+                        "chunk_overlap_tokens": chunk_overlap_tokens or None,
+                        "ocr_enabled": bool(ocr_enabled),
+                        "parallel_workers": int(parallel_workers or 1),
+                    },
+                    upload_payload=UploadPayload(
+                        files=uploads,
+                        fields={
+                            "namespace": ns,
+                            "chunk_max_tokens": str(chunk_max_tokens) if chunk_max_tokens else "",
+                            "chunk_overlap_tokens": str(chunk_overlap_tokens)
+                            if chunk_overlap_tokens
+                            else "",
+                            "ocr_enabled": str(bool(ocr_enabled)).lower(),
+                        },
+                    ),
                 )
             return {"ok": True, "ingestion_id": record.get("ingestion_id"), "record": record}
 

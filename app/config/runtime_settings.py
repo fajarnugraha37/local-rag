@@ -64,6 +64,8 @@ def load_settings(config_file="config.yaml"):
     cfg.setdefault("ingest_max_slides", 300)
     cfg.setdefault("ingest_max_sheets", 50)
     cfg.setdefault("ingest_timeout_s", 30)
+    cfg.setdefault("chunk_max_tokens", 480)
+    cfg.setdefault("chunk_overlap_tokens", 48)
     cfg.setdefault("ingest_zip_max_entries", 10000)
     cfg.setdefault("ingest_zip_max_uncompressed_bytes", 128 * 1024 * 1024)
     cfg.setdefault("ingest_docling_enabled", True)
@@ -201,6 +203,16 @@ def load_settings(config_file="config.yaml"):
     if os.getenv("INGEST_TIMEOUT_S"):
         try:
             cfg["ingest_timeout_s"] = int(os.getenv("INGEST_TIMEOUT_S"))
+        except ValueError:
+            pass
+    if os.getenv("CHUNK_MAX_TOKENS"):
+        try:
+            cfg["chunk_max_tokens"] = int(os.getenv("CHUNK_MAX_TOKENS"))
+        except ValueError:
+            pass
+    if os.getenv("CHUNK_OVERLAP_TOKENS"):
+        try:
+            cfg["chunk_overlap_tokens"] = int(os.getenv("CHUNK_OVERLAP_TOKENS"))
         except ValueError:
             pass
     parsed_docling_enabled = _parse_bool_env(os.getenv("INGEST_DOCLING_ENABLED"))
