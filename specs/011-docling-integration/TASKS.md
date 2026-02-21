@@ -111,7 +111,7 @@ Validation commands:
 - `python -m pytest -q tests/test_ingestion_server_routes.py tests/test_folder_ingest_idempotency.py`
 - `python cmd/app.py --cli ingest-files --path README.md`
 - `python cmd/app.py --cli ingest-folder --path . --dry-run`
-Status: todo
+Status: done
 
 ## T007
 Goal: Cut over dependency and configuration story to Docling.
