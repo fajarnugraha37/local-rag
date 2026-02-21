@@ -29,7 +29,7 @@
   - Services created without side effects.
 - Validation:
   - `python -c "from app.cli.adapters.service_container import build_services; print(build_services())"`
-- Status: todo
+- Status: done
 
 ## T003: System + Config Commands
 - Goal: Implement system commands for healthz/readyz/version/capabilities/config.
