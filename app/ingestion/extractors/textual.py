@@ -17,12 +17,7 @@ except Exception:  # pragma: no cover
 
 
 _DOC_TYPES = {
-    ".md": "markdown",
-    ".markdown": "markdown",
-    ".mdx": "mdx",
     ".rst": "rst",
-    ".adoc": "adoc",
-    ".asciidoc": "adoc",
     ".sql": "sql",
     ".proto": "proto",
     ".graphql": "graphql",

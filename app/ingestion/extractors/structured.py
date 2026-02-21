@@ -1,23 +1,12 @@
 from __future__ import annotations
 
-import csv
-import io
 import json
 import os
+import re
 from typing import List, Optional
 
-from bs4 import BeautifulSoup
-
 from .base import ExtractedDocument, ExtractedUnit, ExtractorContext
-from .utils import (
-    batch_lines,
-    json_pretty,
-    normalize_text,
-    read_bytes,
-    read_text,
-    safe_decode,
-    strip_json_comments,
-)
+from .utils import batch_lines, json_pretty, normalize_text, read_bytes, read_text, safe_decode, strip_json_comments
 
 
 def extract_json(
@@ -78,88 +67,15 @@ def extract_json_lines(
     return ExtractedDocument(doc_type="jsonl", units=units, warnings=warnings)
 
 
-def extract_csv_tsv(
-    path: str, raw_bytes: Optional[bytes], context: ExtractorContext
-) -> ExtractedDocument:
-    warnings: List[str] = []
-    lower_name = os.path.basename(path).lower()
-    delimiter = "\t" if lower_name.endswith(".tsv") else ","
-
-    if raw_bytes is None:
-        raw = read_bytes(path, max_bytes=context.max_bytes)
-    else:
-        raw = raw_bytes
-
-    decoded, _ = safe_decode(raw)
-    stream = io.StringIO(decoded)
-    reader = csv.DictReader(stream, delimiter=delimiter)
-
-    units: List[ExtractedUnit] = []
-    headers = reader.fieldnames or []
-    if not headers:
-        return ExtractedDocument(doc_type="tsv" if delimiter == "\t" else "csv", units=[])
-
-    for idx, row in enumerate(reader, start=1):
-        if idx > context.max_rows:
-            warnings.append(f"csv_truncated_at_max_rows={context.max_rows}")
-            break
-        pairs = [f"{key}: {row.get(key, '')}" for key in headers]
-        text = "\n".join(["Headers: " + ", ".join(headers), "Row:", *pairs])
-        units.append(ExtractedUnit(text=normalize_text(text), metadata={"row_number": idx}))
-
-    doc_type = "tsv" if delimiter == "\t" else "csv"
-    return ExtractedDocument(doc_type=doc_type, units=units, warnings=warnings)
-
-
-def extract_html_svg(
-    path: str, raw_bytes: Optional[bytes], context: ExtractorContext
-) -> ExtractedDocument:
+def extract_svg(path: str, raw_bytes: Optional[bytes], context: ExtractorContext) -> ExtractedDocument:
     if raw_bytes is None:
         raw = read_bytes(path, max_bytes=context.max_bytes)
     else:
         raw = raw_bytes
     decoded, _ = safe_decode(raw)
-
-    soup = BeautifulSoup(decoded, "lxml")
-    for tag in soup(["script", "style"]):
-        tag.extract()
-
-    title = soup.title.get_text(" ", strip=True) if soup.title else ""
-    body = soup.get_text("\n", strip=True)
-    full_text = normalize_text((f"Title: {title}\n\n{body}" if title else body))
-
-    lower_name = os.path.basename(path).lower()
-    doc_type = "svg" if lower_name.endswith(".svg") else "html"
-    return ExtractedDocument(doc_type=doc_type, units=[ExtractedUnit(text=full_text)])
-
-
-def extract_xml(
-    path: str, raw_bytes: Optional[bytes], context: ExtractorContext
-) -> ExtractedDocument:
-    warnings: List[str] = []
-    if raw_bytes is None:
-        raw = read_bytes(path, max_bytes=context.max_bytes)
-    else:
-        raw = raw_bytes
-
-    try:
-        from lxml import etree
-
-        parser = etree.XMLParser(resolve_entities=False, no_network=True, recover=True)
-        root = etree.fromstring(raw, parser=parser)
-        text_parts = []
-        for elem in root.iter():
-            if elem.text and elem.text.strip():
-                text_parts.append(elem.text.strip())
-            if elem.tail and elem.tail.strip():
-                text_parts.append(elem.tail.strip())
-        text = normalize_text("\n".join(text_parts))
-    except Exception as exc:
-        decoded, _ = safe_decode(raw)
-        text = normalize_text(decoded)
-        warnings.append(f"xml_parse_failed_fallback_text: {exc}")
-
-    return ExtractedDocument(doc_type="xml", units=[ExtractedUnit(text=text)], warnings=warnings)
+    stripped = re.sub(r"<[^>]+>", " ", decoded)
+    text = normalize_text(stripped)
+    return ExtractedDocument(doc_type="svg", units=[ExtractedUnit(text=text)])
 
 
 def extract_har(

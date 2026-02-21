@@ -8,7 +8,7 @@ from .base import ExtractedDocument, Extractor, ExtractorContext, UnsupportedFor
 from .docling_extractors import build_docling_extractor
 from .notebook_data import extract_arrow, extract_feather, extract_ipynb, extract_parquet
 from .office import extract_doc, extract_ppt, extract_xls
-from .structured import extract_har, extract_html_svg, extract_json, extract_json_lines, extract_log
+from .structured import extract_har, extract_json, extract_json_lines, extract_log, extract_svg
 from .textual import extract_textual
 
 
@@ -64,7 +64,7 @@ def build_default_registry() -> ExtractorRegistry:
     textual = _extractor("textual", "text", extract_textual)
     json_ex = _extractor("json", "json", extract_json)
     jsonl_ex = _extractor("jsonl", "jsonl", extract_json_lines)
-    html_ex = _extractor("html", "html", extract_html_svg)
+    svg_ex = _extractor("svg", "svg", extract_svg)
     docling_ex = build_docling_extractor()
     log_ex = _extractor("log", "log", extract_log)
     har_ex = _extractor("har", "har", extract_har)
@@ -132,7 +132,7 @@ def build_default_registry() -> ExtractorRegistry:
         registry.register_extension(ext, docling_ex)
 
     # Non-target format handlers.
-    registry.register_extension(".svg", html_ex)
+    registry.register_extension(".svg", svg_ex)
     registry.register_extension(".log", log_ex)
     registry.register_extension(".har", har_ex)
 

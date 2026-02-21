@@ -73,7 +73,7 @@ Acceptance criteria:
 Validation commands:
 - `python -m pytest -q tests/test_ingestion_extended_formats.py tests/test_smoke_ingest.py`
 - `python -m pytest -q`
-Status: todo
+Status: done
 
 ## T005
 Goal: Add docling-aware chunk/provenance metadata mapping.
