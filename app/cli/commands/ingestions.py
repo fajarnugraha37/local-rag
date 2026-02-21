@@ -47,6 +47,98 @@ def _render_wait_progress(*, elapsed_s: float, record: dict[str, Any] | None, ti
     sys.stdout.flush()
 
 
+def _render_wait_progress_with_bar(
+    *,
+    elapsed_s: float,
+    record: dict[str, Any] | None,
+    tick: int,
+    percent: int | None,
+    processed: int | None,
+    total: int | None,
+) -> None:
+    spinner = ["|", "/", "-", "\\"]
+    mark = spinner[tick % len(spinner)]
+    status = str((record or {}).get("status") or "queued")
+    counters = (record or {}).get("counters") or {}
+    ingested = int(counters.get("ingested") or 0)
+    skipped = int(counters.get("skipped") or 0)
+    failed = int(counters.get("failed") or 0)
+    if percent is None:
+        line = (
+            f"\r{mark} waiting... status={status} "
+            f"ingested={ingested} skipped={skipped} failed={failed} "
+            f"elapsed={int(elapsed_s)}s"
+        )
+    else:
+        width = 24
+        pct = max(0, min(100, int(percent)))
+        filled = int(width * (pct / 100.0))
+        bar = "#" * filled + "-" * (width - filled)
+        proc = int(processed or 0)
+        tot = int(total or 0)
+        line = (
+            f"\r{mark} [{bar}] {pct:3d}% "
+            f"({proc}/{tot}) status={status} "
+            f"ingested={ingested} skipped={skipped} failed={failed} "
+            f"elapsed={int(elapsed_s)}s"
+        )
+    sys.stdout.write(line)
+    sys.stdout.flush()
+
+
+def _compute_progress_snapshot(
+    *,
+    svc,
+    ingestion_id: str,
+    source_type: str,
+    source_spec: dict[str, Any],
+    record: dict[str, Any] | None,
+    fallback_total: int | None = None,
+) -> tuple[int | None, int | None, int | None]:
+    try:
+        events = svc.list_events(ingestion_id, limit=5000)
+    except Exception:
+        return (None, None, None)
+
+    total = fallback_total
+    if source_type == "folder":
+        for ev in events:
+            if str(ev.get("event") or "") == "scan_done":
+                payload = ev.get("payload") or {}
+                selected = payload.get("selected")
+                if isinstance(selected, int) and selected >= 0:
+                    total = selected
+    elif source_type == "upload" and total is None:
+        # Best effort total for upload based on received files.
+        total = sum(1 for ev in events if str(ev.get("event") or "") == "upload_file_received")
+    elif source_type == "repo" and total is None:
+        # Repo ingestion internally runs folder scan; rely on scan_done if emitted.
+        for ev in events:
+            if str(ev.get("event") or "") == "scan_done":
+                payload = ev.get("payload") or {}
+                selected = payload.get("selected")
+                if isinstance(selected, int) and selected >= 0:
+                    total = selected
+
+    processed = 0
+    processed += sum(1 for ev in events if str(ev.get("event") or "") == "file_ingested")
+    processed += sum(1 for ev in events if str(ev.get("event") or "") == "file_skipped")
+    processed += sum(1 for ev in events if str(ev.get("event") or "") == "file_failed")
+    if processed == 0:
+        counters = (record or {}).get("counters") or {}
+        processed = (
+            int(counters.get("ingested") or 0)
+            + int(counters.get("skipped") or 0)
+            + int(counters.get("failed") or 0)
+        )
+
+    if total is None or total <= 0:
+        return (None, processed if processed > 0 else None, total)
+
+    pct = int(min(100, round((processed / total) * 100)))
+    return (pct, processed, total)
+
+
 def build_ingestions_cli() -> typer.Typer:
     app = typer.Typer(name="ingest", no_args_is_help=True, help="Ingestion jobs and logs.")
 
@@ -75,6 +167,7 @@ def build_ingestions_cli() -> typer.Typer:
         repo_id = services.idempotency_repo
         ns = validate_namespace(namespace, default_to_default=True)
         source_type = source.strip().lower()
+        total_items_hint: int | None = None
 
         if source_type not in {"folder", "repo", "files"}:
             raise typer.BadParameter("--source must be one of: folder, repo, files")
@@ -138,6 +231,7 @@ def build_ingestions_cli() -> typer.Typer:
                 file_paths = [s.strip() for s in paths.split(",") if s.strip()]
                 if not file_paths:
                     raise typer.BadParameter("--paths is required when --source files")
+                total_items_hint = len(file_paths)
                 uploads: list[tuple[str, bytes]] = []
                 for file_path in file_paths:
                     p = Path(file_path)
@@ -181,10 +275,21 @@ def build_ingestions_cli() -> typer.Typer:
                 while time.time() < deadline:
                     last_record = svc.get_job(ingestion_id)
                     if show_progress:
-                        _render_wait_progress(
+                        pct, processed, total = _compute_progress_snapshot(
+                            svc=svc,
+                            ingestion_id=ingestion_id,
+                            source_type=str((last_record or {}).get("source_type") or source_type),
+                            source_spec=dict((last_record or {}).get("source_spec") or {}),
+                            record=last_record,
+                            fallback_total=total_items_hint,
+                        )
+                        _render_wait_progress_with_bar(
                             elapsed_s=time.time() - started,
                             record=last_record,
                             tick=tick,
+                            percent=pct,
+                            processed=processed,
+                            total=total,
                         )
                         tick += 1
                     if last_record and str(last_record.get("status") or "") in terminal_states:
