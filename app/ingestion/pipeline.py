@@ -15,6 +15,16 @@ from app.ingestion.extractors.base import MissingDependencyError, UnsupportedFor
 from app.ingestion.vector_ingest_service import ingest_chunks
 
 
+def render_progress_line(prefix: str, current: int, total: int, *, width: int = 30) -> str:
+    safe_total = max(1, total)
+    safe_current = min(max(current, 0), safe_total)
+    ratio = safe_current / safe_total
+    filled = int(width * ratio)
+    bar = "#" * filled + "-" * (width - filled)
+    percent = int(ratio * 100)
+    return f"\r{prefix}: [{bar}] {percent:3d}% ({safe_current}/{safe_total})"
+
+
 @dataclass
 class IngestOptions:
     recursive: bool

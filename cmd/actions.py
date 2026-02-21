@@ -39,12 +39,12 @@ ACTION_SPECS: Dict[str, ActionSpec] = {
     ),
     "ingest-files": ActionSpec(
         name="ingest-files",
-        target="app.ingestion.file_ingest_gui:main",
+        target="app.cli.ingest_files:main",
         description="Ingest many document/config/data formats (--path non-GUI, no --path opens GUI).",
     ),
     "ingest-folder": ActionSpec(
         name="ingest-folder",
-        target="app.ingestion.folder_ingest_cli:main",
+        target="app.cli.ingest_folder:main",
         description="Scan and ingest an entire folder recursively with ignore rules + idempotency.",
     ),
     "list-docs": ActionSpec(

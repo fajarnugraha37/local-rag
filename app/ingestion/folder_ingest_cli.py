@@ -1,42 +1,23 @@
 from __future__ import annotations
 
-import argparse
 import os
 from typing import Dict, Sequence
 
 from app.ingestion.folder_ingest_service import FolderIngestOptions, ingest_folder
-
-
-def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Ingest an entire folder recursively with incremental skip support.")
-    parser.add_argument("--path", required=True, help="Root folder path to scan and ingest.")
-    parser.add_argument("--recursive", action="store_true", help="Enable recursive traversal (default: true).")
-    parser.add_argument("--no-recursive", action="store_true", help="Disable recursive traversal.")
-    parser.add_argument("--include", action="append", default=[], help="Glob include pattern (repeatable).")
-    parser.add_argument("--exclude", action="append", default=[], help="Glob exclude pattern (repeatable).")
-    parser.add_argument("--respect-gitignore", dest="respect_gitignore", action="store_true", help="Respect .gitignore rules (default).")
-    parser.add_argument("--no-respect-gitignore", dest="respect_gitignore", action="store_false", help="Ignore .gitignore files.")
-    parser.add_argument("--dry-run", action="store_true", help="Plan ingest/skip decisions without writing vectors/state.")
-    parser.add_argument("--force", action="store_true", help="Force reingestion even when files are unchanged.")
-    parser.add_argument("--namespace", default=None, help="Namespace to assign to ingested chunks (default: default).")
-    parser.set_defaults(recursive=True, respect_gitignore=True)
-    return parser
+from app.ingestion.pipeline import render_progress_line
 
 
 def _render_progress(counts: Dict[str, int], *, scanned: int, selected: int) -> None:
-    print(
-        "Progress: "
-        f"scanned={scanned} "
-        f"selected={selected} "
-        f"ingested={counts['ingested']} "
-        f"skipped={counts['skipped']} "
-        f"failed={counts['failed']}"
+    total = max(1, selected or scanned or 1)
+    current = min(total, counts["ingested"] + counts["skipped"] + counts["failed"])
+    prefix = (
+        f"Progress scanned={scanned} selected={selected} "
+        f"ingested={counts['ingested']} skipped={counts['skipped']} failed={counts['failed']}"
     )
+    print(render_progress_line(prefix, current, total, width=20).replace("\r", ""))
 
 
-def main(argv: Sequence[str] | None = None) -> None:
-    parser = _build_parser()
-    args = parser.parse_args(argv)
+def run_folder_ingest(args) -> None:
     recursive = bool(args.recursive and not args.no_recursive)
 
     progress_counts = {"ingested": 0, "skipped": 0, "failed": 0}
@@ -88,5 +69,8 @@ def main(argv: Sequence[str] | None = None) -> None:
     )
 
 
-if __name__ == "__main__":
-    main()
+def main(argv: Sequence[str] | None = None) -> None:
+    # Compatibility wrapper: CLI parsing now lives in app.cli.ingest_folder.
+    from app.cli.ingest_folder import main as cli_main
+
+    cli_main(argv)

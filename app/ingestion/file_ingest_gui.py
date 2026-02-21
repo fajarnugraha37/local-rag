@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import json
 import os
 import re
@@ -9,7 +8,7 @@ from typing import Sequence
 
 from app.common.namespaces import DEFAULT_NAMESPACE, validate_namespace
 from app.config import runtime_settings as settings
-from app.ingestion.pipeline import build_options, ingest_paths
+from app.ingestion.pipeline import build_options, ingest_paths, render_progress_line
 from app.ingestion.vector_ingest_service import ingest_chunks
 
 
@@ -35,13 +34,7 @@ def chunk_sentences(text: str, max_chars: int = 1000) -> list[str]:
 
 
 def _render_progress(prefix: str, current: int, total: int, *, width: int = 30) -> None:
-    safe_total = max(1, total)
-    safe_current = min(max(current, 0), safe_total)
-    ratio = safe_current / safe_total
-    filled = int(width * ratio)
-    bar = "#" * filled + "-" * (width - filled)
-    percent = int(ratio * 100)
-    sys.stdout.write(f"\r{prefix}: [{bar}] {percent:3d}% ({safe_current}/{safe_total})")
+    sys.stdout.write(render_progress_line(prefix, current, total, width=width))
     sys.stdout.flush()
 
 
@@ -107,7 +100,7 @@ def ingest_file_path(file_path: str, *, namespace: str | None = None):
     return file_result
 
 
-def _launch_gui() -> None:
+def launch_gui() -> None:
     try:
         import tkinter as tk
         from tkinter import filedialog, messagebox
@@ -152,7 +145,7 @@ def _launch_gui() -> None:
         )
         if not selected:
             return
-        _run_ingestion(
+        run_ingestion(
             list(selected),
             recursive=False,
             include_patterns=[],
@@ -167,7 +160,7 @@ def _launch_gui() -> None:
         selected = filedialog.askdirectory()
         if not selected:
             return
-        _run_ingestion(
+        run_ingestion(
             [selected],
             recursive=True,
             include_patterns=[],
@@ -184,31 +177,7 @@ def _launch_gui() -> None:
     root.mainloop()
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Ingest files into vector storage. Use --path for non-GUI mode.",
-    )
-    parser.add_argument(
-        "--path",
-        dest="paths",
-        action="append",
-        default=[],
-        help="File or directory path to ingest. Repeat --path for multiple inputs.",
-    )
-    parser.add_argument("--recursive", action="store_true", help="Recursively ingest files inside directories.")
-    parser.add_argument("--include", action="append", default=[], help="Glob include filter (repeatable).")
-    parser.add_argument("--exclude", action="append", default=[], help="Glob exclude filter (repeatable).")
-    parser.add_argument("--max-bytes", type=int, default=None, help="Max bytes per file.")
-    parser.add_argument("--max-rows", type=int, default=None, help="Max rows/records per structured file.")
-    parser.add_argument("--max-pages", type=int, default=None, help="Max pages for PDF.")
-    parser.add_argument("--max-slides", type=int, default=None, help="Max slides for PPT/PPTX.")
-    parser.add_argument("--max-sheets", type=int, default=None, help="Max sheets for XLS/XLSX.")
-    parser.add_argument("--fail-fast", action="store_true", help="Stop on first failed file.")
-    parser.add_argument("--namespace", default=None, help="Namespace to assign to ingested chunks (default: default).")
-    return parser
-
-
-def _run_ingestion(
+def run_ingestion(
     paths: Sequence[str],
     *,
     recursive: bool,
@@ -281,21 +250,7 @@ def _run_ingestion(
 
 
 def main(argv: Sequence[str] | None = None):
-    parser = _build_parser()
-    args = parser.parse_args(argv)
-    if args.paths:
-        _run_ingestion(
-            args.paths,
-            recursive=args.recursive,
-            include_patterns=args.include,
-            exclude_patterns=args.exclude,
-            max_bytes=args.max_bytes,
-            max_rows=args.max_rows,
-            max_pages=args.max_pages,
-            max_slides=args.max_slides,
-            max_sheets=args.max_sheets,
-            fail_fast=args.fail_fast,
-            namespace=args.namespace,
-        )
-        return
-    _launch_gui()
+    # Compatibility wrapper: CLI parsing now lives in app.cli.ingest_files.
+    from app.cli.ingest_files import main as cli_main
+
+    return cli_main(argv)
