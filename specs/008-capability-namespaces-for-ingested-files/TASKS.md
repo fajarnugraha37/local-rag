@@ -23,7 +23,7 @@ Validation commands:
 - `python -m pytest -q tests/test_namespaces.py`
 
 Status:
-- `todo`
+- `done`
 
 ## T002 - Namespace Metadata in Ingestion
 Goal:
