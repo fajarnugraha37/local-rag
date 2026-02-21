@@ -1,36 +1,36 @@
-import os
-import time
-from openai import OpenAI
 import argparse
+
+from openai import OpenAI
+
+from app.chat import chat_service
+from app.chat import cli_formatting as fmt
 from app.config import runtime_settings as settings
 from app.retrieval import hybrid_search as retrieval
-from app.chat.citation_prompting import build_citation_prompt, format_source_blocks_text
-from app.chat.citation_formatter import render_citation_output
-from app.chat.streaming_llm_client import stream_chat_with_continuation
 
 client = None
 
-# ANSI escape codes for colors
-PINK = '\033[95m'
-CYAN = '\033[96m'
-YELLOW = '\033[93m'
-NEON_GREEN = '\033[92m'
-RESET_COLOR = '\033[0m'
+# Backward-compatible color constants.
+PINK = fmt.PINK
+CYAN = fmt.CYAN
+YELLOW = fmt.YELLOW
+NEON_GREEN = fmt.NEON_GREEN
+RESET_COLOR = fmt.RESET_COLOR
 
-# Function to open a file and return its contents as a string
+
 def open_file(filepath):
-    with open(filepath, 'r', encoding='utf-8') as infile:
+    with open(filepath, encoding="utf-8") as infile:
         return infile.read()
 
-# Function to get relevant context using retrieval from data/* storage
-def get_relevant_context(rewritten_input, vault_embeddings, vault_content, top_k=3):
-    try:
-        return retrieval.scored_chunks(rewritten_input, top_k=top_k)
-    except Exception as e:
-        print(YELLOW + f"Retrieval failed: {e}" + RESET_COLOR)
-        return []
 
-# Function to interact with the Ollama model
+def get_relevant_context(rewritten_input, vault_embeddings, vault_content, top_k=3):
+    return chat_service.get_relevant_context(
+        rewritten_input,
+        retrieval,
+        top_k,
+        on_error=lambda exc: print(YELLOW + f"Retrieval failed: {exc}" + RESET_COLOR),
+    )
+
+
 def ollama_chat(
     user_input,
     system_message,
@@ -43,137 +43,59 @@ def ollama_chat(
     per_call_max_tokens=None,
     enable_thinking_summary=False,
 ):
-    citations_mode = settings.CONFIG.get("citations_mode", "inline")
-    citations_enabled = bool(settings.CONFIG.get("citations", True))
-    effective_mode = citations_mode if citations_enabled else "none"
-    max_sources = int(settings.CONFIG.get("citation_max_sources", settings.CONFIG.get("top_k", 3)))
-    max_snippet_chars = int(settings.CONFIG.get("citation_max_snippet_chars", 240))
-
-    # Get relevant context from the vault
-    retrieved_chunks = get_relevant_context(user_input, vault_embeddings, vault_content, top_k=settings.CONFIG.get("top_k", 3))
-    user_input_with_context, source_blocks = build_citation_prompt(
+    top_k = int(settings.CONFIG.get("top_k", 3))
+    retrieved_chunks = get_relevant_context(user_input, vault_embeddings, vault_content, top_k=top_k)
+    user_input_with_context, source_blocks = chat_service.build_context_prompt(
         user_input,
         retrieved_chunks,
-        max_sources=settings.CONFIG.get("top_k", 3),
-        max_snippet_chars=int(settings.CONFIG.get("citation_max_snippet_chars", 500)),
+        top_k,
+        settings,
     )
-    if source_blocks:
-        print("Context Pulled from Documents: \n\n" + CYAN + format_source_blocks_text(source_blocks) + RESET_COLOR)
-    else:
-        print(CYAN + "No relevant context found." + RESET_COLOR)
-    
-    # Append the user's input to the conversation history
+    fmt.print_context_blocks(source_blocks, chat_service.context_blocks_to_text)
+
     conversation_history.append({"role": "user", "content": user_input_with_context})
-    
-    # Create a message history including the system message and the conversation history
-    messages = [
-        {"role": "system", "content": system_message},
-        *conversation_history
-    ]
-    
+    messages = chat_service.build_messages(system_message, conversation_history)
+
     if stream:
-        provider_timeout = settings.CONFIG.get('provider_timeout_s', settings.CONFIG.get('model_timeout', 120))
-        flush_interval_ms = settings.CONFIG.get('flush_interval_ms', 250)
-        effective_per_call_tokens = per_call_max_tokens or settings.CONFIG.get(
-            'per_call_max_tokens',
-            settings.CONFIG.get('chat_max_tokens', 4000),
-        )
-        effective_max_continuations = (
-            settings.CONFIG.get('max_continuations', 2)
-            if max_continuations is None
-            else max_continuations
-        )
-        continuation_instruction = settings.CONFIG.get(
-            'continuation_instruction',
-            'Continue exactly where you left off. Do not repeat prior text.',
-        )
-
-        done_text = ""
-        saw_delta = False
-        stream_failed = False
-        last_token_at = time.monotonic()
-        last_keepalive_notice_at = 0.0
-        for event in stream_chat_with_continuation(
-            client,
-            model=ollama_model,
+        answer = chat_service.stream_chat_answer(
+            client=client,
+            ollama_model=ollama_model,
             messages=messages,
-            per_call_max_tokens=effective_per_call_tokens,
-            continuation_instruction=continuation_instruction,
-            max_continuations=effective_max_continuations,
-            timeout=provider_timeout,
-            flush_interval_ms=flush_interval_ms,
+            source_blocks=source_blocks,
+            settings=settings,
+            top_k=top_k,
+            max_continuations=max_continuations,
+            per_call_max_tokens=per_call_max_tokens,
             enable_thinking_summary=enable_thinking_summary,
-        ):
-            event_name = event.get('event')
-            data = event.get('data', {})
-            if event_name == 'final_delta':
-                text = data.get('text', '')
-                if text:
-                    print(NEON_GREEN + text + RESET_COLOR, end='', flush=True)
-                    saw_delta = True
-                    last_token_at = time.monotonic()
-            elif event_name == 'meta' and data.get('kind') == 'keepalive':
-                now = time.monotonic()
-                if now - last_token_at >= 3.0 and now - last_keepalive_notice_at >= 3.0:
-                    print("\n" + YELLOW + "[still generating...]" + RESET_COLOR)
-                    last_keepalive_notice_at = now
-            elif event_name == 'thinking_delta':
-                summary = data.get('text', '').strip()
-                if summary:
-                    print("\n" + PINK + "Thinking summary:" + RESET_COLOR + " " + CYAN + summary + RESET_COLOR)
-            elif event_name == 'error':
-                stream_failed = True
-                detail = data.get('detail') or data.get('message') or 'unknown streaming error'
-                print("\n" + YELLOW + f"Streaming error: {detail}" + RESET_COLOR)
-            elif event_name == 'done':
-                done_text = data.get('text', '')
-                if saw_delta:
-                    print()
-
-        if stream_failed and not done_text:
-            return "Sorry, the chat request timed out or failed."
-        if not done_text:
-            done_text = "Sorry, the chat request timed out or failed."
-
-        rendered = render_citation_output(
-            done_text,
-            source_blocks,
-            mode=effective_mode,
-            max_sources=max_sources,
-            max_snippet_chars=max_snippet_chars,
+            formatting=fmt,
+            error_message="Sorry, the chat request timed out or failed.",
         )
-        if rendered["sources_text"]:
-            print(rendered["sources_text"])
-        conversation_history.append({"role": "assistant", "content": rendered["answer"]})
-        return rendered["answer"]
+        conversation_history.append({"role": "assistant", "content": answer})
+        return answer
 
-    # Send the completion request to the Ollama model
-    response = client.chat.completions.create(
-        model=ollama_model,
-        messages=messages
-    )
-
-    # Append the model's response to the conversation history
-    rendered = render_citation_output(
+    response = client.chat.completions.create(model=ollama_model, messages=messages)
+    answer = chat_service.render_answer_with_citations(
         response.choices[0].message.content,
         source_blocks,
-        mode=effective_mode,
-        max_sources=max_sources,
-        max_snippet_chars=max_snippet_chars,
+        settings=settings,
+        top_k=top_k,
     )
-    if rendered["sources_text"]:
-        print(rendered["sources_text"])
-    conversation_history.append({"role": "assistant", "content": rendered["answer"]})
+    conversation_history.append({"role": "assistant", "content": answer})
+    return answer
 
-    # Return the content of the response from the model
-    return rendered["answer"]
 
 def main():
     global client
 
-    # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Ollama Chat")
-    parser.add_argument("--model", default=settings.CONFIG.get("ollama_model", "hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest"), help="Ollama model to use (default from config.yaml)")
+    parser.add_argument(
+        "--model",
+        default=settings.CONFIG.get(
+            "ollama_model",
+            "hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking-i1-GGUF:latest",
+        ),
+        help="Ollama model to use (default from config.yaml)",
+    )
     parser.add_argument(
         "--stream",
         action=argparse.BooleanOptionalAction,
@@ -223,35 +145,33 @@ def main():
         help="Maximum snippet characters for rendered sources.",
     )
     args = parser.parse_args()
+
     settings.CONFIG["citations"] = bool(args.citations)
     settings.CONFIG["citations_mode"] = str(args.citations_mode)
     settings.CONFIG["citation_max_sources"] = int(max(0, args.max_sources))
     settings.CONFIG["citation_max_snippet_chars"] = int(max(0, args.max_snippet_chars))
 
-    # Configuration for the Ollama API client
     client = OpenAI(
         base_url=settings.CONFIG.get("ollama_api", {}).get("base_url", "http://localhost:11434/v1"),
-        api_key=settings.CONFIG.get("ollama_api", {}).get("api_key")
+        api_key=settings.CONFIG.get("ollama_api", {}).get("api_key"),
     )
 
-    # Using data/* storage via retrieval; no vault.txt or in-memory torch embeddings
-    vault_content = []
-    vault_embeddings_tensor = None
-
-    # Conversation loop
     conversation_history = []
-    system_message = settings.CONFIG.get("system_message", "You are a helpful assistant that is an expert at extracting the most useful information from a given text")
+    system_message = settings.CONFIG.get(
+        "system_message",
+        "You are a helpful assistant that is an expert at extracting the most useful information from a given text",
+    )
 
     while True:
         user_input = input(YELLOW + "Ask a question about your documents (or type 'quit' to exit): " + RESET_COLOR)
-        if user_input.lower() == 'quit':
+        if user_input.lower() == "quit":
             break
 
         response = ollama_chat(
             user_input,
             system_message,
-            vault_embeddings_tensor,
-            vault_content,
+            None,
+            [],
             args.model,
             conversation_history,
             stream=args.stream,
@@ -263,4 +183,3 @@ def main():
             print(NEON_GREEN + "Response complete." + RESET_COLOR)
         else:
             print(NEON_GREEN + "Response: \n\n" + response + RESET_COLOR)
-

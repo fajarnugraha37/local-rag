@@ -1,24 +1,21 @@
-import os
-import time
-from openai import OpenAI
 import argparse
+import concurrent.futures
+
+from openai import OpenAI
+
+from app.chat import chat_service
+from app.chat import cli_formatting as fmt
 from app.config import runtime_settings as settings
 from app.retrieval import hybrid_search as retrieval
-from app.chat.citation_prompting import build_citation_prompt, format_source_blocks_text
-from app.chat.citation_formatter import render_citation_output
-from app.chat.streaming_llm_client import stream_chat_with_continuation
 
-# ANSI escape codes for colors
-PINK = '\033[95m'
-CYAN = '\033[96m'
-YELLOW = '\033[93m'
-NEON_GREEN = '\033[92m'
-RESET_COLOR = '\033[0m'
+PINK = fmt.PINK
+CYAN = fmt.CYAN
+YELLOW = fmt.YELLOW
+NEON_GREEN = fmt.NEON_GREEN
+RESET_COLOR = fmt.RESET_COLOR
 
-# Helper to call blocking model requests with a timeout to avoid indefinite hangs.
 
 def _call_with_timeout(func, timeout_sec=30, *args, **kwargs):
-    import concurrent.futures
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(func, *args, **kwargs)
@@ -26,29 +23,33 @@ def _call_with_timeout(func, timeout_sec=30, *args, **kwargs):
     except concurrent.futures.TimeoutError:
         print(YELLOW + f"Model request timed out after {timeout_sec} seconds." + RESET_COLOR)
         return None
-    except Exception as e:
-        print(YELLOW + f"Model request failed: {e}" + RESET_COLOR)
+    except Exception as exc:
+        print(YELLOW + f"Model request failed: {exc}" + RESET_COLOR)
         return None
 
+
 def load_config(config_file):
-    # Delegate to shared settings loader
     return settings.load_settings(config_file)
+
 
 def open_file(filepath):
     print("Opening file...")
     try:
-        with open(filepath, 'r', encoding='utf-8') as infile:
+        with open(filepath, encoding="utf-8") as infile:
             return infile.read()
     except FileNotFoundError:
         print(f"File '{filepath}' not found.")
         return None
 
+
 def get_relevant_context(rewritten_input, vault_embeddings, vault_content, top_k):
-    try:
-        return retrieval.scored_chunks(rewritten_input, top_k=top_k)
-    except Exception as e:
-        print(f"Retrieval failed: {e}")
-        return []
+    return chat_service.get_relevant_context(
+        rewritten_input,
+        retrieval,
+        top_k,
+        on_error=lambda exc: print(f"Retrieval failed: {exc}"),
+    )
+
 
 def ollama_chat(
     user_input,
@@ -64,121 +65,59 @@ def ollama_chat(
     per_call_max_tokens=None,
     enable_thinking_summary=False,
 ):
-    citations_mode = settings.CONFIG.get("citations_mode", "inline")
-    citations_enabled = bool(settings.CONFIG.get("citations", True))
-    effective_mode = citations_mode if citations_enabled else "none"
-    max_sources = int(settings.CONFIG.get("citation_max_sources", top_k))
-    max_snippet_chars = int(settings.CONFIG.get("citation_max_snippet_chars", 240))
-
     retrieved_chunks = get_relevant_context(user_input, vault_embeddings, vault_content, top_k)
-    user_input_with_context, source_blocks = build_citation_prompt(
+    user_input_with_context, source_blocks = chat_service.build_context_prompt(
         user_input,
         retrieved_chunks,
-        max_sources=top_k,
-        max_snippet_chars=int(settings.CONFIG.get("citation_max_snippet_chars", 500)),
+        top_k,
+        settings,
     )
-    if source_blocks:
-        print("Context Pulled from Documents: \n\n" + CYAN + format_source_blocks_text(source_blocks) + RESET_COLOR)
-    else:
-        print("No relevant context found.")
+    fmt.print_context_blocks(source_blocks, chat_service.context_blocks_to_text)
 
     conversation_history.append({"role": "user", "content": user_input_with_context})
-    messages = [{"role": "system", "content": system_message}, *conversation_history]
+    messages = chat_service.build_messages(system_message, conversation_history)
 
     if stream:
-        provider_timeout = settings.CONFIG.get('provider_timeout_s', settings.CONFIG.get('model_timeout', 120))
-        flush_interval_ms = settings.CONFIG.get('flush_interval_ms', 250)
-        effective_per_call_tokens = per_call_max_tokens or settings.CONFIG.get(
-            'per_call_max_tokens',
-            settings.CONFIG.get('chat_max_tokens', 2000),
-        )
-        effective_max_continuations = (
-            settings.CONFIG.get('max_continuations', 2)
-            if max_continuations is None
-            else max_continuations
-        )
-        continuation_instruction = settings.CONFIG.get(
-            'continuation_instruction',
-            'Continue exactly where you left off. Do not repeat prior text.',
-        )
-
-        done_text = ""
-        saw_delta = False
-        stream_failed = False
-        last_token_at = time.monotonic()
-        last_keepalive_notice_at = 0.0
-        for event in stream_chat_with_continuation(
-            client,
-            model=ollama_model,
+        answer = chat_service.stream_chat_answer(
+            client=client,
+            ollama_model=ollama_model,
             messages=messages,
-            per_call_max_tokens=effective_per_call_tokens,
-            continuation_instruction=continuation_instruction,
-            max_continuations=effective_max_continuations,
-            timeout=provider_timeout,
-            flush_interval_ms=flush_interval_ms,
+            source_blocks=source_blocks,
+            settings=settings,
+            top_k=top_k,
+            max_continuations=max_continuations,
+            per_call_max_tokens=per_call_max_tokens,
             enable_thinking_summary=enable_thinking_summary,
-        ):
-            event_name = event.get('event')
-            data = event.get('data', {})
-            if event_name == 'final_delta':
-                text = data.get('text', '')
-                if text:
-                    print(NEON_GREEN + text + RESET_COLOR, end='', flush=True)
-                    saw_delta = True
-                    last_token_at = time.monotonic()
-            elif event_name == 'meta' and data.get('kind') == 'keepalive':
-                now = time.monotonic()
-                if now - last_token_at >= 3.0 and now - last_keepalive_notice_at >= 3.0:
-                    print("\n" + YELLOW + "[still generating...]" + RESET_COLOR)
-                    last_keepalive_notice_at = now
-            elif event_name == 'thinking_delta':
-                summary = data.get('text', '').strip()
-                if summary:
-                    print("\n" + PINK + "Thinking summary:" + RESET_COLOR + " " + CYAN + summary + RESET_COLOR)
-            elif event_name == 'error':
-                stream_failed = True
-                detail = data.get('detail') or data.get('message') or 'unknown streaming error'
-                print("\n" + YELLOW + f"Streaming error: {detail}" + RESET_COLOR)
-            elif event_name == 'done':
-                done_text = data.get('text', '')
-                if saw_delta:
-                    print()
-
-        if stream_failed and not done_text:
-            return "An error occurred while processing your request (timeout or failure)."
-        if not done_text:
-            done_text = "An error occurred while processing your request (timeout or failure)."
-        rendered = render_citation_output(
-            done_text,
-            source_blocks,
-            mode=effective_mode,
-            max_sources=max_sources,
-            max_snippet_chars=max_snippet_chars,
+            formatting=fmt,
+            error_message="An error occurred while processing your request (timeout or failure).",
         )
-        if rendered["sources_text"]:
-            print(rendered["sources_text"])
-        conversation_history.append({"role": "assistant", "content": rendered["answer"]})
-        return rendered["answer"]
+        conversation_history.append({"role": "assistant", "content": answer})
+        return answer
 
-    timeout = settings.CONFIG.get('model_timeout', 30)
-    resp = _call_with_timeout(client.chat.completions.create, timeout, model=ollama_model, messages=messages, max_tokens=settings.CONFIG.get('chat_max_tokens', 2000))
+    timeout = settings.CONFIG.get("model_timeout", 30)
+    resp = _call_with_timeout(
+        client.chat.completions.create,
+        timeout,
+        model=ollama_model,
+        messages=messages,
+        max_tokens=settings.CONFIG.get("chat_max_tokens", 2000),
+    )
     if resp is None:
         return "An error occurred while processing your request (timeout or failure)."
+
     try:
-        rendered = render_citation_output(
+        answer = chat_service.render_answer_with_citations(
             resp.choices[0].message.content,
             source_blocks,
-            mode=effective_mode,
-            max_sources=max_sources,
-            max_snippet_chars=max_snippet_chars,
+            settings=settings,
+            top_k=top_k,
         )
-        if rendered["sources_text"]:
-            print(rendered["sources_text"])
-        conversation_history.append({"role": "assistant", "content": rendered["answer"]})
-        return rendered["answer"]
-    except Exception as e:
-        print(f"Error in Ollama chat: {e}")
+        conversation_history.append({"role": "assistant", "content": answer})
+        return answer
+    except Exception as exc:
+        print(f"Error in Ollama chat: {exc}")
         return "An error occurred while processing your request."
+
 
 def main():
     parser = argparse.ArgumentParser(description="Ollama Chat")
@@ -235,6 +174,7 @@ def main():
 
     args = parser.parse_args()
     config = load_config(args.config)
+
     settings.CONFIG["citations"] = bool(args.citations)
     settings.CONFIG["citations_mode"] = str(args.citations_mode)
     settings.CONFIG["citation_max_sources"] = int(max(0, args.max_sources))
@@ -243,13 +183,9 @@ def main():
     if args.model:
         config["ollama_model"] = args.model
 
-    # Use data/* storage via retrieval; no vault.txt or in-memory torch embeddings
-    vault_content = []
-    vault_embeddings_tensor = None
-
     client = OpenAI(
         base_url=config["ollama_api"]["base_url"],
-        api_key=config["ollama_api"]["api_key"]
+        api_key=config["ollama_api"]["api_key"],
     )
 
     conversation_history = []
@@ -257,13 +193,13 @@ def main():
 
     while True:
         user_input = input(YELLOW + "Ask a question about your documents (or type 'quit' to exit): " + RESET_COLOR)
-        if user_input.lower() == 'quit':
+        if user_input.lower() == "quit":
             break
         response = ollama_chat(
             user_input,
             system_message,
-            vault_embeddings_tensor,
-            vault_content,
+            None,
+            [],
             config["ollama_model"],
             conversation_history,
             config["top_k"],
@@ -277,4 +213,3 @@ def main():
             print(NEON_GREEN + "Response complete." + RESET_COLOR)
         else:
             print(NEON_GREEN + "Response: \n\n" + response + RESET_COLOR)
-
