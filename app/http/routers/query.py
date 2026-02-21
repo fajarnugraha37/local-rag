@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from typing import Any
+
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 
 from app.config import runtime_settings as settings
 from app.http.schemas.query import QueryRequest
@@ -33,7 +36,7 @@ def query(body: QueryRequest) -> dict:
 
 
 @router.post("/query/stream")
-async def query_stream(body: QueryRequest, request: Request) -> StreamingResponse:
+async def query_stream(body: QueryRequest) -> StreamingResponse:
     result = _svc().run_query(
         query=body.query,
         top_k=body.top_k,
@@ -56,3 +59,43 @@ async def query_stream(body: QueryRequest, request: Request) -> StreamingRespons
         "X-Accel-Buffering": "no",
     }
     return StreamingResponse(event_iter(), media_type="text/event-stream; charset=utf-8", headers=headers)
+
+
+class RetrieveRequest(BaseModel):
+    query: str
+    top_k: int = 6
+    rerank: bool = True
+    filters: dict[str, Any] | None = None
+    namespaces: list[str] = Field(default_factory=list)
+
+
+class RerankRequest(BaseModel):
+    query: str
+    candidates: list[dict[str, Any]] = Field(default_factory=list)
+    top_k: int | None = None
+    weights: dict[str, float] | None = None
+
+
+@router.post("/retrieve")
+def retrieve(body: RetrieveRequest) -> dict:
+    result = _svc().retrieve(
+        query=body.query,
+        top_k=body.top_k,
+        rerank=body.rerank,
+        filters=body.filters,
+        namespaces=body.namespaces,
+    )
+    return {"ok": True, **result}
+
+
+@router.post("/rerank")
+def rerank(body: RerankRequest) -> dict:
+    if not body.candidates:
+        return {"ok": True, "query": body.query, "count": 0, "candidates": []}
+    result = _svc().rerank_candidates(
+        query=body.query,
+        candidates=body.candidates,
+        top_k=body.top_k,
+        weights=body.weights,
+    )
+    return {"ok": True, **result}

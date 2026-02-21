@@ -152,7 +152,7 @@
   - Endpoints return structured scores and stable ids.
 - Validation commands:
   - `python -m pytest -q tests/test_fastapi_retrieve_rerank.py`
-- Status: todo
+- Status: done
 
 ## T010: Idempotency + Pagination + Soft Delete
 - Goal: Ensure idempotency, cursor pagination, soft delete retention across endpoints.
@@ -218,6 +218,7 @@
 - SQLite repositories used for server state (namespaces, docs, jobs, runs, feedback, idempotency).
 - Old server implementation removed.
 - Tests pass.
+
 
 
 

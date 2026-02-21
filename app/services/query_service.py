@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import hashlib
 import uuid
 from typing import Any
 
 from app.chat.citation_formatter import render_citation_output
 from app.repositories.sqlite.runs_repo import RunsRepository
+from app.retrieval import heuristic_reranker
 from app.retrieval import hybrid_search as retrieval
 
 
@@ -126,4 +128,84 @@ class QueryService:
             "citation_stats": citation_stats,
             "count": len(results),
             "results": results,
+        }
+
+    def retrieve(
+        self,
+        *,
+        query: str,
+        top_k: int = 6,
+        rerank: bool = True,
+        filters: dict[str, Any] | None = None,
+        namespaces: list[str] | None = None,
+    ) -> dict[str, Any]:
+        results = retrieval.scored_chunks(
+            query=query,
+            top_k=int(top_k),
+            rerank=bool(rerank),
+            filters=filters,
+            namespaces=namespaces,
+        )
+        candidates = [self._normalize_candidate(row, idx) for idx, row in enumerate(results)]
+        return {
+            "query": query,
+            "count": len(candidates),
+            "candidates": candidates,
+        }
+
+    def rerank_candidates(
+        self,
+        *,
+        query: str,
+        candidates: list[dict[str, Any]],
+        top_k: int | None = None,
+        weights: dict[str, float] | None = None,
+    ) -> dict[str, Any]:
+        prepared = []
+        for idx, row in enumerate(candidates):
+            candidate = dict(row)
+            candidate.setdefault("id", self._stable_candidate_id(candidate, idx))
+            candidate.setdefault("chunk_id", candidate.get("id"))
+            candidate.setdefault("text", str(candidate.get("text") or ""))
+            candidate.setdefault("dense_score", float(candidate.get("dense_score") or 0.0))
+            candidate.setdefault("bm25_score", float(candidate.get("bm25_score") or 0.0))
+            prepared.append(candidate)
+        ranked = heuristic_reranker.rerank(prepared, query, weights=weights, top_k=top_k)
+        normalized = [self._normalize_candidate(row, idx) for idx, row in enumerate(ranked)]
+        return {
+            "query": query,
+            "count": len(normalized),
+            "candidates": normalized,
+        }
+
+    @staticmethod
+    def _stable_candidate_id(row: dict[str, Any], index: int) -> str:
+        raw = "|".join(
+            [
+                str(row.get("id") or ""),
+                str(row.get("chunk_id") or ""),
+                str(row.get("doc_id") or ""),
+                str(row.get("source_path") or ""),
+                str(index),
+            ]
+        )
+        digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
+        return f"cand_{digest}"
+
+    def _normalize_candidate(self, row: dict[str, Any], index: int) -> dict[str, Any]:
+        candidate_id = str(row.get("id") or self._stable_candidate_id(row, index))
+        return {
+            "candidate_id": candidate_id,
+            "chunk_id": row.get("chunk_id"),
+            "doc_id": row.get("doc_id"),
+            "text": row.get("text"),
+            "scores": {
+                "rrf": float(row.get("score") or 0.0),
+                "dense": float(row.get("dense_score") or 0.0),
+                "bm25": float(row.get("bm25_score") or 0.0),
+                "rerank": float(row.get("rerank_score") or 0.0),
+            },
+            "rerank_rank": row.get("rerank_rank"),
+            "namespace": row.get("namespace"),
+            "source": row.get("source"),
         }
