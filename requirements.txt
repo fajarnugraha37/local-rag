@@ -4,6 +4,10 @@ ollama
 pyyaml
 python-dotenv
 chromadb
+fastapi
+uvicorn
+httpx
+python-multipart
 docling
 pyarrow
 nbformat

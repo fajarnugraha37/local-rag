@@ -28,3 +28,6 @@ files = ["app", "cmd", "tests"]
 ignore_missing_imports = true
 warn_unused_ignores = true
 check_untyped_defs = false
+
+[tool.fastapi_integration]
+required_dependencies = ["fastapi", "uvicorn", "httpx", "python-multipart"]

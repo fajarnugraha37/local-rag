@@ -12,7 +12,7 @@
   - `pip install -r requirements.txt` installs FastAPI dependencies.
 - Validation commands:
   - `python -m pytest -q` (expected to fail until refactor is complete).
-- Status: todo
+- Status: done
 
 ## T002: SQLite DB + Repositories
 - Goal: Create sqlite schema and repository layer for namespaces, docs, ingestions, runs, idempotency, feedback.
