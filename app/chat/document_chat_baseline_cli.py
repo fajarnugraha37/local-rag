@@ -4,6 +4,7 @@ from openai import OpenAI
 import argparse
 from app.config import runtime_settings as settings
 from app.retrieval import hybrid_search as retrieval
+from app.chat.citation_prompting import build_citation_prompt, format_source_blocks_text
 from app.chat.streaming_llm_client import stream_chat_with_continuation
 
 client = None
@@ -23,8 +24,7 @@ def open_file(filepath):
 # Function to get relevant context using retrieval from data/* storage
 def get_relevant_context(rewritten_input, vault_embeddings, vault_content, top_k=3):
     try:
-        results = retrieval.scored_chunks(rewritten_input, top_k=top_k)
-        return [r.get('text','').strip() for r in results]
+        return retrieval.scored_chunks(rewritten_input, top_k=top_k)
     except Exception as e:
         print(YELLOW + f"Retrieval failed: {e}" + RESET_COLOR)
         return []
@@ -43,18 +43,17 @@ def ollama_chat(
     enable_thinking_summary=False,
 ):
     # Get relevant context from the vault
-    relevant_context = get_relevant_context(user_input, vault_embeddings, vault_content, top_k=settings.CONFIG.get("top_k", 3))
-    if relevant_context:
-        # Convert list to a single string with newlines between items
-        context_str = "\n".join(relevant_context)
-        print("Context Pulled from Documents: \n\n" + CYAN + context_str + RESET_COLOR)
+    retrieved_chunks = get_relevant_context(user_input, vault_embeddings, vault_content, top_k=settings.CONFIG.get("top_k", 3))
+    user_input_with_context, source_blocks = build_citation_prompt(
+        user_input,
+        retrieved_chunks,
+        max_sources=settings.CONFIG.get("top_k", 3),
+        max_snippet_chars=int(settings.CONFIG.get("citation_max_snippet_chars", 500)),
+    )
+    if source_blocks:
+        print("Context Pulled from Documents: \n\n" + CYAN + format_source_blocks_text(source_blocks) + RESET_COLOR)
     else:
         print(CYAN + "No relevant context found." + RESET_COLOR)
-    
-    # Prepare the user's input by concatenating it with the relevant context
-    user_input_with_context = user_input
-    if relevant_context:
-        user_input_with_context = context_str + "\n\n" + user_input
     
     # Append the user's input to the conversation history
     conversation_history.append({"role": "user", "content": user_input_with_context})

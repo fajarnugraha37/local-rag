@@ -14,9 +14,9 @@ from openai import OpenAI
 
 from cmd.actions import ACTION_SPECS, run_action
 from app.common.namespaces import validate_namespace
+from app.chat.citation_prompting import build_citation_prompt
 from app.chat.streaming_llm_client import stream_chat_with_continuation
 from app.config import runtime_settings as settings
-from app.context import token_budget_packer as context_packer
 from app.ingestion.doc_registry_store import DocRegistryStore
 from app.ingestion.vector_ingest_service import delete_doc, ingest_chunks
 from app.ingestion.folder_ingest_service import FolderIngestOptions, ingest_folder
@@ -44,27 +44,19 @@ def _parse_bool(value, default: bool) -> bool:
 
 def _get_relevant_context(query: str, top_k: int):
     try:
-        results = retrieval.scored_chunks(query, top_k=top_k)
-        return [item.get("text", "").strip() for item in results if item.get("text")]
+        return retrieval.scored_chunks(query, top_k=top_k)
     except Exception:
         return []
 
 
 def _build_messages(question: str, system_message: str, top_k: int):
-    relevant_context = _get_relevant_context(question, top_k=top_k)
-    if relevant_context:
-        max_tokens = settings.CONFIG.get("context_token_budget", 1500)
-        overlap_tokens = settings.CONFIG.get("context_overlap", 20)
-        packed = context_packer.pack_context(
-            question,
-            relevant_context,
-            max_tokens=max_tokens,
-            overlap_tokens=overlap_tokens,
-        )
-        context_str = "\n\n".join(packed)
-        user_text = f"{question}\n\nRelevant Context:\n{context_str}"
-    else:
-        user_text = question
+    retrieved_chunks = _get_relevant_context(question, top_k=top_k)
+    user_text, _ = build_citation_prompt(
+        question,
+        retrieved_chunks,
+        max_sources=top_k,
+        max_snippet_chars=int(settings.CONFIG.get("citation_max_snippet_chars", 500)),
+    )
     return [
         {"role": "system", "content": system_message},
         {"role": "user", "content": user_text},

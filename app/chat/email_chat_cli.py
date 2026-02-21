@@ -4,6 +4,7 @@ from openai import OpenAI
 import argparse
 from app.config import runtime_settings as settings
 from app.retrieval import hybrid_search as retrieval
+from app.chat.citation_prompting import build_citation_prompt, format_source_blocks_text
 from app.chat.streaming_llm_client import stream_chat_with_continuation
 
 # ANSI escape codes for colors
@@ -43,8 +44,7 @@ def open_file(filepath):
 
 def get_relevant_context(rewritten_input, vault_embeddings, vault_content, top_k):
     try:
-        results = retrieval.scored_chunks(rewritten_input, top_k=top_k)
-        return [r.get('text','').strip() for r in results]
+        return retrieval.scored_chunks(rewritten_input, top_k=top_k)
     except Exception as e:
         print(f"Retrieval failed: {e}")
         return []
@@ -63,16 +63,17 @@ def ollama_chat(
     per_call_max_tokens=None,
     enable_thinking_summary=False,
 ):
-    relevant_context = get_relevant_context(user_input, vault_embeddings, vault_content, top_k)
-    if relevant_context:
-        context_str = "\n".join(relevant_context)
-        print("Context Pulled from Documents: \n\n" + CYAN + context_str + RESET_COLOR)
+    retrieved_chunks = get_relevant_context(user_input, vault_embeddings, vault_content, top_k)
+    user_input_with_context, source_blocks = build_citation_prompt(
+        user_input,
+        retrieved_chunks,
+        max_sources=top_k,
+        max_snippet_chars=int(settings.CONFIG.get("citation_max_snippet_chars", 500)),
+    )
+    if source_blocks:
+        print("Context Pulled from Documents: \n\n" + CYAN + format_source_blocks_text(source_blocks) + RESET_COLOR)
     else:
         print("No relevant context found.")
-
-    user_input_with_context = user_input
-    if relevant_context:
-        user_input_with_context = context_str + "\n\n" + user_input
 
     conversation_history.append({"role": "user", "content": user_input_with_context})
     messages = [{"role": "system", "content": system_message}, *conversation_history]

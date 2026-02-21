@@ -5,7 +5,7 @@ import argparse
 import json
 from app.config import runtime_settings as settings
 from app.retrieval import hybrid_search as retrieval
-from app.context import token_budget_packer as context_packer
+from app.chat.citation_prompting import build_citation_prompt, format_source_blocks_text
 from app.chat.streaming_llm_client import stream_chat_with_continuation
 
 client = None
@@ -124,8 +124,7 @@ def open_file(filepath):
 # Function to get relevant context using the new data/* storage via retrieval
 def get_relevant_context(rewritten_input, vault_embeddings, vault_content, top_k=3):
     try:
-        results = retrieval.scored_chunks(rewritten_input, top_k=top_k)
-        return [r.get('text','').strip() for r in results]
+        return retrieval.scored_chunks(rewritten_input, top_k=top_k)
     except Exception as e:
         print(YELLOW + f"Retrieval failed: {e}" + RESET_COLOR)
         return []
@@ -194,20 +193,17 @@ def ollama_chat(
     else:
         rewritten_query = user_input
     
-    relevant_context = get_relevant_context(rewritten_query, vault_embeddings, vault_content, top_k=top_k)
-    if relevant_context:
-        # Pack by token budget (tokenizer-aware when possible)
-        max_tokens = settings.CONFIG.get('context_token_budget', 1500)
-        overlap_tokens = settings.CONFIG.get('context_overlap', 20)
-        packed = context_packer.pack_context(rewritten_query, relevant_context, max_tokens=max_tokens, overlap_tokens=overlap_tokens)
-        context_str = "\n\n".join(packed)
-        print("Context Pulled from Documents: \n\n" + CYAN + context_str + RESET_COLOR)
+    retrieved_chunks = get_relevant_context(rewritten_query, vault_embeddings, vault_content, top_k=top_k)
+    user_input_with_context, source_blocks = build_citation_prompt(
+        user_input,
+        retrieved_chunks,
+        max_sources=top_k,
+        max_snippet_chars=int(settings.CONFIG.get("citation_max_snippet_chars", 500)),
+    )
+    if source_blocks:
+        print("Context Pulled from Documents: \n\n" + CYAN + format_source_blocks_text(source_blocks) + RESET_COLOR)
     else:
         print(CYAN + "No relevant context found." + RESET_COLOR)
-    
-    user_input_with_context = user_input
-    if relevant_context:
-        user_input_with_context = user_input + "\n\nRelevant Context:\n" + context_str
     
     conversation_history[-1]["content"] = user_input_with_context
     
@@ -410,11 +406,14 @@ def main():
             try:
                 print(NEON_GREEN + "Running multi-pass refinement (B)..." + RESET_COLOR)
                 extra_top_k = max(1, args.top_k * 2)
-                extra_context = get_relevant_context(user_input, vault_embeddings_tensor, vault_content, top_k=extra_top_k)
-                max_tokens = settings.CONFIG.get('context_token_budget', 1500)
-                overlap_tokens = settings.CONFIG.get('context_overlap', 20)
-                packed_extra = context_packer.pack_context(user_input, extra_context, max_tokens=max_tokens, overlap_tokens=overlap_tokens)
-                extra_context_str = "\n\n".join(packed_extra)
+                extra_rows = get_relevant_context(user_input, vault_embeddings_tensor, vault_content, top_k=extra_top_k)
+                _, extra_blocks = build_citation_prompt(
+                    user_input,
+                    extra_rows,
+                    max_sources=extra_top_k,
+                    max_snippet_chars=int(settings.CONFIG.get("citation_max_snippet_chars", 500)),
+                )
+                extra_context_str = format_source_blocks_text(extra_blocks)
                 refine_prompt = f"Refine the previous assistant response to the query:\n{user_input}\n\nPrevious response:\n{response}\n\nAdditional context (may be empty):\n{extra_context_str}\n\nProduce a concise, corrected and improved final answer based on the additional context."
                 refined = ollama_chat(
                     refine_prompt,
@@ -441,4 +440,3 @@ def main():
             print(NEON_GREEN + "Final Response complete." + RESET_COLOR)
         else:
             print(NEON_GREEN + "Final Response: \n\n" + response + RESET_COLOR)
-
