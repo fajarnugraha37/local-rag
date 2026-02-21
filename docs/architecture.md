@@ -14,7 +14,8 @@ Core flow:
 ## Main Packages
 - `app/chat`: chat orchestration, streaming client, CLI wrappers, citation prompting/formatting.
 - `app/http`: HTTP/SSE server, request parsing, route handlers.
-- `app/ingestion`: extraction, chunking, folder scanning, ingest pipeline/services.
+- `app/ingestion`: extraction bridge, chunking, folder scanning, ingest pipeline/services.
+- `app/document_conversion`: Docling adapter and normalized conversion models.
 - `app/embeddings`: embedding service abstraction over Ollama embeddings.
 - `app/retrieval`: hybrid retrieval, reranking, provenance helpers.
 - `app/storage`: Chroma vector-store wrapper and vector-id helpers.
@@ -32,7 +33,13 @@ Core flow:
 - Legacy migration inputs: `data/chunks.jsonl`, `data/embeddings.jsonl`, `data/index_meta.json`.
 
 ## Extension Points
-- Add new extractors in `app/ingestion/extractors/` and register in extractor registry.
+- Add new non-document extractors in `app/ingestion/extractors/` and register in extractor registry.
+- Add new document formats via `app/document_conversion/docling_adapter.py` and Docling routing.
 - Add new CLI actions in `cmd/actions.py`.
 - Add new HTTP routes in `app/http/handlers/*` and wire in `app/http/server.py`.
 - Add retrieval logic in `app/retrieval/*` while preserving result/source shape used by citation code.
+
+## Docling-First Extraction
+- Migrated document formats route through `app/ingestion/extractors/docling_extractors.py`.
+- The bridge calls `app/document_conversion/docling_adapter.py` to produce `ConvertedDocument` / `ConvertedBlock`.
+- Pipeline chunking uses normalized markdown text with locator metadata preserved for citations.

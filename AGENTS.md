@@ -37,6 +37,7 @@
 - For new runnable capabilities, add one action in `cmd/actions.py` and call existing `app/*` logic.
 - For HTTP APIs, add routes in `app/http/handlers/*` and wire dispatch in `app/http/server.py` (keep `app/chat/streaming_server.py` as compatibility shell).
 - For ingestion formats, register extractors in `app/ingestion/extractors/registry.py` and keep parsing/chunking shared through `app/ingestion/pipeline.py`.
+- For document formats in spec 011 scope, add support through `app/document_conversion/docling_adapter.py` and docling extractor routing, not legacy per-format parsers.
 
 ## Module Boundaries
 - Keep orchestration/presentation in wrapper modules (`cmd/*`, `app/cli/*`, `app/chat/*` CLI files).

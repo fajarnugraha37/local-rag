@@ -8,11 +8,12 @@
 
 2. Extraction:
 - File type is resolved by extractor registry.
-- Extractors emit normalized document units plus metadata.
+- Spec 011 migrated formats are routed to the Docling extractor bridge.
+- Docling adapter emits normalized markdown text + locator-aware blocks + metadata.
 
 3. Chunking:
 - Units are split with token-based chunking and overlap settings.
-- Chunk metadata includes source path/name, document type, and hash.
+- Chunk metadata includes source path/name, document type, hash, and normalized locators (page/slide/sheet/heading/xml fields when present).
 
 4. Embedding + upsert:
 - `app/embeddings/service.py` computes embeddings.
@@ -35,5 +36,6 @@
 
 ## Safety/Robustness Notes
 - Ingestion supports size/page/rows limits and pattern filtering.
+- Docling knobs are configurable (`ingest_docling_*`) with CPU-safe defaults.
 - Folder scan supports `.gitignore`/`.ragignore` and dry-run/force modes.
 - Streaming supports continuation when model output is token-limited.

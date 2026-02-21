@@ -124,12 +124,11 @@ python .\cmd\app.py --cli eval --questions eval\questions.jsonl --top-k 6 --outp
 `ingest-folder --path ...` performs recursive scan + ignore filtering + incremental skip (`--dry-run`, `--force`).
 
 Supported ingestion formats (case-insensitive):
-- Docs/text: `.md`, `.markdown`, `.mdx`, `.rst`, `.adoc`, `.asciidoc`, `.txt`, `.log`
-- Config/spec/code: `.yaml`, `.yml`, `.toml`, `.ini`, `.conf`, `.env`, `.properties`, `.sql`, `.proto`, `.graphql`, `.gql`, `.sh`, `.bash`, `.ps1`, `.gitignore`, `.gitattributes`, `.editorconfig`, `.npmrc`, `.yarnrc`, `Dockerfile`, `Makefile`
-- Structured/data: `.json`, `.jsonc`, `.jsonl`, `.ndjson`, `.csv`, `.tsv`, `.parquet`, `.feather`, `.arrow`, `.ipynb`, `.har`, `.html`, `.htm`, `.xml`, `.svg`
-- Office: `.pdf`, `.docx`, `.doc`, `.pptx`, `.ppt`, `.xlsx`, `.xls`
+- Docling-routed document formats: `.pdf`, `.docx`, `.xlsx`, `.pptx`, `.md`, `.markdown`, `.mdx`, `.adoc`, `.asciidoc`, `.tex`, `.html`, `.htm`, `.xhtml`, `.csv`, `.tsv`, `.xml` (including JATS/USPTO hints), `.vtt`, `.png`, `.jpg`, `.jpeg`, `.tiff`, `.bmp`, `.webp`, `.docling.json`
+- Other supported text/config/data formats: `.rst`, `.txt`, `.log`, `.yaml`, `.yml`, `.toml`, `.ini`, `.conf`, `.env`, `.properties`, `.sql`, `.proto`, `.graphql`, `.gql`, `.sh`, `.bash`, `.ps1`, `.gitignore`, `.gitattributes`, `.editorconfig`, `.npmrc`, `.yarnrc`, `Dockerfile`, `Makefile`, `.json`, `.jsonc`, `.jsonl`, `.ndjson`, `.parquet`, `.feather`, `.arrow`, `.ipynb`, `.har`, `.svg`
+- Legacy best-effort formats (non-docling): `.doc`, `.ppt`, `.xls`
 
-Install/upgrade parser dependencies:
+Install/upgrade dependencies:
 ```powershell
 pip install -r requirements.txt
 ```
@@ -138,10 +137,13 @@ Legacy `.doc/.ppt/.xls` extraction is best-effort (OLE parsing). Unsupported bin
 ## Make Targets
 ```powershell
 make help
+make install
+make setup
 make run-server
 make run-cli
 make fmt
 make lint
+make ingest-smoke
 make chat
 make ingest
 make query Q="what are key payment terms?" TOP_K=6
@@ -176,6 +178,9 @@ Ingestion config keys:
 - `ingest_max_pages`, `ingest_max_slides`, `ingest_max_sheets`
 - `ingest_zip_max_entries`, `ingest_zip_max_uncompressed_bytes`
 - `ingest_enable_parquet`, `ingest_enable_legacy_office`
+- `ingest_docling_enabled`, `ingest_docling_export_format`, `ingest_docling_device`, `ingest_docling_enable_ocr`
+- `ingest_docling_timeout_s`, `ingest_docling_max_pages`, `ingest_docling_max_slides`
+- `ingest_docling_max_tables`, `ingest_docling_max_images`
 
 ## Backup / Restore
 ```powershell

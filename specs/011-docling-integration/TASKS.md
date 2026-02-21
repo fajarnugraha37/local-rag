@@ -174,7 +174,7 @@ Validation commands:
 - `make help`
 - `make lint`
 - `make test`
-Status: todo
+Status: done
 
 ## T010
 Goal: Final cleanup and acceptance verification.

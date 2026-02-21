@@ -1,4 +1,4 @@
-.PHONY: help fmt lint run-server run-cli chat chat-baseline chat-email ingest ingest-folder list-docs delete-doc ingest-email migrate-vault backfill backfill-namespaces query debug-retrieval validate eval test run-all all
+.PHONY: help install setup fmt lint run-server run-cli chat chat-baseline chat-email ingest ingest-folder list-docs delete-doc ingest-email migrate-vault backfill backfill-namespaces query debug-retrieval validate ingest-smoke eval test run-all all
 
 PYTHON ?= python
 APP := $(PYTHON) cmd/app.py
@@ -18,6 +18,8 @@ ALL_NAMESPACES ?= false
 
 help:
 	@$(info Available targets:)
+	@$(info   make install)
+	@$(info   make setup)
 	@$(info   make run-server)
 	@$(info   make run-cli)
 	@$(info   make chat TOP_K=6 CITATIONS=true CITATIONS_MODE=inline+sources MAX_SOURCES=6 MAX_SNIPPET_CHARS=240)
@@ -38,10 +40,17 @@ help:
 	@$(info   make fmt)
 	@$(info   make lint)
 	@$(info   make test)
+	@$(info   make ingest-smoke)
 	@$(info   make eval)
 	@$(info   make all)
 	@$(info   make run-all)
 	@:
+
+install:
+	$(PYTHON) -m pip install -r requirements.txt
+
+setup:
+	$(PYTHON) -m pip install -r requirements.txt
 
 fmt:
 	$(PYTHON) -m ruff format .
@@ -145,6 +154,9 @@ validate:
 
 test:
 	$(PYTHON) -m pytest -q
+
+ingest-smoke:
+	$(PYTHON) -m pytest -q tests/test_smoke_ingest.py tests/test_docling_ingestion_smoke.py
 
 eval:
 	$(APP) --cli eval --questions eval\questions.jsonl --top-k $(TOP_K) --output eval\results.json

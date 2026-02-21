@@ -32,6 +32,14 @@
 - `ingest_max_pages`, `ingest_max_slides`, `ingest_max_sheets`
 - `ingest_zip_max_entries`, `ingest_zip_max_uncompressed_bytes`
 - `ingest_enable_parquet`, `ingest_enable_legacy_office`
+- Docling:
+- `ingest_docling_enabled`
+- `ingest_docling_export_format` (default `markdown`)
+- `ingest_docling_device` (default `cpu`)
+- `ingest_docling_enable_ocr` (default `false`)
+- `ingest_docling_timeout_s`
+- `ingest_docling_max_pages`, `ingest_docling_max_slides`
+- `ingest_docling_max_tables`, `ingest_docling_max_images`
 
 - Storage:
 - `vector_db_persist_dir`
