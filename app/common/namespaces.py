@@ -74,3 +74,10 @@ def merge_namespace_filters(
     if not base:
         return ns_filter
     return {"$and": [base, ns_filter]}
+
+
+def coerce_namespace(value: Optional[str]) -> str:
+    try:
+        return validate_namespace(value, default_to_default=True)
+    except ValueError:
+        return DEFAULT_NAMESPACE

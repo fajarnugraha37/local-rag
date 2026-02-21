@@ -9,10 +9,16 @@ import argparse
 from typing import List, Dict, Any, Optional, Tuple, Iterable
 from collections import defaultdict
 
-from app.common.namespaces import merge_namespace_filters
+from app.common.namespaces import coerce_namespace, merge_namespace_filters
 from app.config import runtime_settings as settings
 from app.indexing.embedding_service import embed_text
 from app.retrieval import heuristic_reranker as reranker
+from app.retrieval.provenance import (
+    assign_source_indices,
+    normalize_locator,
+    normalize_snippet,
+    normalize_title,
+)
 from app.storage.chroma_vector_store import ChromaVectorStore
 
 # --- Text tokenization (simple, used for BM25) ---
@@ -133,11 +139,28 @@ def hybrid_search(query: str,
                 'doc_id': metadata.get('doc_id'),
                 'source': metadata.get('source'),
                 'namespace': metadata.get('namespace'),
+                'page_number': metadata.get('page_number'),
+                'slide_number': metadata.get('slide_number'),
+                'sheet_name': metadata.get('sheet_name'),
+                'row_number': metadata.get('row_number'),
+                'chunk_index': metadata.get('chunk_index'),
                 'token_count': metadata.get('token_count'),
                 'text': text,
                 'dense_score': dense_score,
+                'metadata': metadata,
             }
         )
+
+    # Dedupe duplicate chunks deterministically by first-seen chunk_id.
+    deduped_rows: List[Dict[str, Any]] = []
+    seen_chunk_ids = set()
+    for row in chunk_rows:
+        chunk_id = row.get('chunk_id')
+        if chunk_id in seen_chunk_ids:
+            continue
+        seen_chunk_ids.add(chunk_id)
+        deduped_rows.append(row)
+    chunk_rows = deduped_rows
 
     chunk_map = {r['chunk_id']: r for r in chunk_rows}
 
@@ -164,6 +187,11 @@ def hybrid_search(query: str,
         meta = chunk_map.get(cid, {})
         doc_id = meta.get('doc_id') or 'unknown'
         citation = f"[{doc_id}:{cid}]"
+        source_path = str(meta.get('source') or "")
+        source_namespace = coerce_namespace(meta.get('namespace'))
+        source_title = normalize_title(meta.get('doc_id') or source_path or "Untitled")
+        source_locator = normalize_locator(meta.get('metadata') or {})
+        source_snippet = normalize_snippet(meta.get('text') or "", max_chars=240)
         results.append({
             'id': meta.get('vector_id'),
             'chunk_id': cid,
@@ -173,10 +201,30 @@ def hybrid_search(query: str,
             'bm25_score': float(bm25_score_map.get(cid, 0.0)),
             'text': (meta.get('text') or '')[:800],
             'doc_id': meta.get('doc_id'),
-            'source': meta.get('source'),
+            'source_path': source_path,
+            'source': {
+                'source_id': '',
+                'citation_index': 0,
+                'namespace': source_namespace,
+                'doc_id': str(meta.get('doc_id') or ''),
+                'path': source_path,
+                'title': source_title,
+                'locator': source_locator,
+                'snippet': source_snippet,
+            },
             'namespace': meta.get('namespace'),
+            'page_number': meta.get('page_number'),
+            'slide_number': meta.get('slide_number'),
+            'sheet_name': meta.get('sheet_name'),
+            'row_number': meta.get('row_number'),
+            'chunk_index': meta.get('chunk_index'),
             'token_count': meta.get('token_count') or len(re.findall(r"\w+", meta.get('text', ''))),
         })
+
+    # Deterministic source ids based on final retrieval order.
+    assigned = assign_source_indices([r.get('source') or {} for r in results])
+    for i, source in enumerate(assigned):
+        results[i]['source'] = source
     return results
 
 

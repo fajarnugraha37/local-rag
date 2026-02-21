@@ -23,7 +23,15 @@ def test_retrieval_namespace_scoping(tmp_path, monkeypatch):
                 "id": "n1",
                 "embedding": [0.1, 0.2, 0.3, 0.4],
                 "text": "banana alpha text",
-                "metadata": {"doc_id": "doc-alpha", "chunk_id": "c-alpha", "source": "s1", "namespace": "alpha", "token_count": 3},
+                "metadata": {
+                    "doc_id": "doc-alpha",
+                    "chunk_id": "c-alpha",
+                    "source": "s1",
+                    "namespace": "alpha",
+                    "token_count": 3,
+                    "page_number": 1,
+                    "chunk_index": 0,
+                },
             },
             {
                 "id": "n2",
@@ -66,13 +74,29 @@ def test_retrieval_vector_db(tmp_path, monkeypatch):
                 "id": "v1",
                 "embedding": [0.1, 0.2, 0.3, 0.4],
                 "text": "apple banana cherry",
-                "metadata": {"doc_id": "doc1", "chunk_id": "c1", "source": "s1", "namespace": "alpha", "token_count": 3},
+                "metadata": {
+                    "doc_id": "doc1",
+                    "chunk_id": "c1",
+                    "source": "s1",
+                    "namespace": "alpha",
+                    "token_count": 3,
+                    "page_number": 2,
+                    "chunk_index": 5,
+                },
             },
             {
                 "id": "v2",
                 "embedding": [0.2, 0.1, 0.4, 0.3],
                 "text": "banana orange melon",
-                "metadata": {"doc_id": "doc2", "chunk_id": "c2", "source": "s2", "namespace": "beta", "token_count": 3},
+                "metadata": {
+                    "doc_id": "doc2",
+                    "chunk_id": "c2",
+                    "source": "s2",
+                    "namespace": "beta",
+                    "token_count": 3,
+                    "slide_number": 4,
+                    "chunk_index": 8,
+                },
             },
         ]
     )
@@ -85,6 +109,10 @@ def test_retrieval_vector_db(tmp_path, monkeypatch):
     ids = [r.get("chunk_id") for r in res]
     assert "c1" in ids or "c2" in ids
     assert all("doc_id" in r and "source" in r and "citation" in r and "namespace" in r for r in res)
+    assert all(isinstance(r.get("source"), dict) for r in res)
+    assert all("source_id" in r["source"] and "citation_index" in r["source"] for r in res)
+    assert all("locator" in r["source"] and "snippet" in r["source"] for r in res)
+    assert all(r["source"]["source_id"].startswith("S") for r in res)
 
     ns_alpha = retrieval.scored_chunks("banana", top_k=2, rerank=False, namespaces=["alpha"])
     assert len(ns_alpha) >= 1
