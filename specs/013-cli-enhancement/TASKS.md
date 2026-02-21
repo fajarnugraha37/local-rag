@@ -76,7 +76,7 @@
   - `rag ingest start` returns ingestion_id and `rag ingest logs` streams events.
 - Validation:
   - `python .\cmd\app.py --cli ingest status <id>`
-- Status: todo
+- Status: done
 
 ## T006: Query + Runs + Streaming
 - Goal: Implement query/runs commands and streaming event renderer.
