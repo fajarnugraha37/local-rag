@@ -14,6 +14,7 @@ from app.cli.commands.query import register_query_commands
 from app.cli.commands.retrieve import register_retrieval_commands
 from app.cli.commands.runs import build_runs_cli
 from app.cli.commands.system import build_system_cli
+from app.cli.shell import register_shell_command
 from cmd.actions import format_actions_table, list_actions, run_action
 
 app = typer.Typer(
@@ -37,6 +38,7 @@ app.add_typer(_INGESTIONS_APP, name="ingest")
 app.add_typer(_RUNS_APP, name="run")
 register_query_commands(app)
 register_retrieval_commands(app)
+register_shell_command(app)
 
 
 def _build_context(json_output: bool, verbose: bool) -> dict[str, Any]:

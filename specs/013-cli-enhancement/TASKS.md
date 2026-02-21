@@ -123,7 +123,7 @@
   - Shell starts and can run a query end-to-end.
 - Validation:
   - `python .\cmd\app.py --cli shell`
-- Status: todo
+- Status: done
 
 ## T009: Idempotency + Pagination Helpers
 - Goal: Provide shared helpers for idempotency keys and cursor pagination.
