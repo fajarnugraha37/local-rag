@@ -53,7 +53,7 @@ Validation commands:
 - `python -m pytest -q tests/test_ingestion_extended_formats.py`
 
 Status:
-- `todo`
+- `done`
 
 ## T003 - Document Registry Store
 Goal:

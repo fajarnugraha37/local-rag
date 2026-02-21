@@ -191,6 +191,7 @@ def ingest_single_path(
     options: Optional[IngestOptions] = None,
     embedding_model: Optional[str] = None,
     doc_id: Optional[str] = None,
+    namespace: Optional[str] = None,
     progress_callback=None,
 ) -> Dict[str, object]:
     started = time.monotonic()
@@ -279,6 +280,7 @@ def ingest_single_path(
         chunks,
         source_path=path,
         doc_id=doc_id,
+        namespace=namespace,
         embedding_model=embedding_model,
         progress_callback=ingest_progress,
     )
@@ -300,6 +302,7 @@ def ingest_uploaded_files(
     registry: Optional[ExtractorRegistry] = None,
     options: Optional[IngestOptions] = None,
     embedding_model: Optional[str] = None,
+    namespace: Optional[str] = None,
     progress_callback=None,
 ) -> Dict[str, object]:
     registry = registry or build_default_registry()
@@ -335,6 +338,7 @@ def ingest_uploaded_files(
                 chunks,
                 source_path=file_name,
                 doc_id=file_name,
+                namespace=namespace,
                 embedding_model=embedding_model,
                 progress_callback=progress_callback,
             )
@@ -407,6 +411,7 @@ def ingest_paths(
     registry: Optional[ExtractorRegistry] = None,
     options: Optional[IngestOptions] = None,
     embedding_model: Optional[str] = None,
+    namespace: Optional[str] = None,
     progress_callback=None,
 ) -> Dict[str, object]:
     registry = registry or build_default_registry()
@@ -430,6 +435,7 @@ def ingest_paths(
             registry=registry,
             options=options,
             embedding_model=embedding_model,
+            namespace=namespace,
             progress_callback=progress_callback,
         )
         results.append(item)

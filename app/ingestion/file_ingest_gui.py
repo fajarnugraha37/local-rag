@@ -44,7 +44,14 @@ def _render_progress(prefix: str, current: int, total: int, *, width: int = 30) 
     sys.stdout.flush()
 
 
-def write_chunks_file(chunks_list, source_path, chunks_file=None, append_vault=False, show_progress: bool = True):
+def write_chunks_file(
+    chunks_list,
+    source_path,
+    chunks_file=None,
+    append_vault=False,
+    show_progress: bool = True,
+    namespace: str | None = None,
+):
     total = len(chunks_list) if hasattr(chunks_list, "__len__") else 0
     progress_state = {"last_current": -1}
 
@@ -63,7 +70,12 @@ def write_chunks_file(chunks_list, source_path, chunks_file=None, append_vault=F
             sys.stdout.write("\n")
             sys.stdout.flush()
 
-    result = ingest_chunks(chunks_list, source_path=source_path, progress_callback=_on_progress if show_progress else None)
+    result = ingest_chunks(
+        chunks_list,
+        source_path=source_path,
+        namespace=namespace,
+        progress_callback=_on_progress if show_progress else None,
+    )
     print(f"Wrote {result['added']} new chunks to vector DB (failed={result['failed']}, skipped={result['skipped']})")
     return result
 
@@ -79,9 +91,9 @@ def _read_txt_text(path: str) -> str:
         return re.sub(r"\s+", " ", txt_file.read()).strip()
 
 
-def ingest_file_path(file_path: str):
+def ingest_file_path(file_path: str, *, namespace: str | None = None):
     options = build_options()
-    summary = ingest_paths([file_path], options=options)
+    summary = ingest_paths([file_path], options=options, namespace=namespace)
     file_result = summary["files"][0] if summary.get("files") else {"status": "skipped", "reason": "no_file"}
     if file_result.get("status") == "ok":
         print(
@@ -164,6 +176,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-slides", type=int, default=None, help="Max slides for PPT/PPTX.")
     parser.add_argument("--max-sheets", type=int, default=None, help="Max sheets for XLS/XLSX.")
     parser.add_argument("--fail-fast", action="store_true", help="Stop on first failed file.")
+    parser.add_argument("--namespace", default=None, help="Namespace to assign to ingested chunks (default: default).")
     return parser
 
 
@@ -179,6 +192,7 @@ def _run_ingestion(
     max_slides: int | None = None,
     max_sheets: int | None = None,
     fail_fast: bool = False,
+    namespace: str | None = None,
 ):
     options = build_options(
         recursive=recursive,
@@ -213,7 +227,7 @@ def _run_ingestion(
             sys.stdout.write("\n")
             sys.stdout.flush()
 
-    summary = ingest_paths(paths, options=options, progress_callback=_on_progress)
+    summary = ingest_paths(paths, options=options, progress_callback=_on_progress, namespace=namespace)
     for item in summary.get("files", []):
         status = item.get("status")
         line = (
@@ -253,6 +267,7 @@ def main(argv: Sequence[str] | None = None):
             max_slides=args.max_slides,
             max_sheets=args.max_sheets,
             fail_fast=args.fail_fast,
+            namespace=args.namespace,
         )
         return
     _launch_gui()

@@ -1,3 +1,5 @@
+import pytest
+
 from app.config import runtime_settings as settings
 from app.ingestion import vector_ingest_service
 from app.ingestion.vector_ingest_service import ingest_chunks
@@ -119,3 +121,45 @@ def test_ingest_duplicate_chunk_texts_do_not_fail(tmp_path, monkeypatch):
     summary = ingest_chunks(repeated, source_path="dup.txt", doc_id="dup.txt")
     assert summary["added"] == 5
     assert summary["failed"] == 0
+
+
+def test_ingest_namespace_default_and_custom(tmp_path, monkeypatch):
+    persist_dir = tmp_path / "chroma_ns"
+    collection = "test_ingest_namespace"
+
+    settings.CONFIG["vector_db_persist_dir"] = str(persist_dir)
+    settings.CONFIG["vector_db_collection"] = collection
+    settings.CONFIG["embedding_dim"] = 4
+    settings.CONFIG["vector_db_batch_size"] = 8
+
+    def fake_embed_text(text, embedding_model=None, allow_fallback=True, fallback_length=None):
+        return {"embedding": [0.1, 0.2, 0.3, 0.4], "model": "fake", "used_fallback": False}
+
+    monkeypatch.setattr(vector_ingest_service, "embed_text", fake_embed_text)
+
+    ingest_chunks(["default ns chunk"], source_path="default.txt", doc_id="default.txt")
+    ingest_chunks(["custom ns chunk"], source_path="custom.txt", doc_id="custom.txt", namespace="project_a")
+
+    store = ChromaVectorStore(persist_dir=str(persist_dir), collection=collection, embedding_dim=4)
+    default_rows = store.collection.get(where={"doc_id": "default.txt"}, include=["metadatas"])
+    custom_rows = store.collection.get(where={"doc_id": "custom.txt"}, include=["metadatas"])
+    assert default_rows["metadatas"][0]["namespace"] == "default"
+    assert custom_rows["metadatas"][0]["namespace"] == "project_a"
+
+
+def test_ingest_invalid_namespace_fails_fast(tmp_path, monkeypatch):
+    persist_dir = tmp_path / "chroma_ns_invalid"
+    collection = "test_ingest_namespace_invalid"
+
+    settings.CONFIG["vector_db_persist_dir"] = str(persist_dir)
+    settings.CONFIG["vector_db_collection"] = collection
+    settings.CONFIG["embedding_dim"] = 4
+    settings.CONFIG["vector_db_batch_size"] = 8
+
+    def fake_embed_text(text, embedding_model=None, allow_fallback=True, fallback_length=None):
+        return {"embedding": [0.1, 0.2, 0.3, 0.4], "model": "fake", "used_fallback": False}
+
+    monkeypatch.setattr(vector_ingest_service, "embed_text", fake_embed_text)
+
+    with pytest.raises(ValueError):
+        ingest_chunks(["bad namespace chunk"], source_path="bad.txt", namespace="Bad Namespace")

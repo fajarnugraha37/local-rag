@@ -58,13 +58,18 @@ def chunk_text(text, max_length=1000):
 
     return chunks
 
-def write_chunks_file(chunks_list, source_path=None, chunks_file=None, append_vault=True):
-    result = ingest_chunks(chunks_list, source_path=source_path, doc_id=(os.path.basename(source_path) if source_path else 'email'))
+def write_chunks_file(chunks_list, source_path=None, chunks_file=None, append_vault=True, namespace=None):
+    result = ingest_chunks(
+        chunks_list,
+        source_path=source_path,
+        doc_id=(os.path.basename(source_path) if source_path else 'email'),
+        namespace=namespace,
+    )
     print(f"Wrote {result['added']} new chunks to vector DB (failed={result['failed']}, skipped={result['skipped']})")
 
-def save_chunks_to_vault(chunks, source_path=None):
+def save_chunks_to_vault(chunks, source_path=None, namespace=None):
     try:
-        write_chunks_file(chunks, source_path=source_path)
+        write_chunks_file(chunks, source_path=source_path, namespace=namespace)
     except Exception as e:
         print(f"Failed to save chunks to structured file: {e}")
 
@@ -73,7 +78,7 @@ def get_text_from_html(html_content):
     soup = BeautifulSoup(html_content, 'lxml')
     return soup.get_text()
 
-def save_plain_text_content(email_bytes, email_id):
+def save_plain_text_content(email_bytes, email_id, namespace=None):
     try:
         msg = BytesParser(policy=policy.default).parsebytes(email_bytes)
     except Exception as e:
@@ -115,12 +120,12 @@ def save_plain_text_content(email_bytes, email_id):
 
     chunks = chunk_text(text_content)
     try:
-        save_chunks_to_vault(chunks, source_path=f"email_{email_id}")
+        save_chunks_to_vault(chunks, source_path=f"email_{email_id}", namespace=namespace)
     except Exception as e:
         print(f"Failed to save chunks for email ID {email_id}: {e}")
     return text_content
 
-def search_and_process_emails(imap_client, email_source, search_keyword, start_date, end_date):
+def search_and_process_emails(imap_client, email_source, search_keyword, start_date, end_date, namespace=None):
     if imap_client is None:
         print(YELLOW + f"No IMAP client for {email_source}, skipping." + RESET_COLOR)
         return
@@ -162,7 +167,7 @@ def search_and_process_emails(imap_client, email_source, search_keyword, start_d
                     email_id = str(num)
                 print(f"Downloading and processing email ID: {email_id} from {email_source}")
                 try:
-                    save_plain_text_content(email_data[0][1], email_id)
+                    save_plain_text_content(email_data[0][1], email_id, namespace=namespace)
                 except Exception as e:
                     print(YELLOW + f"Error processing email ID {email_id} from {email_source}: {e}" + RESET_COLOR)
             else:
@@ -180,6 +185,7 @@ def main():
     parser.add_argument("--keyword", help="The keyword to search for in the email bodies.", default="")
     parser.add_argument("--startdate", help="Start date in DD.MM.YYYY format.", required=False)
     parser.add_argument("--enddate", help="End date in DD.MM.YYYY format.", required=False)
+    parser.add_argument("--namespace", help="Namespace to assign to ingested email chunks (default: default).", default=None)
     args = parser.parse_args()
 
     start_date = None
@@ -237,8 +243,8 @@ def main():
     H = connect_imap('imap-mail.outlook.com', outlook_username, outlook_password, 'Outlook')
 
     # Search and process emails from Gmail and Outlook
-    search_and_process_emails(M, "Gmail", args.keyword, start_date, end_date)
-    search_and_process_emails(H, "Outlook", args.keyword, start_date, end_date)
+    search_and_process_emails(M, "Gmail", args.keyword, start_date, end_date, namespace=args.namespace)
+    search_and_process_emails(H, "Outlook", args.keyword, start_date, end_date, namespace=args.namespace)
 
     # Logout only clients that connected successfully
     for client, name in ((M, 'Gmail'), (H, 'Outlook')):

@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
+from app.common.namespaces import validate_namespace
 from app.config import runtime_settings as settings
 from app.indexing.embedding_service import embed_text
 from app.storage.chroma_vector_store import ChromaVectorStore
@@ -48,6 +49,7 @@ def ingest_chunks(
     *,
     source_path: Optional[str] = None,
     doc_id: Optional[str] = None,
+    namespace: Optional[str] = None,
     embedding_model: Optional[str] = None,
     store: Optional[ChromaVectorStore] = None,
     progress_callback: Optional[ProgressCallback] = None,
@@ -55,6 +57,7 @@ def ingest_chunks(
     """Chunk -> embed -> upsert to vector DB."""
     resolved_doc_id = _resolve_doc_id(source_path, explicit_doc_id=doc_id)
     resolved_doc_key = stable_doc_id(resolved_doc_id)
+    resolved_namespace = validate_namespace(namespace, default_to_default=True)
     batch_size = int(settings.CONFIG.get("vector_db_batch_size", 64))
 
     vector_store = store or ChromaVectorStore()
@@ -114,9 +117,11 @@ def ingest_chunks(
             "doc_key": resolved_doc_key,
             "chunk_id": chunk_key,
             "source": source_path or "",
+            "namespace": resolved_namespace,
             "token_count": len(text.split()),
         }
         metadata.update(_metadata_scalars(extra_meta))
+        metadata["namespace"] = resolved_namespace
 
         batch.append(
             {

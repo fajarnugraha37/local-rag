@@ -26,6 +26,7 @@ class FolderIngestOptions:
     dry_run: bool = False
     force: bool = False
     embedding_model: Optional[str] = None
+    namespace: Optional[str] = None
     state_path: Optional[str] = None
     ingest_options: Optional[IngestOptions] = None
     progress_callback: Optional[ProgressCallback] = None
@@ -145,6 +146,7 @@ def ingest_folder(options: FolderIngestOptions) -> Dict[str, object]:
             options=options.ingest_options,
             embedding_model=options.embedding_model,
             doc_id=os.path.basename(candidate.path),
+            namespace=options.namespace,
         )
         status = str(ingest_result.get("status") or "")
         if status == "ok":

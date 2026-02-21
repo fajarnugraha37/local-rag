@@ -18,6 +18,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-respect-gitignore", dest="respect_gitignore", action="store_false", help="Ignore .gitignore files.")
     parser.add_argument("--dry-run", action="store_true", help="Plan ingest/skip decisions without writing vectors/state.")
     parser.add_argument("--force", action="store_true", help="Force reingestion even when files are unchanged.")
+    parser.add_argument("--namespace", default=None, help="Namespace to assign to ingested chunks (default: default).")
     parser.set_defaults(recursive=True, respect_gitignore=True)
     return parser
 
@@ -69,6 +70,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             respect_gitignore=bool(args.respect_gitignore),
             dry_run=bool(args.dry_run),
             force=bool(args.force),
+            namespace=args.namespace,
             progress_callback=_on_progress,
         )
     )
