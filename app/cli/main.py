@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import json
 from typing import Any, List, Optional, Sequence
 
 import typer
 from click.exceptions import ClickException
 
+from app.cli.commands.system import build_system_cli
 from cmd.actions import format_actions_table, list_actions, run_action
 
 app = typer.Typer(
@@ -13,6 +15,9 @@ app = typer.Typer(
     add_completion=False,
     help="Direct-to-app CLI for local RAG workflows.",
 )
+
+_SYSTEM_COMMANDS, _CONFIG_APP = build_system_cli()
+app.add_typer(_CONFIG_APP, name="config")
 
 
 def _build_context(json_output: bool, verbose: bool) -> dict[str, Any]:
@@ -55,6 +60,53 @@ def actions_list_command() -> None:
     """List legacy actions."""
     for spec in list_actions():
         typer.echo(f"{spec.name}\t{spec.description}")
+
+
+@app.command("health")
+def health_command(ctx: typer.Context) -> None:
+    payload = _SYSTEM_COMMANDS["health"]()
+    if bool((ctx.obj or {}).get("json")):
+        typer.echo(json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True))
+        return
+    typer.echo(str(payload))
+
+
+@app.command("healthz")
+def healthz_command(ctx: typer.Context) -> None:
+    payload = _SYSTEM_COMMANDS["healthz"]()
+    if bool((ctx.obj or {}).get("json")):
+        typer.echo(json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True))
+        return
+    typer.echo(str(payload))
+
+
+@app.command("readyz")
+def readyz_command(ctx: typer.Context) -> None:
+    payload = _SYSTEM_COMMANDS["readyz"]()
+    if bool((ctx.obj or {}).get("json")):
+        typer.echo(json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True))
+        return
+    typer.echo(str(payload))
+    if not bool(payload.get("ok")):
+        raise typer.Exit(code=1)
+
+
+@app.command("version")
+def version_command(ctx: typer.Context) -> None:
+    payload = _SYSTEM_COMMANDS["version"]()
+    if bool((ctx.obj or {}).get("json")):
+        typer.echo(json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True))
+        return
+    typer.echo(f"{payload.get('version')} ({payload.get('api')})")
+
+
+@app.command("capabilities")
+def capabilities_command(ctx: typer.Context) -> None:
+    payload = _SYSTEM_COMMANDS["capabilities"]()
+    if bool((ctx.obj or {}).get("json")):
+        typer.echo(json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True))
+        return
+    typer.echo(str(payload))
 
 
 def run(argv: Sequence[str]) -> int:

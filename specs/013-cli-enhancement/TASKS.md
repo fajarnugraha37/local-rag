@@ -44,7 +44,7 @@
 - Validation:
   - `python .\cmd\app.py --cli healthz`
   - `python .\cmd\app.py --cli config get --json`
-- Status: todo
+- Status: done
 
 ## T004: Namespaces + Documents Commands
 - Goal: CLI parity for namespaces and documents (list/show/delete/bulk/purge).
