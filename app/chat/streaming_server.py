@@ -52,7 +52,7 @@ def _get_relevant_context(query: str, top_k: int):
 
 def _build_messages(question: str, system_message: str, top_k: int):
     retrieved_chunks = _get_relevant_context(question, top_k=top_k)
-    user_text, _ = build_citation_prompt(
+    user_text, source_blocks = build_citation_prompt(
         question,
         retrieved_chunks,
         max_sources=top_k,
@@ -61,7 +61,7 @@ def _build_messages(question: str, system_message: str, top_k: int):
     return [
         {"role": "system", "content": system_message},
         {"role": "user", "content": user_text},
-    ]
+    ], source_blocks
 
 
 def _to_sse(event_name: str, payload: dict) -> bytes:
@@ -340,7 +340,7 @@ class StreamingHandler(BaseHTTPRequestHandler):
             base_url=settings.CONFIG.get("ollama_api", {}).get("base_url", "http://localhost:11434/v1"),
             api_key=settings.CONFIG.get("ollama_api", {}).get("api_key"),
         )
-        messages = _build_messages(question, system_message=system_message, top_k=top_k)
+        messages, source_blocks = _build_messages(question, system_message=system_message, top_k=top_k)
 
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/event-stream; charset=utf-8")
@@ -363,6 +363,17 @@ class StreamingHandler(BaseHTTPRequestHandler):
             ):
                 name = event.get("event", "message")
                 payload = event.get("data", {})
+                if name == "done":
+                    self.wfile.write(_to_sse("sources", {"sources": source_blocks}))
+                    if source_blocks:
+                        stats_payload = render_citation_output(
+                            payload.get("text", ""),
+                            source_blocks,
+                            mode="inline",
+                            max_sources=int(settings.CONFIG.get("citation_max_sources", top_k)),
+                            max_snippet_chars=int(settings.CONFIG.get("citation_max_snippet_chars", 240)),
+                        ).get("stats", {})
+                        self.wfile.write(_to_sse("citation_stats", {"stats": stats_payload}))
                 self.wfile.write(_to_sse(name, payload))
                 self.wfile.flush()
         except (BrokenPipeError, ConnectionResetError):

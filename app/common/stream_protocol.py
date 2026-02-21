@@ -37,3 +37,11 @@ def done(**data: Any) -> Dict[str, Any]:
 
 def error(message: str, **data: Any) -> Dict[str, Any]:
     return _build('error', message=message, **data)
+
+
+def sources(sources: list, **data: Any) -> Dict[str, Any]:
+    return _build('sources', sources=sources, **data)
+
+
+def citation_stats(stats: Dict[str, Any], **data: Any) -> Dict[str, Any]:
+    return _build('citation_stats', stats=stats, **data)
