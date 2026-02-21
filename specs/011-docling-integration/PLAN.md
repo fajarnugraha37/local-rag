@@ -166,3 +166,18 @@ Validation:
 - If a phase fails:
   - `git revert <phase-commit>` (preferred)
   - or reset to prior checkpoint in local branch before opening PR.
+
+## Progress Update (Final)
+- Phase 1 completed: Docling adapter and internal conversion models added.
+- Phase 2 completed: Docling extractor bridge implemented and registry routing switched for required target formats.
+- Phase 3 completed: Legacy migrated-format handlers removed from legacy extractor modules.
+- Phase 4 completed: Docling locator metadata mapping added for chunk metadata and retrieval provenance.
+- Phase 5 completed: CLI/server ingestion entrypoints verified to use shared ingestion pipeline/services.
+- Phase 6 completed: Docling dependency/config cutover completed with runtime defaults and env overrides.
+- Phase 7 completed: Documentation and developer workflow updated to docling-first guidance.
+- Phase 8 completed: Docling ingestion smoke coverage added and stale parser-stack assumptions removed from tests/docs.
+
+Final validation gate:
+- `python -m pytest -q` passed.
+- `python cmd/app.py --cli --help` passed.
+- `python cmd/app.py --server --help` passed.

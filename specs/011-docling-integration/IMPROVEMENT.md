@@ -188,3 +188,33 @@ Update to match new reality:
   - Add explicit locator mapping tests and regression checks.
 - Dependency/platform friction:
   - Document install caveats and provide `make install`/setup guidance.
+
+## Progress and Completion Update
+
+Spec 011 migration is complete across tasks `T001` through `T010`.
+
+Implemented outcomes:
+- Docling conversion foundation added under `app/document_conversion/`.
+- Docling extractor bridge added under `app/ingestion/extractors/docling_extractors.py`.
+- Registry routing cut over so required spec 011 formats resolve to Docling path.
+- Legacy migrated-format handlers removed from legacy extractor modules.
+- Chunk metadata/provenance mapping updated for page/slide/sheet/heading/xml locator fields.
+- CLI and server ingestion entrypoints validated to use shared ingestion pipeline/services.
+- Runtime settings and config updated with docling-first knobs/defaults.
+- Tests added/updated:
+  - `tests/test_docling_adapter.py`
+  - `tests/test_docling_routing.py`
+  - `tests/test_docling_metadata_mapping.py`
+  - `tests/test_docling_ingestion_smoke.py`
+  - updated `tests/test_ingestion_extended_formats.py`
+- Docs and workflow updated (`docs/*.md`, `README.md`, `AGENTS.md`, `Makefile`).
+
+Dependency note:
+- Migrated-format parser dependencies were removed from runtime requirements.
+- `xlrd` and `olefile` remain for non-target legacy `.xls/.doc/.ppt` support.
+- `beautifulsoup4`/`lxml` remain used by email ingestion (`app/ingestion/email_ingest_job.py`) and are not part of migrated format extraction path.
+
+Final acceptance validation:
+- `python -m pytest -q` passed.
+- `python cmd/app.py --cli --help` passed.
+- `python cmd/app.py --server --help` passed.

@@ -193,7 +193,7 @@ Validation commands:
 - `python -m pytest -q`
 - `python cmd/app.py --cli --help`
 - `python cmd/app.py --server --help`
-Status: todo
+Status: done
 
 ## Global Acceptance Criteria
 - All listed formats are handled via Docling adapter exclusively.
