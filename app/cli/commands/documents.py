@@ -8,6 +8,7 @@ from app.common.namespaces import validate_namespace
 from app.repositories.sqlite.documents_repo import DocumentsRepository
 
 from app.cli.adapters.service_container import build_services
+from app.cli.pagination import decode_cursor, normalize_limit
 from app.cli.render.tables import render_table
 
 
@@ -28,12 +29,17 @@ def build_documents_cli() -> typer.Typer:
         as_json: bool = typer.Option(False, "--json", help="Emit JSON output."),
     ) -> None:
         svc = build_services().document_service
+        safe_limit = normalize_limit(limit, min_value=1, max_value=500)
+        try:
+            decode_cursor(cursor)
+        except ValueError:
+            raise typer.BadParameter("--cursor is invalid")
         resolved_namespace = (
             validate_namespace(namespace, default_to_default=True) if namespace is not None else None
         )
         payload = svc.list_documents(
             namespace=resolved_namespace,
-            limit=limit,
+            limit=safe_limit,
             cursor=cursor,
             include_deleted=include_deleted,
         )
@@ -153,4 +159,3 @@ def build_documents_cli() -> typer.Typer:
 
 
 __all__ = ["build_documents_cli"]
-

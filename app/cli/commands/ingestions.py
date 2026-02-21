@@ -9,10 +9,9 @@ import typer
 
 from app.cli.adapters.service_container import build_services
 from app.cli.idempotency import (
+    build_idempotency_key,
     build_signature,
-    record_pending,
-    record_response,
-    replay_response,
+    execute_with_idempotency,
 )
 from app.cli.render.events import render_events
 from app.common.namespaces import validate_namespace
@@ -75,85 +74,73 @@ def build_ingestions_cli() -> typer.Typer:
             "exclude": exclude_patterns,
         }
         signature = build_signature(payload_signature_data)
-        if idempotency_key:
-            replay = replay_response(
-                repo_id,
-                key=idempotency_key,
-                method="POST",
-                path="/v1/ingestions",
-                signature=signature,
-            )
-            if replay is not None:
-                _print_payload(replay, as_json=_want_json(ctx, as_json))
-                return
-            record_pending(
-                repo_id,
-                key=idempotency_key,
-                method="POST",
-                path="/v1/ingestions",
-                signature=signature,
-                ttl_seconds=int(services.config.get("idempotency_ttl_s") or 86400),
-            )
+        effective_key = idempotency_key or build_idempotency_key(
+            operation=f"ingest-{source_type}",
+            payload=payload_signature_data,
+        )
 
-        if source_type == "folder":
-            if not path.strip():
-                raise typer.BadParameter("--path is required when --source folder")
-            record = svc.create_job(
-                namespace=ns,
-                source_type="folder",
-                source_spec={
-                    "path": path,
-                    "recursive": True,
-                    "include": include_patterns,
-                    "exclude": exclude_patterns,
-                    "dry_run": bool(dry_run),
-                    "force": bool(force),
-                    "embedding_model": embedding_model or None,
-                },
-            )
-        elif source_type == "repo":
-            if not repo.strip():
-                raise typer.BadParameter("--repo is required when --source repo")
-            record = svc.create_job(
-                namespace=ns,
-                source_type="repo",
-                source_spec={
-                    "repo": repo,
-                    "revision": revision or None,
-                    "include": include_patterns,
-                    "exclude": exclude_patterns,
-                    "dry_run": bool(dry_run),
-                    "force": bool(force),
-                    "embedding_model": embedding_model or None,
-                },
-            )
-        else:
-            file_paths = [s.strip() for s in paths.split(",") if s.strip()]
-            if not file_paths:
-                raise typer.BadParameter("--paths is required when --source files")
-            uploads: list[tuple[str, bytes]] = []
-            for file_path in file_paths:
-                p = Path(file_path)
-                if not p.exists() or not p.is_file():
-                    raise typer.BadParameter(f"file does not exist: {file_path}")
-                uploads.append((p.name, p.read_bytes()))
-            record = svc.create_job(
-                namespace=ns,
-                source_type="upload",
-                source_spec={"embedding_model": embedding_model or None},
-                upload_payload=UploadPayload(files=uploads, fields={"namespace": ns}),
-            )
+        def _create_response() -> dict[str, Any]:
+            if source_type == "folder":
+                if not path.strip():
+                    raise typer.BadParameter("--path is required when --source folder")
+                record = svc.create_job(
+                    namespace=ns,
+                    source_type="folder",
+                    source_spec={
+                        "path": path,
+                        "recursive": True,
+                        "include": include_patterns,
+                        "exclude": exclude_patterns,
+                        "dry_run": bool(dry_run),
+                        "force": bool(force),
+                        "embedding_model": embedding_model or None,
+                    },
+                )
+            elif source_type == "repo":
+                if not repo.strip():
+                    raise typer.BadParameter("--repo is required when --source repo")
+                record = svc.create_job(
+                    namespace=ns,
+                    source_type="repo",
+                    source_spec={
+                        "repo": repo,
+                        "revision": revision or None,
+                        "include": include_patterns,
+                        "exclude": exclude_patterns,
+                        "dry_run": bool(dry_run),
+                        "force": bool(force),
+                        "embedding_model": embedding_model or None,
+                    },
+                )
+            else:
+                file_paths = [s.strip() for s in paths.split(",") if s.strip()]
+                if not file_paths:
+                    raise typer.BadParameter("--paths is required when --source files")
+                uploads: list[tuple[str, bytes]] = []
+                for file_path in file_paths:
+                    p = Path(file_path)
+                    if not p.exists() or not p.is_file():
+                        raise typer.BadParameter(f"file does not exist: {file_path}")
+                    uploads.append((p.name, p.read_bytes()))
+                record = svc.create_job(
+                    namespace=ns,
+                    source_type="upload",
+                    source_spec={"embedding_model": embedding_model or None},
+                    upload_payload=UploadPayload(files=uploads, fields={"namespace": ns}),
+                )
+            return {"ok": True, "ingestion_id": record.get("ingestion_id"), "record": record}
 
-        response = {"ok": True, "ingestion_id": record.get("ingestion_id"), "record": record}
-        if idempotency_key:
-            record_response(
-                repo_id,
-                key=idempotency_key,
-                method="POST",
-                path="/v1/ingestions",
-                response=response,
-                status=200,
-            )
+        response, replayed = execute_with_idempotency(
+            repo=repo_id,
+            key=effective_key,
+            method="POST",
+            path="/v1/ingestions",
+            signature=signature,
+            ttl_seconds=int(services.config.get("idempotency_ttl_s") or 86400),
+            fn=_create_response,
+        )
+        response["idempotency_key"] = effective_key
+        response["idempotency_replayed"] = bool(replayed)
         _print_payload(response, as_json=_want_json(ctx, as_json))
 
     @app.command("status")
@@ -222,4 +209,3 @@ def build_ingestions_cli() -> typer.Typer:
 
 
 __all__ = ["build_ingestions_cli"]
-

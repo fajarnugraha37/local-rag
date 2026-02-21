@@ -137,7 +137,7 @@
   - Duplicate idempotency keys return same result.
 - Validation:
   - `python -m pytest -q tests/test_cli_idempotency.py`
-- Status: todo
+- Status: done
 
 ## T010: Tests
 - Goal: Add CLI test coverage for critical flows.

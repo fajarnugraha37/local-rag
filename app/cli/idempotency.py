@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Callable
 
 from app.repositories.sqlite.idempotency_repo import IdempotencyRepository
 
@@ -16,6 +16,12 @@ def _expires_at(ttl_seconds: int) -> str:
 def build_signature(payload: dict[str, Any]) -> str:
     raw = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def build_idempotency_key(*, operation: str, payload: dict[str, Any]) -> str:
+    signature = build_signature(payload)
+    prefix = operation.strip().lower().replace(" ", "-")
+    return f"{prefix}:{signature[:24]}"
 
 
 def replay_response(
@@ -77,3 +83,28 @@ def record_response(
         response_body=json.dumps(response, ensure_ascii=True, sort_keys=True),
     )
 
+
+def execute_with_idempotency(
+    *,
+    repo: IdempotencyRepository,
+    key: str,
+    method: str,
+    path: str,
+    signature: str,
+    ttl_seconds: int,
+    fn: Callable[[], dict[str, Any]],
+) -> tuple[dict[str, Any], bool]:
+    cached = replay_response(repo, key=key, method=method, path=path, signature=signature)
+    if cached is not None:
+        return cached, True
+    record_pending(
+        repo,
+        key=key,
+        method=method,
+        path=path,
+        signature=signature,
+        ttl_seconds=ttl_seconds,
+    )
+    response = fn()
+    record_response(repo, key=key, method=method, path=path, response=response, status=200)
+    return response, False
