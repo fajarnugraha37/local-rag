@@ -6,6 +6,7 @@ import json
 from app.config import runtime_settings as settings
 from app.retrieval import hybrid_search as retrieval
 from app.chat.citation_prompting import build_citation_prompt, format_source_blocks_text
+from app.chat.citation_formatter import render_citation_output
 from app.chat.streaming_llm_client import stream_chat_with_continuation
 
 client = None
@@ -178,6 +179,12 @@ def ollama_chat(
     per_call_max_tokens=None,
     enable_thinking_summary=False,
 ):
+    citations_mode = settings.CONFIG.get("citations_mode", "inline")
+    citations_enabled = bool(settings.CONFIG.get("citations", True))
+    effective_mode = citations_mode if citations_enabled else "none"
+    max_sources = int(settings.CONFIG.get("citation_max_sources", top_k))
+    max_snippet_chars = int(settings.CONFIG.get("citation_max_snippet_chars", 240))
+
     conversation_history.append({"role": "user", "content": user_input})
     
     if len(conversation_history) > 1:
@@ -277,8 +284,17 @@ def ollama_chat(
         if not done_text:
             done_text = "Sorry, the chat request timed out or failed."
 
-        conversation_history.append({"role": "assistant", "content": done_text})
-        return done_text
+        rendered = render_citation_output(
+            done_text,
+            source_blocks,
+            mode=effective_mode,
+            max_sources=max_sources,
+            max_snippet_chars=max_snippet_chars,
+        )
+        if rendered["sources_text"]:
+            print(rendered["sources_text"])
+        conversation_history.append({"role": "assistant", "content": rendered["answer"]})
+        return rendered["answer"]
 
     timeout = settings.CONFIG.get('model_timeout', 120)
     response = _call_with_timeout(
@@ -295,6 +311,17 @@ def ollama_chat(
     except Exception as e:
         print(YELLOW + f"Chat response parsing failed: {e}" + RESET_COLOR)
         return "Sorry, the chat request failed."
+
+    rendered = render_citation_output(
+        resp_text,
+        source_blocks,
+        mode=effective_mode,
+        max_sources=max_sources,
+        max_snippet_chars=max_snippet_chars,
+    )
+    if rendered["sources_text"]:
+        print(rendered["sources_text"])
+    resp_text = rendered["answer"]
 
     thinking, final = split_think_and_final(resp_text)
     auto_finalize = settings.CONFIG.get('auto_finalize_thoughts', False)

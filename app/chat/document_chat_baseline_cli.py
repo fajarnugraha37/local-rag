@@ -5,6 +5,7 @@ import argparse
 from app.config import runtime_settings as settings
 from app.retrieval import hybrid_search as retrieval
 from app.chat.citation_prompting import build_citation_prompt, format_source_blocks_text
+from app.chat.citation_formatter import render_citation_output
 from app.chat.streaming_llm_client import stream_chat_with_continuation
 
 client = None
@@ -42,6 +43,12 @@ def ollama_chat(
     per_call_max_tokens=None,
     enable_thinking_summary=False,
 ):
+    citations_mode = settings.CONFIG.get("citations_mode", "inline")
+    citations_enabled = bool(settings.CONFIG.get("citations", True))
+    effective_mode = citations_mode if citations_enabled else "none"
+    max_sources = int(settings.CONFIG.get("citation_max_sources", settings.CONFIG.get("top_k", 3)))
+    max_snippet_chars = int(settings.CONFIG.get("citation_max_snippet_chars", 240))
+
     # Get relevant context from the vault
     retrieved_chunks = get_relevant_context(user_input, vault_embeddings, vault_content, top_k=settings.CONFIG.get("top_k", 3))
     user_input_with_context, source_blocks = build_citation_prompt(
@@ -128,8 +135,17 @@ def ollama_chat(
         if not done_text:
             done_text = "Sorry, the chat request timed out or failed."
 
-        conversation_history.append({"role": "assistant", "content": done_text})
-        return done_text
+        rendered = render_citation_output(
+            done_text,
+            source_blocks,
+            mode=effective_mode,
+            max_sources=max_sources,
+            max_snippet_chars=max_snippet_chars,
+        )
+        if rendered["sources_text"]:
+            print(rendered["sources_text"])
+        conversation_history.append({"role": "assistant", "content": rendered["answer"]})
+        return rendered["answer"]
 
     # Send the completion request to the Ollama model
     response = client.chat.completions.create(
@@ -138,10 +154,19 @@ def ollama_chat(
     )
 
     # Append the model's response to the conversation history
-    conversation_history.append({"role": "assistant", "content": response.choices[0].message.content})
+    rendered = render_citation_output(
+        response.choices[0].message.content,
+        source_blocks,
+        mode=effective_mode,
+        max_sources=max_sources,
+        max_snippet_chars=max_snippet_chars,
+    )
+    if rendered["sources_text"]:
+        print(rendered["sources_text"])
+    conversation_history.append({"role": "assistant", "content": rendered["answer"]})
 
     # Return the content of the response from the model
-    return response.choices[0].message.content
+    return rendered["answer"]
 
 def main():
     global client

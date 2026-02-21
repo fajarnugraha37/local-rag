@@ -5,6 +5,7 @@ import argparse
 from app.config import runtime_settings as settings
 from app.retrieval import hybrid_search as retrieval
 from app.chat.citation_prompting import build_citation_prompt, format_source_blocks_text
+from app.chat.citation_formatter import render_citation_output
 from app.chat.streaming_llm_client import stream_chat_with_continuation
 
 # ANSI escape codes for colors
@@ -63,6 +64,12 @@ def ollama_chat(
     per_call_max_tokens=None,
     enable_thinking_summary=False,
 ):
+    citations_mode = settings.CONFIG.get("citations_mode", "inline")
+    citations_enabled = bool(settings.CONFIG.get("citations", True))
+    effective_mode = citations_mode if citations_enabled else "none"
+    max_sources = int(settings.CONFIG.get("citation_max_sources", top_k))
+    max_snippet_chars = int(settings.CONFIG.get("citation_max_snippet_chars", 240))
+
     retrieved_chunks = get_relevant_context(user_input, vault_embeddings, vault_content, top_k)
     user_input_with_context, source_blocks = build_citation_prompt(
         user_input,
@@ -141,16 +148,34 @@ def ollama_chat(
             return "An error occurred while processing your request (timeout or failure)."
         if not done_text:
             done_text = "An error occurred while processing your request (timeout or failure)."
-        conversation_history.append({"role": "assistant", "content": done_text})
-        return done_text
+        rendered = render_citation_output(
+            done_text,
+            source_blocks,
+            mode=effective_mode,
+            max_sources=max_sources,
+            max_snippet_chars=max_snippet_chars,
+        )
+        if rendered["sources_text"]:
+            print(rendered["sources_text"])
+        conversation_history.append({"role": "assistant", "content": rendered["answer"]})
+        return rendered["answer"]
 
     timeout = settings.CONFIG.get('model_timeout', 30)
     resp = _call_with_timeout(client.chat.completions.create, timeout, model=ollama_model, messages=messages, max_tokens=settings.CONFIG.get('chat_max_tokens', 2000))
     if resp is None:
         return "An error occurred while processing your request (timeout or failure)."
     try:
-        conversation_history.append({"role": "assistant", "content": resp.choices[0].message.content})
-        return resp.choices[0].message.content
+        rendered = render_citation_output(
+            resp.choices[0].message.content,
+            source_blocks,
+            mode=effective_mode,
+            max_sources=max_sources,
+            max_snippet_chars=max_snippet_chars,
+        )
+        if rendered["sources_text"]:
+            print(rendered["sources_text"])
+        conversation_history.append({"role": "assistant", "content": rendered["answer"]})
+        return rendered["answer"]
     except Exception as e:
         print(f"Error in Ollama chat: {e}")
         return "An error occurred while processing your request."
