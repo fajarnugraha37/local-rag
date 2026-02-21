@@ -106,7 +106,7 @@ Validation commands:
 - `python -m pytest -q tests/test_smoke_retrieval.py -k namespace`
 
 Status:
-- `todo`
+- `done`
 
 ## T005 - CLI Management Actions (`list-docs`, `delete-doc`)
 Goal:

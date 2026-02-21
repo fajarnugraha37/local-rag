@@ -6,9 +6,10 @@ import json
 import math
 import re
 import argparse
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Iterable
 from collections import defaultdict
 
+from app.common.namespaces import merge_namespace_filters
 from app.config import runtime_settings as settings
 from app.indexing.embedding_service import embed_text
 from app.retrieval import heuristic_reranker as reranker
@@ -96,7 +97,8 @@ def hybrid_search(query: str,
                   bm25_top: int = 100,
                   rrf_k: int = 60,
                   embedding_model: Optional[str] = None,
-                  filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+                  filters: Optional[Dict[str, Any]] = None,
+                  namespaces: Optional[Iterable[str]] = None) -> List[Dict[str, Any]]:
     embedding_model = embedding_model or settings.CONFIG.get('embedding_model')
 
     # Allow overriding retrieval limits from config.yaml
@@ -110,8 +112,9 @@ def hybrid_search(query: str,
         return []
 
     candidate_limit = max(int(dense_top), int(bm25_top), int(top_k))
+    effective_filters = merge_namespace_filters(filters, namespaces)
     store = ChromaVectorStore()
-    rows = store.query(query_emb, top_k=candidate_limit, filters=filters)
+    rows = store.query(query_emb, top_k=candidate_limit, filters=effective_filters)
     if not rows:
         return []
 
@@ -129,6 +132,7 @@ def hybrid_search(query: str,
                 'chunk_id': chunk_key,
                 'doc_id': metadata.get('doc_id'),
                 'source': metadata.get('source'),
+                'namespace': metadata.get('namespace'),
                 'token_count': metadata.get('token_count'),
                 'text': text,
                 'dense_score': dense_score,
@@ -170,6 +174,7 @@ def hybrid_search(query: str,
             'text': (meta.get('text') or '')[:800],
             'doc_id': meta.get('doc_id'),
             'source': meta.get('source'),
+            'namespace': meta.get('namespace'),
             'token_count': meta.get('token_count') or len(re.findall(r"\w+", meta.get('text', ''))),
         })
     return results
@@ -182,7 +187,8 @@ def scored_chunks(query: str,
                   rerank: bool = True,
                   rerank_weights: Optional[Dict[str, float]] = None,
                   embedding_model: Optional[str] = None,
-                  filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+                  filters: Optional[Dict[str, Any]] = None,
+                  namespaces: Optional[Iterable[str]] = None) -> List[Dict[str, Any]]:
     """Return scored chunk objects with metadata and optional reranking.
 
     This function returns a list of chunk dicts containing at least:
@@ -194,6 +200,7 @@ def scored_chunks(query: str,
         top_k=top_k,
         embedding_model=embedding_model,
         filters=filters,
+        namespaces=namespaces,
     )
 
     # Ensure token_count present and enrich metadata where possible
@@ -217,6 +224,7 @@ def main():
     parser.add_argument('--top-k', type=int, default=6, help='Number of results to return')
     parser.add_argument('--embedding-model', default=None)
     parser.add_argument('--filter-doc-id', default=None, help='Optional doc_id metadata filter')
+    parser.add_argument('--namespaces', action='append', default=[], help='Namespace filter (repeatable or comma-separated)')
     parser.add_argument('--no-rerank', action='store_true', help='Disable reranking')
     args = parser.parse_args()
 
@@ -227,6 +235,6 @@ def main():
         rerank=(not args.no_rerank),
         embedding_model=args.embedding_model,
         filters=filters,
+        namespaces=args.namespaces,
     )
     print(json.dumps(res, ensure_ascii=False, indent=2))
-
