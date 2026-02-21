@@ -171,4 +171,4 @@
   - Docs reflect direct-to-service CLI and current command surface.
 - Validation:
   - `make run-cli`
-- Status: todo
+- Status: done

@@ -1,9 +1,9 @@
 # Configuration
 
 Config file: `config.yaml`
-Env overlays: `app/config/runtime_settings.py`
+Environment overlays: `app/config/runtime_settings.py`
 
-## FastAPI/Server
+## Server/Database
 - `sqlite_db_path`
 - `idempotency_ttl_s`
 - `soft_delete_retention_days`
@@ -13,6 +13,7 @@ Env overlays: `app/config/runtime_settings.py`
 - `ollama_api.base_url`
 - `ollama_api.api_key`
 - `embedding_model`
+- `embedding_dim`
 
 ## Retrieval/Citations
 - `top_k`
@@ -34,7 +35,8 @@ Env overlays: `app/config/runtime_settings.py`
 - `ingest_max_pages`, `ingest_max_slides`, `ingest_max_sheets`
 - `ingest_zip_max_entries`, `ingest_zip_max_uncompressed_bytes`
 - `ingest_enable_parquet`, `ingest_enable_legacy_office`
-- Docling keys:
+- `ingest_state_path`, `doc_registry_path`
+- Docling:
   - `ingest_docling_enabled`
   - `ingest_docling_export_format`
   - `ingest_docling_device`
@@ -43,6 +45,11 @@ Env overlays: `app/config/runtime_settings.py`
   - `ingest_docling_max_pages`, `ingest_docling_max_slides`
   - `ingest_docling_max_tables`, `ingest_docling_max_images`
 
-## Purge Helpers
+## CLI Notes
+- CLI commands are direct-to-service (no HTTP hop).
+- Use `--json` for automation-safe output.
+- Use `--idempotency-key` for `ingest start` to replay duplicate requests.
+
+## Maintenance Helpers
 - `make idempotency-purge`
 - `make purge-soft-deletes SOFT_DELETE_RETENTION_DAYS=30`

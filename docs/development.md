@@ -13,6 +13,13 @@ make fmt
 make lint
 make test
 make run-server
+make run-cli
+make shell
+make cli-smoke
+```
+
+## Launcher
+```powershell
 python .\cmd\app.py --cli --help
 python .\cmd\app.py --server --help
 ```
@@ -29,6 +36,11 @@ python -m pytest -q tests/test_fastapi_ingestions.py
 python -m pytest -q tests/test_fastapi_query_runs.py tests/test_fastapi_sse.py
 python -m pytest -q tests/test_fastapi_retrieve_rerank.py
 python -m pytest -q tests/test_fastapi_idempotency.py tests/test_fastapi_pagination.py
+```
+
+## CLI Test Targets
+```powershell
+python -m pytest -q tests/test_cli_basic.py tests/test_cli_pagination.py tests/test_cli_streaming.py tests/test_cli_idempotency.py
 ```
 
 ## Cleanup Utilities

@@ -24,6 +24,16 @@ Key routes:
 ## CLI
 ```powershell
 python .\cmd\app.py --cli --help
+python .\cmd\app.py --cli shell
+python .\cmd\app.py --cli query "test" --json
+python .\cmd\app.py --cli query-stream "test"
+python .\cmd\app.py --cli ingest start --source folder --path . --dry-run --json
+```
+
+Legacy action modules remain available behind:
+```powershell
+python .\cmd\app.py --cli actions <legacy-action> [args]
+python .\cmd\app.py --cli actions-list
 ```
 
 ## Make targets
@@ -33,6 +43,9 @@ make fmt
 make lint
 make test
 make run-server
+make run-cli
+make shell
+make cli-smoke
 make idempotency-purge
 make purge-soft-deletes SOFT_DELETE_RETENTION_DAYS=30
 ```
