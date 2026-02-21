@@ -1,5 +1,7 @@
 # Spec 010 Tasks
 
+Progress snapshot (updated): all tasks `T001` through `T010` completed and validated.
+
 Dispatch format:
 - `please follow specs/010-improve-code-quality/PLAN.md and do task T00X`
 
@@ -20,7 +22,7 @@ Dispatch format:
   - `make fmt`
   - `make lint`
   - `make test`
-- Status: todo
+- Status: done
 
 ## T002
 - Goal: establish a baseline no-regression checkpoint before structural refactor.
@@ -37,7 +39,7 @@ Dispatch format:
   - `python .\cmd\app.py --cli --help`
   - `python .\cmd\app.py --server --help`
   - `python -m pytest -q`
-- Status: todo
+- Status: done
 
 ## T003
 - Goal: split HTTP server into modular handlers without changing API behavior.
@@ -61,7 +63,7 @@ Dispatch format:
   - `python -m pytest -q tests/test_ingestion_server_routes.py`
   - `python -m pytest -q tests/test_server_citation_sse.py`
   - `python .\cmd\app.py --server --help`
-- Status: todo
+- Status: done
 
 ## T004
 - Goal: consolidate duplicated chat orchestration across CLI chat modules.
@@ -83,7 +85,7 @@ Dispatch format:
   - `python .\cmd\app.py --cli chat-baseline --help`
   - `python .\cmd\app.py --cli chat-email --help`
   - `python -m pytest -q tests/test_cli_citations.py tests/test_streaming_continuation.py`
-- Status: todo
+- Status: done
 
 ## T005
 - Goal: separate ingestion command wrappers from ingestion service logic.
@@ -104,7 +106,7 @@ Dispatch format:
   - `python .\cmd\app.py --cli ingest-files --help`
   - `python .\cmd\app.py --cli ingest-folder --help`
   - `python -m pytest -q tests/test_folder_scanner.py tests/test_folder_ingest_idempotency.py tests/test_smoke_ingest.py`
-- Status: todo
+- Status: done
 
 ## T006
 - Goal: normalize naming and package semantics for embeddings and shared models.
@@ -125,7 +127,7 @@ Dispatch format:
 - Validation commands:
   - `python -m pytest -q tests/test_smoke_retrieval.py tests/test_vector_store_smoke.py`
   - `python -m pytest -q`
-- Status: todo
+- Status: done
 
 ## T007
 - Goal: standardize logging and error envelope behavior.
@@ -144,7 +146,7 @@ Dispatch format:
 - Validation commands:
   - `python -m pytest -q tests/test_ingestion_server_routes.py tests/test_server_citation_sse.py`
   - `python .\cmd\app.py --server --help`
-- Status: todo
+- Status: done
 
 ## T008
 - Goal: create architecture and contributor documentation in `docs/`.
@@ -167,7 +169,7 @@ Dispatch format:
 - Validation commands:
   - `make help`
   - `python .\cmd\app.py --help`
-- Status: todo
+- Status: done
 
 ## T009
 - Goal: align top-level repo guidance with current architecture and workflows.
@@ -186,7 +188,7 @@ Dispatch format:
   - `make help`
   - `python .\cmd\app.py --cli --help`
   - `python .\cmd\app.py --server --help`
-- Status: todo
+- Status: done
 
 ## T010
 - Goal: final behavior-preservation verification and cleanup.
@@ -207,7 +209,7 @@ Dispatch format:
   - `make test`
   - `python -m pytest -q tests/test_smoke_ingest.py tests/test_smoke_retrieval.py`
   - `python .\cmd\app.py --help`
-- Status: todo
+- Status: done
 
 ## Global Acceptance Criteria
 - Codebase is reorganized into clear modules with minimal cross-coupling.
@@ -219,4 +221,3 @@ Dispatch format:
   - run cli
   - run server (HTTP + SSE)
   - run ingestion + query smoke path
-

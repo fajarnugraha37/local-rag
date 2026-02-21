@@ -1,5 +1,50 @@
 # Spec 010: Improve Code Quality
 
+## Progress and Completion Update
+
+Status: complete (all tasks `T001` to `T010` executed).
+
+### Completed outcomes by phase
+- Phase 1 (tooling + baseline):
+  - Added repo tooling baseline (`ruff`, `pytest`, optional scoped `mypy`) and Make targets.
+  - Established no-regression baseline with launcher/help and test validation.
+- Phase 2 (module boundary refactor):
+  - Split HTTP server responsibilities into `app/http/*` handlers and kept compatibility entrypoint.
+  - Consolidated shared chat orchestration into reusable chat service/formatting modules.
+  - Separated ingestion CLI wrappers (`app/cli/*`) from ingestion service logic (`app/ingestion/*`).
+- Phase 3 (naming + API hygiene):
+  - Introduced semantic embeddings package `app/embeddings/service.py` with compatibility shims.
+  - Standardized server logging/error envelope handling with shared logging config.
+- Phase 4 (documentation + repo contracts):
+  - Added canonical docs set under `docs/`.
+  - Updated `README.md`, `AGENTS.md`, and `Makefile` to match refactored architecture and workflows.
+
+### Final gate result (`T010`)
+- Passed:
+  - `make fmt`
+  - `make lint`
+  - `make test`
+  - `python .\cmd\app.py --help`
+  - `python .\cmd\app.py --cli --help`
+  - `python .\cmd\app.py --server --help`
+  - `python -m pytest -q tests/test_smoke_ingest.py tests/test_smoke_retrieval.py`
+- Note: repository-wide formatting changes were applied during `make fmt`, which is expected under the quality gate.
+
+## Task Audit Table
+
+| Task | Scope Summary | Primary Files |
+|---|---|---|
+| T001 | Tooling baseline + Make quality targets | `pyproject.toml`, `Makefile`, `requirements.txt` |
+| T002 | No-regression baseline checks | launcher/help + `tests/` validation run (no required file changes) |
+| T003 | HTTP server split into modular handlers | `app/chat/streaming_server.py`, `app/http/server.py`, `app/http/sse.py`, `app/http/request_parsing.py`, `app/http/handlers/*` |
+| T004 | Shared chat orchestration + formatting extraction | `app/chat/chat_service.py`, `app/chat/cli_formatting.py`, `app/chat/document_chat_cli.py`, `app/chat/document_chat_baseline_cli.py`, `app/chat/email_chat_cli.py` |
+| T005 | Ingestion wrapper separation from services | `app/cli/ingest_files.py`, `app/cli/ingest_folder.py`, `app/ingestion/file_ingest_gui.py`, `app/ingestion/folder_ingest_cli.py`, `app/ingestion/pipeline.py`, `cmd/actions.py` |
+| T006 | Embeddings package naming normalization + shims | `app/embeddings/service.py`, `app/embeddings/__init__.py`, `app/indexing/embedding_service.py`, `app/indexing/__init__.py`, imports in retrieval/ingestion/migration modules |
+| T007 | Standardized logging and error envelopes | `app/logging/config.py`, `app/http/server.py`, `app/http/handlers/actions.py`, `app/http/handlers/docs.py`, `app/http/handlers/chat.py`, `app/http/handlers/ingestion.py` |
+| T008 | Canonical docs set added | `docs/architecture.md`, `docs/rag-pipeline.md`, `docs/configuration.md`, `docs/development.md`, `docs/cli.md`, `docs/server.md`, `docs/contributing.md` |
+| T009 | Top-level contract alignment | `README.md`, `AGENTS.md`, `Makefile` |
+| T010 | Final verification gate execution | full gate command execution + formatting/test pass record in spec docs |
+
 ## Repository Scan Summary (Current Reality)
 
 ### Module layout and key packages
@@ -213,4 +258,3 @@ Update:
   - run cli
   - run server (HTTP + SSE)
   - run ingestion + query smoke path
-

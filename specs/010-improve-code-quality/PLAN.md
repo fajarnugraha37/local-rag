@@ -2,6 +2,27 @@
 
 This plan is incremental and behavior-preserving. Each phase has explicit checkpoints and rollback guidance.
 
+## Progress Update
+
+Status as of 2026-02-21:
+- Phase 1: completed (`T001`, `T002`)
+- Phase 2: completed (`T003`, `T004`, `T005`)
+- Phase 3: completed (`T006`, `T007`)
+- Phase 4: completed (`T008`, `T009`)
+- Final Verification Gate: completed (`T010`)
+
+Execution notes:
+- All planned validation commands were executed during task execution.
+- Gate checks passed:
+  - `make fmt`
+  - `make lint`
+  - `make test`
+  - `python .\cmd\app.py --help`
+  - `python .\cmd\app.py --cli --help`
+  - `python .\cmd\app.py --server --help`
+  - `python -m pytest -q tests/test_smoke_ingest.py tests/test_smoke_retrieval.py`
+- `make fmt` reformatted many files at final gate, which is expected for repository-wide formatting normalization.
+
 ## Phase 1: Tooling Baseline and Guardrails
 
 ### Step 1.1 Add repo tooling config
@@ -188,4 +209,3 @@ This plan is incremental and behavior-preserving. Each phase has explicit checkp
   - No regressions on core CLI/server paths.
   - Docs and top-level guides match real behavior.
   - Quality targets are reproducible from clean checkout.
-
