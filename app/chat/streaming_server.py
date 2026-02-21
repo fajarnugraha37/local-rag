@@ -366,7 +366,18 @@ class StreamingHandler(BaseHTTPRequestHandler):
             doc_id = body.get("doc_id")
             embedding_model = body.get("embedding_model")
             try:
-                result = ingest_chunks(chunks, source_path=source_path, doc_id=doc_id, embedding_model=embedding_model)
+                namespace = validate_namespace(body.get("namespace"), default_to_default=True)
+            except ValueError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+                return
+            try:
+                result = ingest_chunks(
+                    chunks,
+                    source_path=source_path,
+                    doc_id=doc_id,
+                    namespace=namespace,
+                    embedding_model=embedding_model,
+                )
                 self._send_json(HTTPStatus.OK, {"ok": True, "result": result})
                 return
             except Exception as exc:
@@ -393,7 +404,18 @@ class StreamingHandler(BaseHTTPRequestHandler):
             doc_id = body.get("doc_id")
             embedding_model = body.get("embedding_model")
             try:
-                result = ingest_chunks(chunks, source_path=source_path, doc_id=doc_id, embedding_model=embedding_model)
+                namespace = validate_namespace(body.get("namespace"), default_to_default=True)
+            except ValueError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+                return
+            try:
+                result = ingest_chunks(
+                    chunks,
+                    source_path=source_path,
+                    doc_id=doc_id,
+                    namespace=namespace,
+                    embedding_model=embedding_model,
+                )
                 self._send_json(
                     HTTPStatus.OK,
                     {
@@ -426,6 +448,11 @@ class StreamingHandler(BaseHTTPRequestHandler):
             if not isinstance(exclude_patterns, list) or any(not isinstance(value, str) for value in exclude_patterns):
                 self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'exclude' must be an array of strings"})
                 return
+            try:
+                namespace = validate_namespace(body.get("namespace"), default_to_default=True)
+            except ValueError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+                return
             options = build_options(
                 recursive=recursive,
                 include_patterns=include_patterns,
@@ -437,7 +464,12 @@ class StreamingHandler(BaseHTTPRequestHandler):
                 max_sheets=body.get("max_sheets", settings.CONFIG.get("ingest_max_sheets", 50)),
             )
             try:
-                summary = ingest_paths(paths, options=options, embedding_model=body.get("embedding_model"))
+                summary = ingest_paths(
+                    paths,
+                    options=options,
+                    embedding_model=body.get("embedding_model"),
+                    namespace=namespace,
+                )
                 self._send_json(HTTPStatus.OK, {"ok": True, "summary": summary})
                 return
             except Exception as exc:
@@ -472,6 +504,11 @@ class StreamingHandler(BaseHTTPRequestHandler):
             dry_run = _parse_bool(body.get("dry_run"), default=False)
             force = _parse_bool(body.get("force"), default=False)
             respect_gitignore = _parse_bool(body.get("respect_gitignore"), default=True)
+            try:
+                namespace = validate_namespace(body.get("namespace"), default_to_default=True)
+            except ValueError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+                return
 
             if stream:
                 self.send_response(HTTPStatus.OK)
@@ -503,6 +540,7 @@ class StreamingHandler(BaseHTTPRequestHandler):
                             dry_run=dry_run,
                             force=force,
                             embedding_model=body.get("embedding_model"),
+                            namespace=namespace,
                             progress_callback=_on_progress,
                         )
                     )
@@ -528,6 +566,7 @@ class StreamingHandler(BaseHTTPRequestHandler):
                         dry_run=dry_run,
                         force=force,
                         embedding_model=body.get("embedding_model"),
+                        namespace=namespace,
                     )
                 )
                 self._send_json(HTTPStatus.OK, {"ok": True, "request_id": request_id, "summary": summary})
@@ -567,7 +606,17 @@ class StreamingHandler(BaseHTTPRequestHandler):
                 max_sheets=fields.get("max_sheets", settings.CONFIG.get("ingest_max_sheets", 50)),
             )
             try:
-                summary = ingest_uploaded_files(uploaded, options=options, embedding_model=fields.get("embedding_model"))
+                namespace = validate_namespace(fields.get("namespace"), default_to_default=True)
+            except ValueError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+                return
+            try:
+                summary = ingest_uploaded_files(
+                    uploaded,
+                    options=options,
+                    embedding_model=fields.get("embedding_model"),
+                    namespace=namespace,
+                )
                 self._send_json(HTTPStatus.OK, {"ok": True, "summary": summary})
                 return
             except Exception as exc:

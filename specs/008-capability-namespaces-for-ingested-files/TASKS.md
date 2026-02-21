@@ -190,7 +190,7 @@ Validation commands:
 - `python -m pytest -q tests/test_ingestion_server_routes.py -k ingest`
 
 Status:
-- `todo`
+- `done`
 
 ## T008 - Backfill/Migration for Existing Data
 Goal:

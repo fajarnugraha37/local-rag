@@ -13,7 +13,7 @@ def _start_server(monkeypatch):
     monkeypatch.setattr(
         streaming_server,
         "ingest_paths",
-        lambda paths, options=None, embedding_model=None: {
+        lambda paths, options=None, embedding_model=None, namespace=None: {
             "total_files": len(paths),
             "extracted": len(paths),
             "skipped": 0,
@@ -25,7 +25,7 @@ def _start_server(monkeypatch):
     monkeypatch.setattr(
         streaming_server,
         "ingest_uploaded_files",
-        lambda uploaded, options=None, embedding_model=None: {
+        lambda uploaded, options=None, embedding_model=None, namespace=None: {
             "total_files": len(uploaded),
             "extracted": len(uploaded),
             "skipped": 0,
@@ -48,6 +48,7 @@ def _start_server(monkeypatch):
             "skipped": 0,
             "failed": 0,
             "files": [{"path": "README.md", "status": "ok"}],
+            "namespace": getattr(options, "namespace", None),
         },
     )
 
@@ -102,6 +103,118 @@ def test_ingest_upload_endpoint(monkeypatch):
     assert resp.status == 200
     assert payload["ok"] is True
     assert payload["summary"]["total_files"] == 1
+
+    conn.close()
+    server.shutdown()
+    server.server_close()
+
+
+def test_ingest_endpoints_namespace_accept_and_invalid(monkeypatch):
+    captured = {"chunks": None, "files": None, "upload": None, "folder": None}
+
+    def fake_ingest_chunks(chunks, source_path=None, doc_id=None, namespace=None, embedding_model=None):
+        captured["chunks"] = namespace
+        return {"added": len(chunks), "skipped": 0, "failed": 0}
+
+    def fake_ingest_paths(paths, options=None, embedding_model=None, namespace=None):
+        captured["files"] = namespace
+        return {"total_files": len(paths), "extracted": len(paths), "skipped": 0, "failed": 0, "total_chunks": 1, "files": []}
+
+    def fake_ingest_uploaded(uploaded, options=None, embedding_model=None, namespace=None):
+        captured["upload"] = namespace
+        return {"total_files": len(uploaded), "extracted": len(uploaded), "skipped": 0, "failed": 0, "total_chunks": 1, "files": []}
+
+    def fake_ingest_folder(options):
+        captured["folder"] = options.namespace
+        return {
+            "path": options.path,
+            "dry_run": bool(options.dry_run),
+            "force": bool(options.force),
+            "scanned": 1,
+            "selected": 1,
+            "scan_skipped": 0,
+            "ingested": 1,
+            "skipped": 0,
+            "failed": 0,
+            "files": [{"path": "README.md", "status": "ok"}],
+        }
+
+    monkeypatch.setattr(streaming_server, "ingest_chunks", fake_ingest_chunks)
+    monkeypatch.setattr(streaming_server, "ingest_paths", fake_ingest_paths)
+    monkeypatch.setattr(streaming_server, "ingest_uploaded_files", fake_ingest_uploaded)
+    monkeypatch.setattr(streaming_server, "ingest_folder", fake_ingest_folder)
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), streaming_server.StreamingHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    conn = http.client.HTTPConnection(host, port)
+
+    conn.request(
+        "POST",
+        "/ingest/chunks",
+        body=json.dumps({"chunks": ["a"], "namespace": "alpha"}),
+        headers={"Content-Type": "application/json"},
+    )
+    resp = conn.getresponse()
+    assert resp.status == 200
+    _ = resp.read()
+    assert captured["chunks"] == "alpha"
+
+    conn.request(
+        "POST",
+        "/ingest/files",
+        body=json.dumps({"paths": ["README.md"], "namespace": "beta"}),
+        headers={"Content-Type": "application/json"},
+    )
+    resp2 = conn.getresponse()
+    assert resp2.status == 200
+    _ = resp2.read()
+    assert captured["files"] == "beta"
+
+    conn.request(
+        "POST",
+        "/ingest/folder",
+        body=json.dumps({"path": ".", "namespace": "gamma"}),
+        headers={"Content-Type": "application/json"},
+    )
+    resp3 = conn.getresponse()
+    assert resp3.status == 200
+    _ = resp3.read()
+    assert captured["folder"] == "gamma"
+
+    boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"
+    body = (
+        f"--{boundary}\r\n"
+        "Content-Disposition: form-data; name=\"file\"; filename=\"sample.txt\"\r\n"
+        "Content-Type: text/plain\r\n\r\n"
+        "hello upload\r\n"
+        f"--{boundary}\r\n"
+        "Content-Disposition: form-data; name=\"namespace\"\r\n\r\n"
+        "delta\r\n"
+        f"--{boundary}--\r\n"
+    ).encode("utf-8")
+    conn.request(
+        "POST",
+        "/ingest/upload",
+        body=body,
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}", "Content-Length": str(len(body))},
+    )
+    resp4 = conn.getresponse()
+    assert resp4.status == 200
+    _ = resp4.read()
+    assert captured["upload"] == "delta"
+
+    conn.request(
+        "POST",
+        "/ingest/text",
+        body=json.dumps({"text": "hello", "namespace": "Invalid Namespace"}),
+        headers={"Content-Type": "application/json"},
+    )
+    resp5 = conn.getresponse()
+    payload5 = json.loads(resp5.read().decode("utf-8"))
+    assert resp5.status == 400
+    assert payload5["ok"] is False
 
     conn.close()
     server.shutdown()
