@@ -33,6 +33,11 @@ citations: true
 citations_mode: "inline+sources"
 citation_max_sources: 7
 citation_max_snippet_chars: 240
+general_knowledge_fallback: false
+general_knowledge_min_sources: 2
+general_knowledge_min_term_hits: 2
+general_knowledge_min_answer_chars: 180
+general_knowledge_max_sentences: 6
 
 # Finalization options for reasoning drafts
 auto_finalize_thoughts: false

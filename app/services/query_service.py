@@ -98,20 +98,27 @@ def _ensure_trailing_citations(text: str, sources: list[dict[str, Any]]) -> str:
     return f"{text.rstrip()} [{' '.join(f'[{i}]' for i in top)}]"
 
 
-def _normalize_final_answer(text: str, sources: list[dict[str, Any]]) -> str:
+def _normalize_final_answer(
+    text: str,
+    sources: list[dict[str, Any]],
+    *,
+    max_sentences: int = 3,
+    ensure_citations: bool = True,
+) -> str:
     cleaned = _clean_repetitive_phrases(text)
     if not cleaned:
         return cleaned
     sentences = _dedupe_sentences(_split_sentences(cleaned))
     if not sentences:
         return cleaned
-    # Force concise final style: keep 2-3 sentences.
-    kept = sentences[:3]
+    # Force concise final style: keep 2-3 sentences by default.
+    kept = sentences[: max(1, int(max_sentences))]
     if len(kept) == 1 and len(cleaned.split()) > 30:
         # If model returned one long run-on line, hard-wrap as one concise sentence.
         kept = [cleaned]
     normalized = " ".join(kept).strip()
-    normalized = _ensure_trailing_citations(normalized, sources)
+    if ensure_citations:
+        normalized = _ensure_trailing_citations(normalized, sources)
     return normalized
 
 
@@ -147,6 +154,42 @@ def _filter_sources_for_query(
     if focused:
         return focused[:max_sources]
     return sources[:max_sources]
+
+
+def _sources_are_thin(
+    query: str,
+    sources: list[dict[str, Any]],
+    *,
+    min_sources: int,
+    min_term_hits: int,
+) -> bool:
+    if len(sources) < max(0, int(min_sources)):
+        return True
+    terms = _query_terms(query)
+    if not terms:
+        return False
+    total_hits = 0
+    for term in terms:
+        for src in sources:
+            if term in _source_text(src):
+                total_hits += 1
+    return total_hits < max(0, int(min_term_hits))
+
+
+def _answer_needs_general_knowledge(answer: str, min_chars: int) -> bool:
+    text = (answer or "").strip()
+    if not text:
+        return True
+    if len(text) < max(0, int(min_chars)):
+        return True
+    low = text.lower()
+    triggers = [
+        "could not find",
+        "could not extract",
+        "insufficient",
+        "no relevant sources",
+    ]
+    return any(trigger in low for trigger in triggers)
 
 
 def _extract_sources(results: list[dict], max_sources: int = 8) -> list[dict]:
@@ -250,6 +293,19 @@ def _build_llm_messages(query: str, sources: list[dict]) -> list[dict[str, str]]
     ]
 
 
+def _build_general_knowledge_messages(query: str) -> list[dict[str, str]]:
+    system_message = (
+        "You are a helpful assistant. Provide a clear general-knowledge explanation. "
+        "Do not claim to have accessed sources or documents. "
+        "If you are uncertain, say so briefly."
+    )
+    user_message = f"Question:\n{query}\n\nReturn only the final answer."
+    return [
+        {"role": "system", "content": system_message},
+        {"role": "user", "content": user_message},
+    ]
+
+
 def _build_answer_with_llm(query: str, sources: list[dict], config: dict[str, Any]) -> str | None:
     if not sources:
         return "I could not find relevant sources for this question."
@@ -297,6 +353,53 @@ def _build_answer_with_llm(query: str, sources: list[dict], config: dict[str, An
             return None
         low = text.lower()
         if "retrieved relevant sources" in low:
+            return None
+        return text
+    except Exception:
+        return None
+
+
+def _build_general_knowledge_answer(query: str, config: dict[str, Any]) -> str | None:
+    model = str(config.get("ollama_model") or "").strip()
+    if not model:
+        return None
+    api_cfg = config.get("ollama_api") or {}
+    base_url = str(api_cfg.get("base_url") or "http://localhost:11434/v1")
+    api_key = api_cfg.get("api_key")
+    client = OpenAI(base_url=base_url, api_key=api_key)
+
+    messages = _build_general_knowledge_messages(query)
+    try:
+        final_text = ""
+        streamed = []
+        for event in stream_chat_with_continuation(
+            client,
+            model=model,
+            messages=messages,
+            per_call_max_tokens=int(
+                config.get("per_call_max_tokens", config.get("chat_max_tokens", 4000))
+            ),
+            continuation_instruction=str(
+                config.get(
+                    "continuation_instruction",
+                    "Continue exactly where you left off. Do not repeat prior text.",
+                )
+            ),
+            max_continuations=int(config.get("max_continuations", 2)),
+            timeout=float(config.get("provider_timeout_s", 300)),
+            flush_interval_ms=int(config.get("flush_interval_ms", 250)),
+            enable_thinking_summary=bool(config.get("enable_thinking_summary", False)),
+            temperature=0.2,
+        ):
+            ev_name = str(event.get("event") or "")
+            ev_data = event.get("data") or {}
+            if ev_name == "final_delta":
+                streamed.append(str(ev_data.get("text") or ""))
+            elif ev_name == "done":
+                final_text = str(ev_data.get("text") or "")
+
+        text = (final_text or "".join(streamed)).strip()
+        if len(text) < 40 or len(text.split()) < 8:
             return None
         return text
     except Exception:
@@ -351,16 +454,52 @@ class QueryService:
         answer = _build_answer_with_llm(query, focused_sources, self.config) or _build_focused_fallback_answer(
             query, focused_sources
         )
-        rendered = render_citation_output(
-            answer,
-            focused_sources,
-            mode="inline",
-            max_sources=max_sources,
-            max_snippet_chars=max_snippet_chars,
-        )
 
-        final_answer = _normalize_final_answer(rendered.get("answer", answer), focused_sources)
-        citation_stats = rendered.get("stats", {})
+        gk_enabled = bool(self.config.get("general_knowledge_fallback", False))
+        gk_min_sources = int(self.config.get("general_knowledge_min_sources", 2))
+        gk_min_term_hits = int(self.config.get("general_knowledge_min_term_hits", 2))
+        gk_min_answer_chars = int(self.config.get("general_knowledge_min_answer_chars", 180))
+        gk_max_sentences = int(self.config.get("general_knowledge_max_sentences", 6))
+        sources_thin = _sources_are_thin(
+            query,
+            focused_sources,
+            min_sources=gk_min_sources,
+            min_term_hits=gk_min_term_hits,
+        )
+        gk_used = False
+        if gk_enabled and sources_thin:
+            gk_body = _build_general_knowledge_answer(query, self.config)
+            if gk_body:
+                gk_used = True
+                if focused_sources:
+                    if _answer_needs_general_knowledge(answer, gk_min_answer_chars):
+                        answer = f"{answer}\n\nGeneral knowledge (sources were limited): {gk_body}"
+                else:
+                    answer = f"General knowledge (no relevant sources retrieved): {gk_body}"
+
+        if focused_sources or not gk_used:
+            rendered = render_citation_output(
+                answer,
+                focused_sources,
+                mode="inline",
+                max_sources=max_sources,
+                max_snippet_chars=max_snippet_chars,
+            )
+            final_answer = _normalize_final_answer(
+                rendered.get("answer", answer),
+                focused_sources,
+                max_sentences=gk_max_sentences if gk_used else 3,
+                ensure_citations=bool(focused_sources),
+            )
+            citation_stats = rendered.get("stats", {})
+        else:
+            final_answer = _normalize_final_answer(
+                answer,
+                focused_sources,
+                max_sentences=gk_max_sentences,
+                ensure_citations=False,
+            )
+            citation_stats = {}
 
         self.runs_repo.add_step(
             run_id,
@@ -434,6 +573,17 @@ class QueryService:
         max_snippet_chars = int(self.config.get("citation_max_snippet_chars", 240))
         sources = _extract_sources(results, max_sources=max_sources)
         focused_sources = _filter_sources_for_query(query, sources, max_sources=max_sources)
+        gk_enabled = bool(self.config.get("general_knowledge_fallback", False))
+        gk_min_sources = int(self.config.get("general_knowledge_min_sources", 2))
+        gk_min_term_hits = int(self.config.get("general_knowledge_min_term_hits", 2))
+        gk_min_answer_chars = int(self.config.get("general_knowledge_min_answer_chars", 180))
+        gk_max_sentences = int(self.config.get("general_knowledge_max_sentences", 6))
+        sources_thin = _sources_are_thin(
+            query,
+            focused_sources,
+            min_sources=gk_min_sources,
+            min_term_hits=gk_min_term_hits,
+        )
 
         self.runs_repo.add_step(
             run_id,
@@ -444,76 +594,109 @@ class QueryService:
             doc_ids=[str(r.get("doc_id") or "") for r in results if r.get("doc_id")],
         )
 
-        model = str(self.config.get("ollama_model") or "").strip()
-        api_cfg = self.config.get("ollama_api") or {}
-        base_url = str(api_cfg.get("base_url") or "http://localhost:11434/v1")
-        api_key = api_cfg.get("api_key")
-        client = OpenAI(base_url=base_url, api_key=api_key)
-        messages = _build_llm_messages(query, focused_sources)
-
         final_text = ""
         streamed_any_delta = False
-        try:
-            for event in stream_chat_with_continuation(
-                client,
-                model=model,
-                messages=messages,
-                per_call_max_tokens=int(
-                    self.config.get("per_call_max_tokens", self.config.get("chat_max_tokens", 4000))
-                ),
-                continuation_instruction=str(
-                    self.config.get(
-                        "continuation_instruction",
-                        "Continue exactly where you left off. Do not repeat prior text.",
-                    )
-                ),
-                max_continuations=int(self.config.get("max_continuations", 2)),
-                timeout=float(self.config.get("provider_timeout_s", 300)),
-                flush_interval_ms=int(self.config.get("flush_interval_ms", 250)),
-                enable_thinking_summary=bool(self.config.get("enable_thinking_summary", False)),
-                temperature=0.1,
-            ):
-                ev_name = str(event.get("event") or "")
-                ev_data = event.get("data") or {}
-                if ev_name == "meta":
-                    # Internal streaming meta/keepalive; not part of external API contract here.
-                    continue
-                if ev_name == "final_delta":
-                    streamed_any_delta = True
-                    text = str(ev_data.get("text") or "")
-                    if text:
-                        self.runs_repo.add_event(run_id, "final_delta", {"text": text})
-                    yield event
-                elif ev_name == "thinking_delta":
-                    self.runs_repo.add_event(run_id, "thinking_delta", {"text": str(ev_data.get("text") or "")})
-                    yield event
-                elif ev_name == "error":
-                    self.runs_repo.add_event(run_id, "error", dict(ev_data))
-                    yield event
-                elif ev_name == "done":
-                    final_text = str(ev_data.get("text") or "")
-                    continue
-        except Exception as exc:
-            self.runs_repo.add_event(run_id, "error", {"message": str(exc)})
-            yield protocol.error("stream_query_failed", detail=str(exc))
+        if not (gk_enabled and sources_thin and not focused_sources):
+            model = str(self.config.get("ollama_model") or "").strip()
+            api_cfg = self.config.get("ollama_api") or {}
+            base_url = str(api_cfg.get("base_url") or "http://localhost:11434/v1")
+            api_key = api_cfg.get("api_key")
+            client = OpenAI(base_url=base_url, api_key=api_key)
+            messages = _build_llm_messages(query, focused_sources)
 
+            try:
+                for event in stream_chat_with_continuation(
+                    client,
+                    model=model,
+                    messages=messages,
+                    per_call_max_tokens=int(
+                        self.config.get("per_call_max_tokens", self.config.get("chat_max_tokens", 4000))
+                    ),
+                    continuation_instruction=str(
+                        self.config.get(
+                            "continuation_instruction",
+                            "Continue exactly where you left off. Do not repeat prior text.",
+                        )
+                    ),
+                    max_continuations=int(self.config.get("max_continuations", 2)),
+                    timeout=float(self.config.get("provider_timeout_s", 300)),
+                    flush_interval_ms=int(self.config.get("flush_interval_ms", 250)),
+                    enable_thinking_summary=bool(self.config.get("enable_thinking_summary", False)),
+                    temperature=0.1,
+                ):
+                    ev_name = str(event.get("event") or "")
+                    ev_data = event.get("data") or {}
+                    if ev_name == "meta":
+                        # Internal streaming meta/keepalive; not part of external API contract here.
+                        continue
+                    if ev_name == "final_delta":
+                        streamed_any_delta = True
+                        text = str(ev_data.get("text") or "")
+                        if text:
+                            self.runs_repo.add_event(run_id, "final_delta", {"text": text})
+                        yield event
+                    elif ev_name == "thinking_delta":
+                        self.runs_repo.add_event(run_id, "thinking_delta", {"text": str(ev_data.get("text") or "")})
+                        yield event
+                    elif ev_name == "error":
+                        self.runs_repo.add_event(run_id, "error", dict(ev_data))
+                        yield event
+                    elif ev_name == "done":
+                        final_text = str(ev_data.get("text") or "")
+                        continue
+            except Exception as exc:
+                self.runs_repo.add_event(run_id, "error", {"message": str(exc)})
+                yield protocol.error("stream_query_failed", detail=str(exc))
+
+        suppress_fallback_emit = bool(gk_enabled and sources_thin and not focused_sources)
         if not final_text:
             final_text = _build_answer_with_llm(query, focused_sources, self.config) or _build_focused_fallback_answer(
                 query, focused_sources
             )
-            if not streamed_any_delta:
+            if not streamed_any_delta and not suppress_fallback_emit:
                 self.runs_repo.add_event(run_id, "final_delta", {"text": final_text})
                 yield protocol.final_delta(final_text)
 
-        rendered = render_citation_output(
-            final_text,
-            focused_sources,
-            mode="inline",
-            max_sources=max_sources,
-            max_snippet_chars=max_snippet_chars,
-        )
-        final_answer = _normalize_final_answer(rendered.get("answer", final_text), focused_sources)
-        citation_stats = rendered.get("stats", {})
+        gk_used = False
+        if gk_enabled and sources_thin:
+            gk_body = _build_general_knowledge_answer(query, self.config)
+            if gk_body:
+                gk_used = True
+                if focused_sources:
+                    if _answer_needs_general_knowledge(final_text, gk_min_answer_chars):
+                        append_text = f"\n\nGeneral knowledge (sources were limited): {gk_body}"
+                        final_text = f"{final_text}{append_text}"
+                        self.runs_repo.add_event(run_id, "final_delta", {"text": append_text})
+                        yield protocol.final_delta(append_text)
+                else:
+                    final_text = f"General knowledge (no relevant sources retrieved): {gk_body}"
+                    if not streamed_any_delta:
+                        self.runs_repo.add_event(run_id, "final_delta", {"text": final_text})
+                        yield protocol.final_delta(final_text)
+
+        if focused_sources or not gk_used:
+            rendered = render_citation_output(
+                final_text,
+                focused_sources,
+                mode="inline",
+                max_sources=max_sources,
+                max_snippet_chars=max_snippet_chars,
+            )
+            final_answer = _normalize_final_answer(
+                rendered.get("answer", final_text),
+                focused_sources,
+                max_sentences=gk_max_sentences if gk_used else 3,
+                ensure_citations=bool(focused_sources),
+            )
+            citation_stats = rendered.get("stats", {})
+        else:
+            final_answer = _normalize_final_answer(
+                final_text,
+                focused_sources,
+                max_sentences=gk_max_sentences,
+                ensure_citations=False,
+            )
+            citation_stats = {}
 
         citation_stats_event = protocol.citation_stats(citation_stats)
         done_event = protocol.done(cancelled=False, text=final_answer)

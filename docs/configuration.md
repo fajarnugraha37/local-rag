@@ -21,6 +21,11 @@ Environment overlays: `app/config/runtime_settings.py`
 - `citations_mode`
 - `citation_max_sources`
 - `citation_max_snippet_chars`
+- `general_knowledge_fallback`
+- `general_knowledge_min_sources`
+- `general_knowledge_min_term_hits`
+- `general_knowledge_min_answer_chars`
+- `general_knowledge_max_sentences`
 
 ## Streaming
 - `enable_streaming`
