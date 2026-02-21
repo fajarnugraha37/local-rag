@@ -386,8 +386,36 @@ def main():
         default=settings.CONFIG.get("enable_thinking_summary", False),
         help="Enable optional short thinking summary emission (off by default).",
     )
+    parser.add_argument(
+        "--citations",
+        action=argparse.BooleanOptionalAction,
+        default=settings.CONFIG.get("citations", True),
+        help="Enable citation rendering in final answers.",
+    )
+    parser.add_argument(
+        "--citations-mode",
+        choices=["inline", "inline+sources", "none"],
+        default=settings.CONFIG.get("citations_mode", "inline"),
+        help="Citation rendering mode.",
+    )
+    parser.add_argument(
+        "--max-sources",
+        type=int,
+        default=settings.CONFIG.get("citation_max_sources", settings.CONFIG.get("top_k", 3)),
+        help="Maximum number of sources to include in rendered output.",
+    )
+    parser.add_argument(
+        "--max-snippet-chars",
+        type=int,
+        default=settings.CONFIG.get("citation_max_snippet_chars", 240),
+        help="Maximum snippet characters for rendered sources.",
+    )
 
     args = parser.parse_args()
+    settings.CONFIG["citations"] = bool(args.citations)
+    settings.CONFIG["citations_mode"] = str(args.citations_mode)
+    settings.CONFIG["citation_max_sources"] = int(max(0, args.max_sources))
+    settings.CONFIG["citation_max_snippet_chars"] = int(max(0, args.max_snippet_chars))
 
     # Configuration for the Ollama API client
     print(NEON_GREEN + "Initializing Ollama API client..." + RESET_COLOR)

@@ -25,17 +25,17 @@ ACTION_SPECS: Dict[str, ActionSpec] = {
     "chat": ActionSpec(
         name="chat",
         target="app.chat.document_chat_cli:main",
-        description="Main document chat (rewrite + optional multi-pass).",
+        description="Main document chat (rewrite + optional multi-pass, citation flags supported).",
     ),
     "chat-baseline": ActionSpec(
         name="chat-baseline",
         target="app.chat.document_chat_baseline_cli:main",
-        description="Baseline document chat (no rewrite).",
+        description="Baseline document chat (no rewrite, citation flags supported).",
     ),
     "chat-email": ActionSpec(
         name="chat-email",
         target="app.chat.email_chat_cli:main",
-        description="Email-focused chat CLI.",
+        description="Email-focused chat CLI (citation flags supported).",
     ),
     "ingest-files": ActionSpec(
         name="ingest-files",
