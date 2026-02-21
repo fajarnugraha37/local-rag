@@ -9,7 +9,14 @@ from app.http.sse import to_sse
 def _get_relevant_context(retrieval, query: str, top_k: int):
     try:
         return retrieval.scored_chunks(query, top_k=top_k)
-    except Exception:
+    except Exception as exc:
+        # Retrieval failures should not break chat streaming; emit empty context.
+        try:
+            retrieval_logger = getattr(retrieval, "logger", None)
+            if retrieval_logger:
+                retrieval_logger.exception("chat_context_retrieval_failed error=%s", exc)
+        except Exception:
+            pass
         return []
 
 
@@ -110,6 +117,7 @@ def handle_chat_stream_get(handler, deps, parsed) -> bool:
     except (BrokenPipeError, ConnectionResetError):
         return True
     except Exception as exc:
+        handler.log_exception("chat_stream_failed", exc)
         try:
             handler.wfile.write(to_sse("error", {"message": "server_stream_error", "detail": str(exc)}))
             handler.wfile.write(to_sse("done", {"cancelled": True}))

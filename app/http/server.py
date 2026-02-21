@@ -10,9 +10,12 @@ from app.http.handlers.actions import handle_actions_get, handle_actions_post
 from app.http.handlers.chat import handle_chat_stream_get
 from app.http.handlers.docs import handle_docs_delete, handle_docs_get
 from app.http.handlers.ingestion import handle_ingestion_post
+from app.logging.config import configure_logging, get_logger
 
 
 def create_streaming_handler(deps_provider):
+    logger = get_logger("app.http.server")
+
     class StreamingHandler(BaseHTTPRequestHandler):
         server_version = "LocalRAGSSE/1.1"
 
@@ -22,11 +25,24 @@ def create_streaming_handler(deps_provider):
             self.end_headers()
             self.wfile.write(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
 
+        def send_ok_json(self, status: int = HTTPStatus.OK, **payload) -> None:
+            body = {"ok": True}
+            body.update(payload)
+            self.send_json(status, body)
+
+        def send_error_json(self, status: int, message: str, **payload) -> None:
+            body = {"ok": False, "error": message}
+            body.update(payload)
+            self.send_json(status, body)
+
+        def log_exception(self, context: str, exc: Exception) -> None:
+            logger.exception("%s method=%s path=%s error=%s", context, self.command, self.path, exc)
+
         def do_GET(self):
             deps = deps_provider()
             parsed = urlparse(self.path)
             if parsed.path == "/health":
-                self.send_json(HTTPStatus.OK, {"ok": True})
+                self.send_ok_json()
                 return
             if handle_actions_get(self, deps, parsed):
                 return
@@ -43,14 +59,14 @@ def create_streaming_handler(deps_provider):
                 return
             if handle_actions_post(self, deps, parsed):
                 return
-            self.send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not_found"})
+            self.send_error_json(HTTPStatus.NOT_FOUND, "not_found")
 
         def do_DELETE(self):
             deps = deps_provider()
             parsed = urlparse(self.path)
             if handle_docs_delete(self, deps, parsed):
                 return
-            self.send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not_found"})
+            self.send_error_json(HTTPStatus.NOT_FOUND, "not_found")
 
         def log_message(self, format, *args):
             return
@@ -59,6 +75,7 @@ def create_streaming_handler(deps_provider):
 
 
 def run_server(host: str, port: int, handler_cls) -> None:
+    configure_logging()
     server = ThreadingHTTPServer((host, port), handler_cls)
     print(f"SSE server listening on http://{host}:{port}")
     print("GET  /health")

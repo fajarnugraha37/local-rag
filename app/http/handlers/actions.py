@@ -67,7 +67,7 @@ def handle_actions_post(handler, deps, parsed) -> bool:
     try:
         body = read_json(handler)
     except ValueError as exc:
-        handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+        handler.send_error_json(HTTPStatus.BAD_REQUEST, str(exc))
         return True
 
     action = (body.get("action") or "").strip()
@@ -84,12 +84,13 @@ def handle_actions_post(handler, deps, parsed) -> bool:
         )
         return True
     if not isinstance(action_args, list) or any(not isinstance(v, str) for v in action_args):
-        handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'args' must be an array of strings"})
+        handler.send_error_json(HTTPStatus.BAD_REQUEST, "'args' must be an array of strings")
         return True
 
     try:
         result = _run_action_capture(deps["run_action"], action, action_args)
         handler.send_json(HTTPStatus.OK, {"ok": result["exit_code"] == 0, "result": result})
     except Exception as exc:
-        handler.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(exc)})
+        handler.log_exception("actions_post_failed", exc)
+        handler.send_error_json(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
     return True

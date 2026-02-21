@@ -132,7 +132,8 @@ def handle_ingestion_post(handler, deps, parsed) -> bool:
             )
             handler.send_json(HTTPStatus.OK, {"ok": True, "result": result})
         except Exception as exc:
-            handler.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(exc)})
+            handler.log_exception("ingestion_handler_failed", exc)
+            handler.send_error_json(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
         return True
 
     if parsed.path == "/ingest/text":
@@ -166,7 +167,8 @@ def handle_ingestion_post(handler, deps, parsed) -> bool:
             )
             handler.send_json(HTTPStatus.OK, {"ok": True, "chunk_count": len(chunks), "result": result})
         except Exception as exc:
-            handler.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(exc)})
+            handler.log_exception("ingestion_handler_failed", exc)
+            handler.send_error_json(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
         return True
 
     if parsed.path in {"/ingest/files", "/ingestion/files"}:
@@ -211,7 +213,8 @@ def handle_ingestion_post(handler, deps, parsed) -> bool:
             )
             handler.send_json(HTTPStatus.OK, {"ok": True, "summary": summary})
         except Exception as exc:
-            handler.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(exc)})
+            handler.log_exception("ingestion_handler_failed", exc)
+            handler.send_error_json(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
         return True
 
     if parsed.path == "/ingest/folder":
@@ -356,7 +359,8 @@ def handle_ingestion_post(handler, deps, parsed) -> bool:
             )
             handler.send_json(HTTPStatus.OK, {"ok": True, "summary": summary})
         except Exception as exc:
-            handler.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(exc)})
+            handler.log_exception("ingestion_handler_failed", exc)
+            handler.send_error_json(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
         return True
 
     if parsed.path == "/vectors/delete-doc":
@@ -373,7 +377,8 @@ def handle_ingestion_post(handler, deps, parsed) -> bool:
             deleted = deps["delete_doc"](doc_id)
             handler.send_json(HTTPStatus.OK, {"ok": True, "doc_id": doc_id, "deleted": deleted})
         except Exception as exc:
-            handler.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(exc)})
+            handler.log_exception("ingestion_handler_failed", exc)
+            handler.send_error_json(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
         return True
 
     if parsed.path == "/retrieval/query":
@@ -421,7 +426,10 @@ def handle_ingestion_post(handler, deps, parsed) -> bool:
                 },
             )
         except Exception as exc:
-            handler.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(exc)})
+            handler.log_exception("ingestion_handler_failed", exc)
+            handler.send_error_json(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
         return True
 
     return False
+
+

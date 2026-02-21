@@ -18,19 +18,20 @@ def handle_docs_get(handler, deps, parsed) -> bool:
     try:
         limit = int((query.get("limit") or [50])[0])
     except (TypeError, ValueError):
-        handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'limit' must be an integer"})
+        handler.send_error_json(HTTPStatus.BAD_REQUEST, "'limit' must be an integer")
         return True
     try:
         namespace = validate_namespace(namespace_raw, default_to_default=True) if namespace_raw is not None else None
     except ValueError as exc:
-        handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+        handler.send_error_json(HTTPStatus.BAD_REQUEST, str(exc))
         return True
     try:
         store = deps["DocRegistryStore"](str(settings.CONFIG.get("doc_registry_path", "data/doc_registry.json")))
         payload = store.list_docs(namespace=namespace, limit=limit, cursor=cursor)
         handler.send_json(HTTPStatus.OK, {"ok": True, **payload})
     except Exception as exc:
-        handler.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(exc)})
+        handler.log_exception("docs_get_failed", exc)
+        handler.send_error_json(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
     return True
 
 
@@ -42,7 +43,7 @@ def handle_docs_delete(handler, deps, parsed) -> bool:
     validate_namespace = deps["validate_namespace"]
     doc_id = parsed.path[len("/docs/"):].strip()
     if not doc_id:
-        handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'doc_id' is required"})
+        handler.send_error_json(HTTPStatus.BAD_REQUEST, "'doc_id' is required")
         return True
 
     query = parse_qs(parsed.query)
@@ -55,7 +56,7 @@ def handle_docs_delete(handler, deps, parsed) -> bool:
         try:
             namespace = validate_namespace(namespace_raw, default_to_default=True)
         except ValueError as exc:
-            handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+            handler.send_error_json(HTTPStatus.BAD_REQUEST, str(exc))
             return True
 
     try:
@@ -86,5 +87,6 @@ def handle_docs_delete(handler, deps, parsed) -> bool:
             },
         )
     except Exception as exc:
-        handler.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": str(exc)})
+        handler.log_exception("docs_delete_failed", exc)
+        handler.send_error_json(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
     return True
