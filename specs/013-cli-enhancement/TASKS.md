@@ -61,7 +61,7 @@
 - Validation:
   - `python .\cmd\app.py --cli ns list`
   - `python .\cmd\app.py --cli doc list --limit 5 --json`
-- Status: todo
+- Status: done
 
 ## T005: Ingestion Commands + Job Events
 - Goal: CLI support for ingestion jobs and logs.
