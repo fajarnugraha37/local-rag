@@ -152,7 +152,7 @@
   - CLI tests pass.
 - Validation:
   - `python -m pytest -q tests/test_cli_*.py`
-- Status: todo
+- Status: done
 
 ## T011: Docs + Makefile + AGENTS/README
 - Goal: Update docs and workflow targets to reflect new CLI.
