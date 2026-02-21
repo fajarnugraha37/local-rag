@@ -93,7 +93,7 @@
   - `rag query stream "..."` prints meta/final/sources/done.
 - Validation:
   - `python .\cmd\app.py --cli query "test" --json`
-- Status: todo
+- Status: done
 
 ## T007: Retrieve/Rerank + Feedback
 - Goal: Add CLI support for retrieval tools and feedback.
