@@ -62,6 +62,11 @@ make purge-soft-deletes SOFT_DELETE_RETENTION_DAYS=30
 - `docs/development.md`
 - `docs/cli.md`
 
+## Configuration
+- Main config: `config.yaml` (env overrides supported).
+- Optional general-knowledge fallback (when sources are thin):
+  - `general_knowledge_fallback` and related tuning keys in `docs/configuration.md`.
+
 ## OCR Prerequisites (RapidOCR + ONNX Runtime)
 OCR-enabled ingestion for scanned PDFs/images depends on RapidOCR with ONNX Runtime.
 

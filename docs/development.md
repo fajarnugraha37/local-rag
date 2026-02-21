@@ -17,6 +17,8 @@ make run-cli
 make shell
 make cli-smoke
 make query-verbose Q="what are key payment terms?" TOP_K=6
+make config-get
+make config-set CONFIG_KEY="general_knowledge_fallback" CONFIG_VALUE=true
 ```
 
 ## Launcher

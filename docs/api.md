@@ -78,6 +78,10 @@ Example (`POST /v1/ingestions`):
 - `GET /v1/runs/{run_id}/events`
 - `GET /v1/runs/{run_id}/replay` (SSE replay)
 
+Notes:
+- If `general_knowledge_fallback` is enabled, answers may include an explicitly labeled
+  "General knowledge ..." section when sources are thin or missing.
+
 ## Idempotency
 Mutating endpoints support `Idempotency-Key`:
 - same key + same payload -> cached response replayed

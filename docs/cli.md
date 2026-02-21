@@ -48,6 +48,8 @@ python .\cmd\app.py --cli actions-list
 ## Query Output Modes
 - Default `query`: metadata-focused retrieval section (doc/chunk IDs and counts), no chunk content dump.
 - `--verbose query`: includes snippet previews for retrieved chunks.
+- If `general_knowledge_fallback` is enabled, answers may include a labeled
+  "General knowledge ..." section when sources are thin or missing.
 
 ## Ingestion Performance Flags
 - `--chunk-max-tokens`: bigger chunks reduce embedding calls.

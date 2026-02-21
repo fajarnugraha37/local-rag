@@ -27,6 +27,13 @@ Environment overlays: `app/config/runtime_settings.py`
 - `general_knowledge_min_answer_chars`
 - `general_knowledge_max_sentences`
 
+### General Knowledge Fallback (Optional)
+- `general_knowledge_fallback` (bool): enable general-knowledge expansion when sources are thin.
+- `general_knowledge_min_sources` (int): minimum source count to avoid fallback.
+- `general_knowledge_min_term_hits` (int): minimum query-term hits across sources.
+- `general_knowledge_min_answer_chars` (int): minimum source-based answer length before appending fallback.
+- `general_knowledge_max_sentences` (int): maximum sentences allowed when fallback is used.
+
 ## Streaming
 - `enable_streaming`
 - `enable_thinking_summary`

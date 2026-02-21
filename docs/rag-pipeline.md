@@ -28,6 +28,8 @@
 3. Citation prompt builder produces context blocks and user prompt.
 4. LLM response is streamed or returned in one shot.
 5. Citation formatter applies inline markers and optional source appendix.
+6. Optional general-knowledge fallback (config-gated) can append an explicitly labeled
+   summary when sources are thin or missing.
 
 ## Streaming Pipeline
 - SSE endpoint: `GET /chat/stream`.

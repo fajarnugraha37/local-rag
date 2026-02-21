@@ -43,6 +43,8 @@
 ## Security & Configuration Tips
 - Do not commit credentials.
 - Use `config.yaml` + env overrides.
+- When changing answer policy, update `docs/configuration.md` and patchable keys in
+  `app/http/routers/system.py` + `app/cli/commands/system.py`.
 - Use idempotency and soft-delete purge controls for maintenance:
   - `make idempotency-purge`
   - `make purge-soft-deletes SOFT_DELETE_RETENTION_DAYS=30`

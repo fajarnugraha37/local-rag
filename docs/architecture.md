@@ -41,6 +41,7 @@ Vector/document data:
 - `app/services/query_service.py`
 - `app/services/run_service.py`
 - `app/services/feedback_service.py`
+  - Query service can append an explicitly labeled general-knowledge fallback when configured.
 
 ## Extraction + Retrieval
 - Docling conversion: `app/document_conversion/docling_adapter.py`

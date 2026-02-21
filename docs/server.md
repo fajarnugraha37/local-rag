@@ -25,3 +25,4 @@ Typical event names:
 ## Notes
 - Legacy `GET /docs` remains available for backward compatibility.
 - Swagger is intentionally moved away from `/docs` to avoid route collision.
+- Optional answer expansion is controlled by config keys like `general_knowledge_fallback`.

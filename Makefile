@@ -1,4 +1,4 @@
-.PHONY: help install setup fmt lint run-server run-cli shell cli-smoke chat chat-baseline chat-email ingest ingest-folder list-docs delete-doc ingest-legacy ingest-folder-legacy list-docs-legacy delete-doc-legacy ingest-email migrate-vault backfill backfill-namespaces query query-verbose debug-retrieval validate ingest-smoke eval test idempotency-purge purge-soft-deletes run-all all
+.PHONY: help install setup fmt lint run-server run-cli shell cli-smoke chat chat-baseline chat-email ingest ingest-folder list-docs delete-doc ingest-legacy ingest-folder-legacy list-docs-legacy delete-doc-legacy ingest-email migrate-vault backfill backfill-namespaces query query-verbose debug-retrieval validate ingest-smoke eval test idempotency-purge purge-soft-deletes config-get config-set run-all all
 
 PYTHON ?= python
 APP := $(PYTHON) cmd/app.py
@@ -19,6 +19,8 @@ CHUNK_MAX_TOKENS ?=
 CHUNK_OVERLAP_TOKENS ?=
 OCR_ENABLED ?= false
 PARALLEL_WORKERS ?= 1
+CONFIG_KEY ?=
+CONFIG_VALUE ?=
 
 help:
 	@$(info Available targets:)
@@ -33,6 +35,8 @@ help:
 	@$(info   make cli-smoke)
 	@$(info   make query Q="what are key payment terms?" TOP_K=6)
 	@$(info   make query-verbose Q="what are key payment terms?" TOP_K=6)
+	@$(info   make config-get)
+	@$(info   make config-set CONFIG_KEY="general_knowledge_fallback" CONFIG_VALUE=true)
 	@$(info   make idempotency-purge)
 	@$(info   make purge-soft-deletes SOFT_DELETE_RETENTION_DAYS=30)
 	@$(info   make eval)
@@ -76,6 +80,15 @@ cli-smoke:
 	$(APP) --cli capabilities --json
 	$(APP) --cli ns list --json
 	$(APP) --cli doc list --limit 1 --json
+
+config-get:
+	$(APP) --cli config get
+
+config-set:
+ifeq ($(strip $(CONFIG_KEY)),)
+	$(error CONFIG_KEY is required. Example: make config-set CONFIG_KEY="general_knowledge_fallback" CONFIG_VALUE=true)
+endif
+	$(APP) --cli config set --key "$(CONFIG_KEY)" --value "$(CONFIG_VALUE)"
 
 # Legacy action wrappers (kept for backward compatibility)
 chat:
