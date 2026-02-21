@@ -32,6 +32,8 @@ class ExtractorContext:
     enable_parquet: bool
     enable_legacy_office: bool
     extracted_at: str
+    ingest_docling_enabled: bool = True
+    ingest_docling_export_format: str = "markdown"
 
 
 class ExtractorError(RuntimeError):

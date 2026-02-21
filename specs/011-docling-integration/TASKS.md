@@ -35,7 +35,7 @@ Acceptance criteria:
 - Locator metadata survives extractor boundary.
 Validation commands:
 - `python -m pytest -q tests/test_docling_routing.py tests/test_docling_metadata_mapping.py`
-Status: todo
+Status: done
 
 ## T003
 Goal: Route all required formats exclusively to Docling.
