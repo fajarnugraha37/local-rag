@@ -94,56 +94,10 @@ def test_upload_ingestion_uses_same_pipeline(tmp_path, monkeypatch):
     assert summary["extracted"] >= 1
 
 
-def test_office_happy_path_extractors(tmp_path):
-    pytest.importorskip("docx")
-    pytest.importorskip("openpyxl")
-    pytest.importorskip("pptx")
-
-    from docx import Document
-    from openpyxl import Workbook
-    from pptx import Presentation
-    from PyPDF2 import PdfWriter
-
+def test_docling_target_extensions_are_routed_from_registry():
     registry = build_default_registry()
-    context = _context(build_options(max_pages=10, max_rows=100, max_slides=10, max_sheets=5))
-
-    docx_path = tmp_path / "sample.docx"
-    document = Document()
-    document.add_paragraph("Docx content fixture")
-    document.save(docx_path)
-
-    xlsx_path = tmp_path / "sample.xlsx"
-    workbook = Workbook()
-    ws = workbook.active
-    ws["A1"] = "hello"
-    ws["B1"] = "world"
-    workbook.save(xlsx_path)
-
-    pptx_path = tmp_path / "sample.pptx"
-    presentation = Presentation()
-    slide_layout = presentation.slide_layouts[0]
-    slide = presentation.slides.add_slide(slide_layout)
-    slide.shapes.title.text = "Fixture slide"
-    if len(slide.placeholders) > 1:
-        slide.placeholders[1].text = "Slide body"
-    presentation.save(pptx_path)
-
-    pdf_path = tmp_path / "sample.pdf"
-    writer = PdfWriter()
-    writer.add_blank_page(width=300, height=300)
-    writer.add_metadata({"/Title": "PDF Fixture Text Extract"})
-    with open(pdf_path, "wb") as handle:
-        writer.write(handle)
-
-    docx_doc = registry.extract_from_path(str(docx_path), context)
-    xlsx_doc = registry.extract_from_path(str(xlsx_path), context)
-    pptx_doc = registry.extract_from_path(str(pptx_path), context)
-    pdf_doc = registry.extract_from_path(str(pdf_path), context)
-
-    assert docx_doc.units
-    assert xlsx_doc.units
-    assert pptx_doc.units
-    assert pdf_doc.units
+    for path in ["sample.pdf", "sample.docx", "sample.xlsx", "sample.pptx", "sample.xml"]:
+        assert registry.resolve(path).name == "docling"
 
 
 def test_parquet_enabled_by_default(tmp_path):

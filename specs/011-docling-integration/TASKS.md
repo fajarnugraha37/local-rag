@@ -150,7 +150,7 @@ Acceptance criteria:
 Validation commands:
 - `python -m pytest -q tests/test_docling_adapter.py tests/test_docling_routing.py tests/test_docling_ingestion_smoke.py`
 - `python -m pytest -q`
-Status: todo
+Status: done
 
 ## T009
 Goal: Update repository documentation and contributor guidance for docling-first ingestion.
