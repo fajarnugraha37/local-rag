@@ -47,6 +47,15 @@ class IdempotencyRepository:
             ).fetchone()
         return dict(row) if row is not None else None
 
+    def is_expired(self, row: dict | None, now_iso: str | None = None) -> bool:
+        if not row:
+            return True
+        expires_at = row.get("expires_at")
+        if not expires_at:
+            return False
+        now_iso = now_iso or _now_iso()
+        return str(expires_at) <= str(now_iso)
+
     def delete_expired(self, now_iso: str | None = None) -> int:
         now_iso = now_iso or _now_iso()
         with connect(self.db_path) as conn:

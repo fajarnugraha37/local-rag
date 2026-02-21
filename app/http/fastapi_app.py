@@ -32,8 +32,9 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Easy Local RAG API", version="0.1.0", lifespan=lifespan)
 
     idempotency_repo = IdempotencyRepository(_db_path())
+    idempotency_ttl_s = int(CONFIG.get("idempotency_ttl_s") or 86400)
     app.add_middleware(RequestIdMiddleware)
-    app.add_middleware(IdempotencyMiddleware, repo=idempotency_repo)
+    app.add_middleware(IdempotencyMiddleware, repo=idempotency_repo, ttl_seconds=idempotency_ttl_s)
 
     app.include_router(system_router)
     app.include_router(namespaces_router)

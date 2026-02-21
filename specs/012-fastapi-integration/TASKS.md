@@ -168,7 +168,7 @@
   - Duplicate key returns same response; soft deleted records excluded by default.
 - Validation commands:
   - `python -m pytest -q tests/test_fastapi_idempotency.py tests/test_fastapi_pagination.py`
-- Status: todo
+- Status: done
 
 ## T011: Cutover + Cleanup
 - Goal: Remove old server and update entrypoints.

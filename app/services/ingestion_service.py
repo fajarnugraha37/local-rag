@@ -110,8 +110,8 @@ class IngestionService:
                 raise ValueError(f"unsupported source_type: {source_type}")
 
             if self._is_cancelled(ingestion_id):
-                self.repo.update_status(ingestion_id, "cancelled")
                 self.repo.add_event(ingestion_id, "cancelled", {"phase": "finalize"})
+                self.repo.update_status(ingestion_id, "cancelled")
                 return
 
             counters = {
@@ -119,11 +119,11 @@ class IngestionService:
                 "skipped": int(summary.get("skipped") or 0),
                 "failed": int(summary.get("failed") or 0),
             }
-            self.repo.update_status(ingestion_id, "done", counters=counters)
             self.repo.add_event(ingestion_id, "done", {"summary": summary})
+            self.repo.update_status(ingestion_id, "done", counters=counters)
         except Exception as exc:
-            self.repo.update_status(ingestion_id, "failed", last_error=str(exc))
             self.repo.add_event(ingestion_id, "failed", {"error": str(exc)})
+            self.repo.update_status(ingestion_id, "failed", last_error=str(exc))
 
     def _run_folder(self, ingestion_id: str, namespace: str, source_spec: dict[str, Any]) -> dict[str, Any]:
         path = str(source_spec.get("path") or "").strip()
