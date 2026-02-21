@@ -32,7 +32,7 @@
   - Schema initializes and basic CRUD works with sqlite file.
 - Validation commands:
   - `python -c "from app.repositories.sqlite.db import init_db; init_db('data/app.db')"`
-- Status: todo
+- Status: done
 
 ## T003: FastAPI App Skeleton + Middleware
 - Goal: Create FastAPI app with middleware, lifespan, and router registration.
@@ -218,3 +218,4 @@
 - SQLite repositories used for server state (namespaces, docs, jobs, runs, feedback, idempotency).
 - Old server implementation removed.
 - Tests pass.
+
