@@ -119,22 +119,48 @@ def register_query_commands(app: typer.Typer) -> None:
         as_json: bool = typer.Option(False, "--json", help="Emit JSON output."),
     ) -> None:
         svc = build_services().query_service
-        stream = svc.stream_query(
-            query=text,
-            top_k=top_k,
-            rerank=rerank,
-            filters=None,
-            namespaces=parse_namespaces([namespaces]) if namespaces else None,
-        )
+        if hasattr(svc, "stream_query"):
+            stream = svc.stream_query(
+                query=text,
+                top_k=top_k,
+                rerank=rerank,
+                filters=None,
+                namespaces=parse_namespaces([namespaces]) if namespaces else None,
+            )
+        else:
+            result = svc.run_query(
+                query=text,
+                top_k=top_k,
+                rerank=rerank,
+                filters=None,
+                namespaces=parse_namespaces([namespaces]) if namespaces else None,
+                mode="stream",
+            )
+            stream = iter(
+                [
+                    {
+                        "event": "meta",
+                        "data": {"run_id": result["run_id"], "trace_id": result["trace_id"]},
+                    },
+                    {"event": "final_delta", "data": {"text": result["answer"]}},
+                    {"event": "sources", "data": {"sources": result["sources"]}},
+                    {"event": "citation_stats", "data": {"stats": result["citation_stats"]}},
+                    {"event": "done", "data": {"cancelled": False, "text": result["answer"]}},
+                ]
+            )
         emit_json = bool(as_json or ((ctx.obj or {}).get("json") is True))
         if emit_json:
             events = list(stream)
             _print_payload({"ok": True, "events": events, "count": len(events)}, as_json=True)
             return
+        shown_final_header = False
         for event in stream:
             name = str(event.get("event") or "")
             data = event.get("data") or {}
             if name == "final_delta":
+                if not shown_final_header:
+                    typer.echo("\n[final_delta]", nl=True)
+                    shown_final_header = True
                 typer.echo(str(data.get("text") or ""), nl=False)
             elif name == "meta":
                 typer.echo(f"\n[meta] run_id={data.get('run_id')} trace_id={data.get('trace_id')}")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -29,6 +30,23 @@ def _print_payload(payload: dict[str, Any], as_json: bool) -> None:
     typer.echo(str(payload))
 
 
+def _render_wait_progress(*, elapsed_s: float, record: dict[str, Any] | None, tick: int) -> None:
+    spinner = ["|", "/", "-", "\\"]
+    mark = spinner[tick % len(spinner)]
+    status = str((record or {}).get("status") or "queued")
+    counters = (record or {}).get("counters") or {}
+    ingested = int(counters.get("ingested") or 0)
+    skipped = int(counters.get("skipped") or 0)
+    failed = int(counters.get("failed") or 0)
+    line = (
+        f"\r{mark} waiting... status={status} "
+        f"ingested={ingested} skipped={skipped} failed={failed} "
+        f"elapsed={int(elapsed_s)}s"
+    )
+    sys.stdout.write(line)
+    sys.stdout.flush()
+
+
 def build_ingestions_cli() -> typer.Typer:
     app = typer.Typer(name="ingest", no_args_is_help=True, help="Ingestion jobs and logs.")
 
@@ -47,6 +65,9 @@ def build_ingestions_cli() -> typer.Typer:
         include: str = typer.Option("", "--include", help="Comma-separated include globs."),
         exclude: str = typer.Option("", "--exclude", help="Comma-separated exclude globs."),
         idempotency_key: str = typer.Option("", "--idempotency-key"),
+        wait: bool = typer.Option(False, "--wait/--no-wait", help="Wait until job reaches terminal state."),
+        wait_timeout_s: int = typer.Option(300, "--wait-timeout-s", min=1, help="Max seconds to wait when --wait is enabled."),
+        wait_poll_interval: float = typer.Option(1.0, "--wait-poll-interval", min=0.2, help="Polling interval in seconds while waiting."),
         as_json: bool = typer.Option(False, "--json", help="Emit JSON output."),
     ) -> None:
         services = build_services()
@@ -74,10 +95,11 @@ def build_ingestions_cli() -> typer.Typer:
             "exclude": exclude_patterns,
         }
         signature = build_signature(payload_signature_data)
-        effective_key = idempotency_key or build_idempotency_key(
+        auto_key = build_idempotency_key(
             operation=f"ingest-{source_type}",
             payload=payload_signature_data,
         )
+        effective_key = idempotency_key or auto_key
 
         def _create_response() -> dict[str, Any]:
             if source_type == "folder":
@@ -130,17 +152,56 @@ def build_ingestions_cli() -> typer.Typer:
                 )
             return {"ok": True, "ingestion_id": record.get("ingestion_id"), "record": record}
 
-        response, replayed = execute_with_idempotency(
-            repo=repo_id,
-            key=effective_key,
-            method="POST",
-            path="/v1/ingestions",
-            signature=signature,
-            ttl_seconds=int(services.config.get("idempotency_ttl_s") or 86400),
-            fn=_create_response,
-        )
+        if idempotency_key:
+            response, replayed = execute_with_idempotency(
+                repo=repo_id,
+                key=effective_key,
+                method="POST",
+                path="/v1/ingestions",
+                signature=signature,
+                ttl_seconds=int(services.config.get("idempotency_ttl_s") or 86400),
+                fn=_create_response,
+            )
+        else:
+            # Auto-generated key is informational by default; avoid stale replay traps.
+            response = _create_response()
+            replayed = False
         response["idempotency_key"] = effective_key
         response["idempotency_replayed"] = bool(replayed)
+
+        if wait:
+            ingestion_id = str(response.get("ingestion_id") or "")
+            if ingestion_id:
+                deadline = time.time() + max(1, int(wait_timeout_s))
+                terminal_states = {"done", "failed", "cancelled"}
+                last_record = None
+                started = time.time()
+                tick = 0
+                show_progress = not _want_json(ctx, as_json)
+                while time.time() < deadline:
+                    last_record = svc.get_job(ingestion_id)
+                    if show_progress:
+                        _render_wait_progress(
+                            elapsed_s=time.time() - started,
+                            record=last_record,
+                            tick=tick,
+                        )
+                        tick += 1
+                    if last_record and str(last_record.get("status") or "") in terminal_states:
+                        break
+                    time.sleep(max(0.2, float(wait_poll_interval)))
+                if show_progress:
+                    sys.stdout.write("\n")
+                    sys.stdout.flush()
+                if last_record:
+                    response["record"] = last_record
+                    response["final_status"] = last_record.get("status")
+                else:
+                    response["final_status"] = "unknown"
+                response["waited"] = True
+                response["wait_timeout_s"] = int(wait_timeout_s)
+                if str(response.get("final_status") or "") not in {"done", "failed", "cancelled"}:
+                    response["wait_timed_out"] = True
         _print_payload(response, as_json=_want_json(ctx, as_json))
 
     @app.command("status")

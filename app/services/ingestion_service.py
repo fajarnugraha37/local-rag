@@ -5,8 +5,10 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import time
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -14,7 +16,9 @@ from app.common.namespaces import validate_namespace
 from app.config import runtime_settings as settings
 from app.ingestion.folder_ingest_service import FolderIngestOptions, ingest_folder
 from app.ingestion.pipeline import build_options, ingest_uploaded_files
+from app.repositories.sqlite.documents_repo import DocumentsRepository
 from app.repositories.sqlite.ingestions_repo import IngestionsRepository
+from app.repositories.sqlite.namespaces_repo import NamespacesRepository
 
 
 @dataclass
@@ -25,7 +29,10 @@ class UploadPayload:
 
 class IngestionService:
     def __init__(self, db_path: str) -> None:
+        self.db_path = db_path
         self.repo = IngestionsRepository(db_path)
+        self.docs_repo = DocumentsRepository(db_path)
+        self.ns_repo = NamespacesRepository(db_path)
         self._threads: dict[str, threading.Thread] = {}
         self._lock = threading.Lock()
 
@@ -114,6 +121,13 @@ class IngestionService:
                 self.repo.update_status(ingestion_id, "cancelled")
                 return
 
+            self._persist_metadata_from_summary(
+                ingestion_id=ingestion_id,
+                namespace=namespace,
+                source_type=source_type,
+                summary=summary,
+            )
+
             counters = {
                 "ingested": int(summary.get("ingested") or summary.get("extracted") or 0),
                 "skipped": int(summary.get("skipped") or 0),
@@ -124,6 +138,67 @@ class IngestionService:
         except Exception as exc:
             self.repo.add_event(ingestion_id, "failed", {"error": str(exc)})
             self.repo.update_status(ingestion_id, "failed", last_error=str(exc))
+
+    def _persist_metadata_from_summary(
+        self,
+        *,
+        ingestion_id: str,
+        namespace: str,
+        source_type: str,
+        summary: dict[str, Any],
+    ) -> None:
+        def _retry_write(fn, *, retries: int = 5, delay_s: float = 0.15) -> bool:
+            last_exc: Exception | None = None
+            for _ in range(max(1, retries)):
+                try:
+                    fn()
+                    return True
+                except Exception as exc:
+                    last_exc = exc
+                    time.sleep(delay_s)
+            if last_exc is not None:
+                self.repo.add_event(
+                    ingestion_id,
+                    "metadata_write_failed",
+                    {"error": str(last_exc)},
+                )
+            return False
+
+        ok_ns = _retry_write(lambda: self.ns_repo.create(namespace, defaults={}))
+        if not ok_ns:
+            return
+
+        files = list(summary.get("files") or [])
+        now_iso = datetime.now(timezone.utc).isoformat()
+        persisted_docs = 0
+        for item in files:
+            status = str(item.get("status") or "")
+            if status != "ok":
+                continue
+            path = str(item.get("path") or "").strip()
+            if not path:
+                continue
+            doc_id = os.path.basename(path) or path
+            record = {
+                "namespace": namespace,
+                "doc_id": doc_id,
+                "source_path": path,
+                "source_type": source_type,
+                "title": doc_id,
+                "content_hash": None,
+                "chunk_count": int(item.get("chunks_count") or 0),
+                "size_bytes": int(item.get("bytes_processed") or 0),
+                "tags": [],
+                "last_ingested_at": now_iso,
+            }
+            ok_doc = _retry_write(lambda r=record: self.docs_repo.upsert(r))
+            if ok_doc:
+                persisted_docs += 1
+        self.repo.add_event(
+            ingestion_id,
+            "metadata_persisted",
+            {"namespace": namespace, "documents_upserted": persisted_docs},
+        )
 
     def _run_folder(
         self, ingestion_id: str, namespace: str, source_spec: dict[str, Any]

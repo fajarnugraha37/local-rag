@@ -1,4 +1,4 @@
-.PHONY: help install setup fmt lint run-server run-cli shell cli-smoke chat chat-baseline chat-email ingest ingest-folder list-docs delete-doc ingest-email migrate-vault backfill backfill-namespaces query query-verbose debug-retrieval validate ingest-smoke eval test idempotency-purge purge-soft-deletes run-all all
+.PHONY: help install setup fmt lint run-server run-cli shell cli-smoke chat chat-baseline chat-email ingest ingest-folder list-docs delete-doc ingest-legacy ingest-folder-legacy list-docs-legacy delete-doc-legacy ingest-email migrate-vault backfill backfill-namespaces query query-verbose debug-retrieval validate ingest-smoke eval test idempotency-purge purge-soft-deletes run-all all
 
 PYTHON ?= python
 APP := $(PYTHON) cmd/app.py
@@ -34,9 +34,14 @@ help:
 	@$(info   make eval)
 	@$(info   make all)
 	@$(info   make run-all)
+	@$(info v1 ingestion/docs:)
+	@$(info   make ingest INGEST_PATH="path\\to\\folder_or_file" NAMESPACE="default")
+	@$(info   make ingest-folder FOLDER_PATH="path\\to\\folder" NAMESPACE="default")
+	@$(info   make list-docs NAMESPACE="default")
+	@$(info   make delete-doc DOC_ID="doc-id" NAMESPACE="default")
 	@$(info Legacy action wrappers:)
 	@$(info   make chat / chat-baseline / chat-email)
-	@$(info   make ingest / ingest-folder / list-docs / delete-doc / ingest-email)
+	@$(info   make ingest-legacy / ingest-folder-legacy / list-docs-legacy / delete-doc-legacy / ingest-email)
 	@$(info   make migrate-vault / backfill / backfill-namespaces / debug-retrieval / validate)
 	@:
 
@@ -93,6 +98,53 @@ endif
 ingest:
 ifeq ($(strip $(INGEST_PATH)),)
 ifneq ($(strip $(NAMESPACE)),)
+	$(APP) --cli ingest start --source folder --path . --namespace "$(NAMESPACE)" --wait
+else
+	$(APP) --cli ingest start --source folder --path . --namespace default --wait
+endif
+else
+ifneq ($(strip $(NAMESPACE)),)
+	$(APP) --cli ingest start --source folder --path "$(INGEST_PATH)" --namespace "$(NAMESPACE)" --wait
+else
+	$(APP) --cli ingest start --source folder --path "$(INGEST_PATH)" --namespace default --wait
+endif
+endif
+
+ingest-folder:
+ifeq ($(strip $(FOLDER_PATH)),)
+	$(error FOLDER_PATH is required. Example: make ingest-folder FOLDER_PATH="docs")
+endif
+ifneq ($(strip $(NAMESPACE)),)
+	$(APP) --cli ingest start --source folder --path "$(FOLDER_PATH)" --namespace "$(NAMESPACE)" --wait
+else
+	$(APP) --cli ingest start --source folder --path "$(FOLDER_PATH)" --namespace default --wait
+endif
+
+list-docs:
+ifneq ($(strip $(NAMESPACE)),)
+	$(APP) --cli doc list --namespace "$(NAMESPACE)"
+else
+	$(APP) --cli doc list
+endif
+
+delete-doc:
+ifeq ($(strip $(DOC_ID)),)
+	$(error DOC_ID is required. Example: make delete-doc DOC_ID="my-doc")
+endif
+ifeq ($(strip $(ALL_NAMESPACES)),true)
+	$(error ALL_NAMESPACES=true is only supported by legacy delete-doc. Use make delete-doc-legacy ...)
+else
+ifneq ($(strip $(NAMESPACE)),)
+	$(APP) --cli doc delete "$(DOC_ID)" --namespace "$(NAMESPACE)"
+else
+	$(APP) --cli doc delete "$(DOC_ID)" --namespace default
+endif
+endif
+
+# Legacy wrappers retained explicitly
+ingest-legacy:
+ifeq ($(strip $(INGEST_PATH)),)
+ifneq ($(strip $(NAMESPACE)),)
 	$(APP) --cli actions ingest-files --namespace "$(NAMESPACE)"
 else
 	$(APP) --cli actions ingest-files
@@ -105,9 +157,9 @@ else
 endif
 endif
 
-ingest-folder:
+ingest-folder-legacy:
 ifeq ($(strip $(FOLDER_PATH)),)
-	$(error FOLDER_PATH is required. Example: make ingest-folder FOLDER_PATH="docs")
+	$(error FOLDER_PATH is required. Example: make ingest-folder-legacy FOLDER_PATH="docs")
 endif
 ifneq ($(strip $(NAMESPACE)),)
 	$(APP) --cli actions ingest-folder --path "$(FOLDER_PATH)" --namespace "$(NAMESPACE)"
@@ -115,16 +167,16 @@ else
 	$(APP) --cli actions ingest-folder --path "$(FOLDER_PATH)"
 endif
 
-list-docs:
+list-docs-legacy:
 ifneq ($(strip $(NAMESPACE)),)
 	$(APP) --cli actions list-docs --namespace "$(NAMESPACE)"
 else
 	$(APP) --cli actions list-docs
 endif
 
-delete-doc:
+delete-doc-legacy:
 ifeq ($(strip $(DOC_ID)),)
-	$(error DOC_ID is required. Example: make delete-doc DOC_ID="my-doc")
+	$(error DOC_ID is required. Example: make delete-doc-legacy DOC_ID="my-doc")
 endif
 ifeq ($(strip $(ALL_NAMESPACES)),true)
 	$(APP) --cli actions delete-doc --doc-id "$(DOC_ID)" --all-namespaces
