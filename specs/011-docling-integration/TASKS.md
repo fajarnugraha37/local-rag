@@ -54,7 +54,7 @@ Acceptance criteria:
 Validation commands:
 - `python -m pytest -q tests/test_docling_routing.py`
 - `python -m pytest -q tests/test_ingestion_extended_formats.py`
-Status: todo
+Status: done
 
 ## T004
 Goal: Remove legacy migrated-format parser implementations and dependencies in code.

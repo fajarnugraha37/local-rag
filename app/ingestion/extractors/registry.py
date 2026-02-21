@@ -2,28 +2,13 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Dict
 
 from .base import ExtractedDocument, Extractor, ExtractorContext, UnsupportedFormatError
+from .docling_extractors import build_docling_extractor
 from .notebook_data import extract_arrow, extract_feather, extract_ipynb, extract_parquet
-from .office import (
-    extract_doc,
-    extract_docx,
-    extract_pdf,
-    extract_ppt,
-    extract_pptx,
-    extract_xls,
-    extract_xlsx,
-)
-from .structured import (
-    extract_csv_tsv,
-    extract_har,
-    extract_html_svg,
-    extract_json,
-    extract_json_lines,
-    extract_log,
-    extract_xml,
-)
+from .office import extract_doc, extract_ppt, extract_xls
+from .structured import extract_har, extract_html_svg, extract_json, extract_json_lines, extract_log
 from .textual import extract_textual
 
 
@@ -79,20 +64,14 @@ def build_default_registry() -> ExtractorRegistry:
     textual = _extractor("textual", "text", extract_textual)
     json_ex = _extractor("json", "json", extract_json)
     jsonl_ex = _extractor("jsonl", "jsonl", extract_json_lines)
-    csv_ex = _extractor("csv", "csv", extract_csv_tsv)
     html_ex = _extractor("html", "html", extract_html_svg)
-    xml_ex = _extractor("xml", "xml", extract_xml)
+    docling_ex = build_docling_extractor()
     log_ex = _extractor("log", "log", extract_log)
     har_ex = _extractor("har", "har", extract_har)
 
-    # Must-have docs/config/scripts/schema families
+    # Must-have docs/config/scripts/schema families that remain textual.
     for ext in [
-        ".md",
-        ".markdown",
-        ".mdx",
         ".rst",
-        ".adoc",
-        ".asciidoc",
         ".yaml",
         ".yml",
         ".toml",
@@ -124,24 +103,42 @@ def build_default_registry() -> ExtractorRegistry:
     registry.register_extension(".jsonl", jsonl_ex)
     registry.register_extension(".ndjson", jsonl_ex)
 
-    registry.register_extension(".csv", csv_ex)
-    registry.register_extension(".tsv", csv_ex)
+    # Spec 011 target formats are routed to Docling exclusively.
+    for ext in [
+        ".pdf",
+        ".docx",
+        ".xlsx",
+        ".pptx",
+        ".md",
+        ".markdown",
+        ".mdx",
+        ".adoc",
+        ".asciidoc",
+        ".tex",
+        ".html",
+        ".htm",
+        ".xhtml",
+        ".csv",
+        ".tsv",
+        ".xml",
+        ".vtt",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".tiff",
+        ".bmp",
+        ".webp",
+    ]:
+        registry.register_extension(ext, docling_ex)
 
-    registry.register_extension(".html", html_ex)
-    registry.register_extension(".htm", html_ex)
+    # Non-target format handlers.
     registry.register_extension(".svg", html_ex)
-
-    registry.register_extension(".xml", xml_ex)
     registry.register_extension(".log", log_ex)
     registry.register_extension(".har", har_ex)
 
-    # Office/binary
-    registry.register_extension(".pdf", _extractor("pdf", "pdf", extract_pdf))
-    registry.register_extension(".docx", _extractor("docx", "docx", extract_docx))
+    # Legacy office formats retained as non-target handlers.
     registry.register_extension(".doc", _extractor("doc", "doc", extract_doc))
-    registry.register_extension(".pptx", _extractor("pptx", "pptx", extract_pptx))
     registry.register_extension(".ppt", _extractor("ppt", "ppt", extract_ppt))
-    registry.register_extension(".xlsx", _extractor("xlsx", "xlsx", extract_xlsx))
     registry.register_extension(".xls", _extractor("xls", "xls", extract_xls))
 
     # Data/notebook
@@ -150,9 +147,10 @@ def build_default_registry() -> ExtractorRegistry:
     registry.register_extension(".feather", _extractor("feather", "feather", extract_feather))
     registry.register_extension(".arrow", _extractor("arrow", "arrow", extract_arrow))
 
-    # OpenAPI compound suffixes
+    # Compound suffixes
     registry.register_suffix(".openapi.yaml", textual)
     registry.register_suffix(".openapi.yml", textual)
     registry.register_suffix(".openapi.json", json_ex)
+    registry.register_suffix(".docling.json", docling_ex)
 
     return registry

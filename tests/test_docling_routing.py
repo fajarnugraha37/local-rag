@@ -3,7 +3,7 @@ from __future__ import annotations
 from app.document_conversion.models import ConvertedBlock, ConvertedDocument
 from app.ingestion.extractors.base import ExtractorContext, MissingDependencyError
 from app.ingestion.extractors.docling_extractors import build_docling_extractor
-from app.ingestion.extractors.registry import ExtractorRegistry
+from app.ingestion.extractors.registry import ExtractorRegistry, build_default_registry
 
 
 def _ctx() -> ExtractorContext:
@@ -72,3 +72,34 @@ def test_docling_dependency_error_maps_to_missing_dependency(monkeypatch) -> Non
         pass
     else:
         raise AssertionError("expected MissingDependencyError")
+
+
+def test_required_extensions_resolve_to_docling_extractor() -> None:
+    registry = build_default_registry()
+    required = [
+        "sample.pdf",
+        "sample.docx",
+        "sample.xlsx",
+        "sample.pptx",
+        "sample.md",
+        "sample.markdown",
+        "sample.mdx",
+        "sample.adoc",
+        "sample.asciidoc",
+        "sample.tex",
+        "sample.html",
+        "sample.xhtml",
+        "sample.csv",
+        "sample.xml",
+        "sample.vtt",
+        "sample.png",
+        "sample.jpg",
+        "sample.jpeg",
+        "sample.tiff",
+        "sample.bmp",
+        "sample.webp",
+        "sample.docling.json",
+    ]
+    for path in required:
+        extractor = registry.resolve(path)
+        assert extractor.name == "docling", path
