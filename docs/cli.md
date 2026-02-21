@@ -21,7 +21,7 @@ python .\cmd\app.py --cli <command> [args]
 
 ## Global Options
 - `--json`: structured output when supported.
-- `--verbose`: extra diagnostics.
+- `--verbose`: debug diagnostics. For `query`, this enables chunk snippet text in `Retrieved Documents`.
 
 ## Examples
 ```powershell
@@ -30,6 +30,7 @@ python .\cmd\app.py --cli ns list --json
 python .\cmd\app.py --cli doc list --limit 5 --json
 python .\cmd\app.py --cli ingest start --source folder --path . --dry-run --json
 python .\cmd\app.py --cli query "test" --json
+python .\cmd\app.py --cli --verbose query "test"
 python .\cmd\app.py --cli query-stream "test"
 python .\cmd\app.py --cli run events <run_id> --follow
 python .\cmd\app.py --cli retrieve "test" --json
@@ -43,3 +44,7 @@ Legacy action modules are still available via:
 python .\cmd\app.py --cli actions <legacy-action> [args]
 python .\cmd\app.py --cli actions-list
 ```
+
+## Query Output Modes
+- Default `query`: metadata-focused retrieval section (doc/chunk IDs and counts), no chunk content dump.
+- `--verbose query`: includes snippet previews for retrieved chunks.

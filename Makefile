@@ -1,4 +1,4 @@
-.PHONY: help install setup fmt lint run-server run-cli shell cli-smoke chat chat-baseline chat-email ingest ingest-folder list-docs delete-doc ingest-email migrate-vault backfill backfill-namespaces query debug-retrieval validate ingest-smoke eval test idempotency-purge purge-soft-deletes run-all all
+.PHONY: help install setup fmt lint run-server run-cli shell cli-smoke chat chat-baseline chat-email ingest ingest-folder list-docs delete-doc ingest-email migrate-vault backfill backfill-namespaces query query-verbose debug-retrieval validate ingest-smoke eval test idempotency-purge purge-soft-deletes run-all all
 
 PYTHON ?= python
 APP := $(PYTHON) cmd/app.py
@@ -28,6 +28,7 @@ help:
 	@$(info   make shell)
 	@$(info   make cli-smoke)
 	@$(info   make query Q="what are key payment terms?" TOP_K=6)
+	@$(info   make query-verbose Q="what are key payment terms?" TOP_K=6)
 	@$(info   make idempotency-purge)
 	@$(info   make purge-soft-deletes SOFT_DELETE_RETENTION_DAYS=30)
 	@$(info   make eval)
@@ -149,6 +150,9 @@ backfill-namespaces:
 
 query:
 	$(APP) --cli query "$(Q)" --top-k $(TOP_K)
+
+query-verbose:
+	$(APP) --cli --verbose query "$(Q)" --top-k $(TOP_K)
 
 debug-retrieval:
 	$(APP) --cli actions debug-retrieval

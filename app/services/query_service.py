@@ -51,6 +51,70 @@ def _query_terms(query: str) -> list[str]:
     return terms
 
 
+def _split_sentences(text: str) -> list[str]:
+    parts = re.split(r"(?<=[.!?])\s+", text.strip())
+    return [p.strip() for p in parts if p.strip()]
+
+
+def _clean_repetitive_phrases(text: str) -> str:
+    cleaned = text.strip()
+    cleaned = re.sub(r"\bThe final answer is\b[:\s]*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bFinal answer\b[:\s]*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\(Note:[^)]+\)", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bAs an AI[^.]*\.", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"(?:\[[0-9]+\]\s*){2,}$", "", cleaned).strip()
+    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+    return cleaned
+
+
+def _dedupe_sentences(sentences: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for sent in sentences:
+        key = re.sub(r"[^a-z0-9]+", "", sent.lower())
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append(sent)
+    return out
+
+
+def _ensure_trailing_citations(text: str, sources: list[dict[str, Any]]) -> str:
+    if not sources:
+        return text
+    cited = sorted(
+        {
+            int(src.get("citation_index"))
+            for src in sources
+            if str(src.get("citation_index") or "").isdigit()
+        }
+    )
+    if not cited:
+        return text
+    existing = {int(x) for x in re.findall(r"\[(\d+)\]", text)}
+    if existing:
+        return text
+    top = cited[:2]
+    return f"{text.rstrip()} [{' '.join(f'[{i}]' for i in top)}]"
+
+
+def _normalize_final_answer(text: str, sources: list[dict[str, Any]]) -> str:
+    cleaned = _clean_repetitive_phrases(text)
+    if not cleaned:
+        return cleaned
+    sentences = _dedupe_sentences(_split_sentences(cleaned))
+    if not sentences:
+        return cleaned
+    # Force concise final style: keep 2-3 sentences.
+    kept = sentences[:3]
+    if len(kept) == 1 and len(cleaned.split()) > 30:
+        # If model returned one long run-on line, hard-wrap as one concise sentence.
+        kept = [cleaned]
+    normalized = " ".join(kept).strip()
+    normalized = _ensure_trailing_citations(normalized, sources)
+    return normalized
+
+
 def _source_text(src: dict[str, Any]) -> str:
     return " ".join(
         [
@@ -121,16 +185,38 @@ def _build_retrieval_answer(sources: list[dict]) -> str:
 def _build_focused_fallback_answer(query: str, sources: list[dict[str, Any]]) -> str:
     if not sources:
         return "I could not find enough relevant source text to answer that question."
+    def _compact_snippet(src: dict[str, Any], max_chars: int = 180) -> str:
+        text = " ".join(str(src.get("snippet") or "").split())
+        if not text:
+            return ""
+        # Keep first clause for clearer fallback output.
+        split_idx = len(text)
+        for sep in [".", ";", ":"]:
+            pos = text.find(sep)
+            if pos > 20:
+                split_idx = min(split_idx, pos + 1)
+        text = text[:split_idx].strip()
+        if len(text) > max_chars:
+            return text[: max_chars - 1].rstrip() + "..."
+        return text
+
     first = sources[0]
-    idx = first.get("citation_index")
-    snippet = str(first.get("snippet") or "").strip()
-    title = first.get("title") or first.get("doc_id") or "source"
+    second = sources[1] if len(sources) > 1 else None
+    idx1 = first.get("citation_index")
+    idx2 = second.get("citation_index") if second else idx1
+    s1 = _compact_snippet(first)
+    s2 = _compact_snippet(second) if second else ""
+
     q = query.strip()
-    if not snippet:
-        return f"Based on [{idx}] {title}, the question \"{q}\" is partially answered, but no clear excerpt was found."
-    if q.lower().startswith(("what is ", "what's ", "define ")):
-        return f"For \"{q}\": {snippet} [{idx}]"
-    return f"Answer for \"{q}\": {snippet} [{idx}]"
+    if not s1:
+        return f"Definition: I could not extract a clear definition for \"{q}\" from the top sources [{idx1}]."
+
+    definition = f"Definition: {s1} [{idx1}]"
+    if s2:
+        explanation = f"Explanation: In context, this means {s2.lower()} [{idx2}]"
+    else:
+        explanation = f"Explanation: This directly addresses \"{q}\" based on the most relevant source [{idx1}]."
+    return f"{definition}\n{explanation}"
 
 
 def _build_llm_messages(query: str, sources: list[dict]) -> list[dict[str, str]]:
@@ -273,7 +359,7 @@ class QueryService:
             max_snippet_chars=max_snippet_chars,
         )
 
-        final_answer = rendered.get("answer", answer)
+        final_answer = _normalize_final_answer(rendered.get("answer", answer), focused_sources)
         citation_stats = rendered.get("stats", {})
 
         self.runs_repo.add_step(
@@ -426,7 +512,7 @@ class QueryService:
             max_sources=max_sources,
             max_snippet_chars=max_snippet_chars,
         )
-        final_answer = rendered.get("answer", final_text)
+        final_answer = _normalize_final_answer(rendered.get("answer", final_text), focused_sources)
         citation_stats = rendered.get("stats", {})
 
         citation_stats_event = protocol.citation_stats(citation_stats)

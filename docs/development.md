@@ -16,11 +16,13 @@ make run-server
 make run-cli
 make shell
 make cli-smoke
+make query-verbose Q="what are key payment terms?" TOP_K=6
 ```
 
 ## Launcher
 ```powershell
 python .\cmd\app.py --cli --help
+python .\cmd\app.py --cli --verbose query "what is reclaiming?"
 python .\cmd\app.py --server --help
 ```
 

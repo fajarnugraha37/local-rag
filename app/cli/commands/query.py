@@ -23,19 +23,25 @@ def _short_text(value: str, max_chars: int = 180) -> str:
     return text[: max_chars - 1].rstrip() + "..."
 
 
-def _render_query_sections(result: dict[str, Any]) -> None:
+def _render_query_sections(result: dict[str, Any], *, debug: bool = False) -> None:
     run_id = result.get("run_id")
     trace_id = result.get("trace_id")
     user_query = result.get("query") or ""
+    rows = result.get("results") or []
+    unique_docs = {
+        str((row.get("source") or {}).get("doc_id") or row.get("doc_id") or "")
+        for row in rows
+        if str((row.get("source") or {}).get("doc_id") or row.get("doc_id") or "")
+    }
     typer.echo("=" * 72)
     typer.echo("Query Result")
     typer.echo(f"run_id={run_id} trace_id={trace_id}")
     if user_query:
         typer.echo(f"question={user_query}")
+    typer.echo(f"retrieved_chunks={len(rows)} unique_documents={len(unique_docs)}")
     typer.echo("-" * 72)
 
     typer.echo("Retrieved Documents")
-    rows = result.get("results") or []
     if not rows:
         typer.echo("(none)")
     else:
@@ -43,10 +49,14 @@ def _render_query_sections(result: dict[str, Any]) -> None:
             source = row.get("source") or {}
             idx = source.get("citation_index")
             title = source.get("title") or row.get("doc_id") or "Untitled"
-            snippet = _short_text(source.get("snippet") or row.get("text") or "")
-            typer.echo(f"- [{idx}] {title}")
-            if snippet:
-                typer.echo(f"  {snippet}")
+            doc_id = source.get("doc_id") or row.get("doc_id") or ""
+            chunk_id = row.get("chunk_id") or row.get("id") or ""
+            namespace = source.get("namespace") or row.get("namespace") or ""
+            typer.echo(f"- [{idx}] doc={doc_id} title={title} chunk={chunk_id} namespace={namespace}")
+            if debug:
+                snippet = _short_text(source.get("snippet") or row.get("text") or "")
+                if snippet:
+                    typer.echo(f"  snippet: {snippet}")
     typer.echo("-" * 72)
 
     typer.echo("AI Answer")
@@ -97,7 +107,7 @@ def register_query_commands(app: typer.Typer) -> None:
         if emit_json:
             _print_payload(payload, as_json=True)
             return
-        _render_query_sections(result)
+        _render_query_sections(result, debug=bool((ctx.obj or {}).get("verbose")))
 
     @app.command("query-stream")
     def query_stream_command(

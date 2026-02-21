@@ -26,6 +26,7 @@ Key routes:
 python .\cmd\app.py --cli --help
 python .\cmd\app.py --cli shell
 python .\cmd\app.py --cli query "test" --json
+python .\cmd\app.py --cli --verbose query "test"
 python .\cmd\app.py --cli query-stream "test"
 python .\cmd\app.py --cli ingest start --source folder --path . --dry-run --json
 ```
@@ -46,6 +47,7 @@ make run-server
 make run-cli
 make shell
 make cli-smoke
+make query-verbose Q="what are key payment terms?" TOP_K=6
 make idempotency-purge
 make purge-soft-deletes SOFT_DELETE_RETENTION_DAYS=30
 ```
