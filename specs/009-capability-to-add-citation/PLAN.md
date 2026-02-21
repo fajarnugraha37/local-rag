@@ -3,6 +3,9 @@
 ## Scope
 Implement end-to-end citations so chat answers are traceable to retrieved chunks across CLI and server (JSON + SSE), without exposing chain-of-thought.
 
+## Status
+Completed. All steps implemented and validated with `python -m pytest -q` (65 passed).
+
 ## Step 1: Add provenance/source models
 Goal: define stable citation/provenance objects shared by retrieval and presentation.
 

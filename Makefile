@@ -5,6 +5,11 @@ APP := $(PYTHON) cmd\app.py
 TOP_K ?= 6
 Q ?= what are key payment terms?
 KEYWORD ?= invoice
+MODEL ?=
+CITATIONS ?= true
+CITATIONS_MODE ?= inline+sources
+MAX_SOURCES ?= $(TOP_K)
+MAX_SNIPPET_CHARS ?= 240
 INGEST_PATH ?=
 FOLDER_PATH ?=
 DOC_ID ?=
@@ -15,9 +20,9 @@ help:
 	@$(info Available targets:)
 	@$(info   make run-server)
 	@$(info   make run-cli)
-	@$(info   make chat)
-	@$(info   make chat-baseline)
-	@$(info   make chat-email)
+	@$(info   make chat TOP_K=6 CITATIONS=true CITATIONS_MODE=inline+sources MAX_SOURCES=6 MAX_SNIPPET_CHARS=240)
+	@$(info   make chat-baseline CITATIONS=true CITATIONS_MODE=inline)
+	@$(info   make chat-email CITATIONS=false)
 	@$(info   make ingest INGEST_PATH="path\\to\\file_or_dir" NAMESPACE="default")
 	@$(info   make ingest-folder FOLDER_PATH="path\\to\\folder" NAMESPACE="default")
 	@$(info   make list-docs NAMESPACE="default")
@@ -42,13 +47,25 @@ run-cli:
 	$(APP) --cli --help
 
 chat:
-	$(APP) --cli chat --top-k $(TOP_K)
+ifeq ($(strip $(CITATIONS)),false)
+	$(APP) --cli chat --top-k $(TOP_K) --no-citations --citations-mode "$(CITATIONS_MODE)" --max-sources $(MAX_SOURCES) --max-snippet-chars $(MAX_SNIPPET_CHARS)
+else
+	$(APP) --cli chat --top-k $(TOP_K) --citations --citations-mode "$(CITATIONS_MODE)" --max-sources $(MAX_SOURCES) --max-snippet-chars $(MAX_SNIPPET_CHARS)
+endif
 
 chat-baseline:
-	$(APP) --cli chat-baseline
+ifeq ($(strip $(CITATIONS)),false)
+	$(APP) --cli chat-baseline --no-citations --citations-mode "$(CITATIONS_MODE)" --max-sources $(MAX_SOURCES) --max-snippet-chars $(MAX_SNIPPET_CHARS)
+else
+	$(APP) --cli chat-baseline --citations --citations-mode "$(CITATIONS_MODE)" --max-sources $(MAX_SOURCES) --max-snippet-chars $(MAX_SNIPPET_CHARS)
+endif
 
 chat-email:
-	$(APP) --cli chat-email
+ifeq ($(strip $(CITATIONS)),false)
+	$(APP) --cli chat-email --no-citations --citations-mode "$(CITATIONS_MODE)" --max-sources $(MAX_SOURCES) --max-snippet-chars $(MAX_SNIPPET_CHARS)
+else
+	$(APP) --cli chat-email --citations --citations-mode "$(CITATIONS_MODE)" --max-sources $(MAX_SOURCES) --max-snippet-chars $(MAX_SNIPPET_CHARS)
+endif
 
 ingest:
 ifeq ($(strip $(INGEST_PATH)),)

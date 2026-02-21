@@ -1,57 +1,45 @@
 # Provenance Schema
 
-## `Source` Object
+## Source object (implemented)
 
 ```json
 {
   "source_id": "S1",
   "citation_index": 1,
   "namespace": "default",
-  "doc_id": "README.md",
-  "chunk_id": "6fa8...",
-  "source_path": "C:/repo/README.md",
-  "title": "README.md",
-  "locator": {
-    "chunk_index": 4,
-    "page_number": null,
-    "slide_number": null,
-    "sheet_name": null,
-    "row_number": null,
-    "line_start": null,
-    "line_end": null
-  },
-  "snippet": "Install dependencies from requirements.txt before running...",
-  "score": 0.77,
-  "rank": 1
+  "doc_id": "doc-1",
+  "path": "docs/a.txt",
+  "title": "doc-1",
+  "locator": "page 2",
+  "snippet": "Payment is due in 14 days."
 }
 ```
 
-## Field Notes
-- `source_id`: stable in one response (`S1..Sn`).
-- `citation_index`: numeric mapping for inline `[n]`.
-- `namespace`: from chunk metadata; default `default`.
-- `doc_id`/`chunk_id`: canonical deletion/debug identifiers.
-- `source_path`: original path/URI where available.
-- `title`: display-friendly fallback (`basename(source_path)` or `doc_id`).
-- `locator`: best-effort location metadata.
-- `snippet`: bounded preview for UI/CLI.
-- `score`/`rank`: retrieval diagnostics.
+## Notes
+- `source_id`: deterministic per response (`S1..Sn`) in retrieval order.
+- `citation_index`: deterministic numeric mapping for inline `[n]`.
+- `namespace`: normalized namespace value (`default` fallback).
+- `doc_id`: source document id.
+- `path`: source path/uri when available (empty string if unavailable).
+- `title`: normalized display title.
+- `locator`: normalized string from metadata (`page`, `slide`, `sheet row`, or `chunk`).
+- `snippet`: bounded text preview.
 
-## `RetrievedChunk` Shape (internal)
+## Retrieved chunk shape (implemented)
 
 ```json
 {
-  "text": "chunk text...",
+  "chunk_id": "c1",
+  "doc_id": "doc-1",
+  "namespace": "default",
+  "text": "Payment is due in 14 days.",
   "source": { "...Source..." },
-  "scores": {
-    "rrf": 0.023,
-    "dense": 0.63,
-    "bm25": 1.44
-  }
+  "citation": "[doc-1:c1]",
+  "source_path": "docs/a.txt",
+  "score": 0.02,
+  "dense_score": 0.88,
+  "bm25_score": 0.91
 }
 ```
 
-## Mapping Rules
-- `citation_index` is assigned after dedupe and before prompt assembly.
-- Inline `[n]` markers reference `citation_index`.
-- Final output `sources` list must contain exactly the referenced indices (or all retrieved, based on mode/config).
+Compatibility fields (`citation`, `source_path`) are intentionally retained.

@@ -83,10 +83,12 @@ python .\cmd\app.py --cli chat --model hf.co/mradermacher/Gemma-3-1B-it-GLM-4.7-
 
 # Streaming chat
 python .\cmd\app.py --cli chat --stream --max-continuations 2 --per-call-max-tokens 1024
+python .\cmd\app.py --cli chat --citations --citations-mode inline+sources --max-sources 6 --max-snippet-chars 240
+python .\cmd\app.py --cli chat --no-citations
 
 # Baseline chat / email chat
-python .\cmd\app.py --cli chat-baseline --stream
-python .\cmd\app.py --cli chat-email --stream
+python .\cmd\app.py --cli chat-baseline --stream --citations-mode inline
+python .\cmd\app.py --cli chat-email --stream --citations-mode none
 
 # Ingestion
 python .\cmd\app.py --cli ingest-files
@@ -151,6 +153,12 @@ Streaming/continuation config keys:
 - `flush_interval_ms`
 - `provider_timeout_s`
 - `continuation_instruction`
+
+Citation config keys:
+- `citations`
+- `citations_mode` (`inline|inline+sources|none`)
+- `citation_max_sources`
+- `citation_max_snippet_chars`
 
 Ingestion config keys:
 - `ingest_max_bytes`, `ingest_max_rows`, `ingest_max_objects`

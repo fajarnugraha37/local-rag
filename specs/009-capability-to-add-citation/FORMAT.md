@@ -12,32 +12,32 @@
   - `[1][3]`
 - Marker numbers map to `Source.citation_index`.
 
-## Sources Section Format
-Recommended CLI/server text rendering:
+## Sources Section Format (implemented)
+CLI/server rendering:
 
 ```text
 Sources:
-[1] README.md (default) - /repo/README.md - chunk#4
-    snippet: Installation requires Python 3.11 and chromadb...
-[2] api.md (alpha) - /repo/docs/api.md - page 2
-    snippet: POST /retrieval/query accepts top_k and filters...
+[1] Doc A (page 2)
+  Payment is due in 14 days.
+[2] Doc B
+  Late fee applies after due date.
 ```
 
 ## SSE Event Examples
 
 ```text
 event: sources
-data: {"sources":[{"source_id":"S1","citation_index":1,"doc_id":"...","chunk_id":"...","namespace":"default","source_path":"...","title":"README.md","locator":{"chunk_index":4},"snippet":"...","score":0.77,"rank":1}]}
+data: {"sources":[{"source_id":"S1","citation_index":1,"namespace":"default","doc_id":"doc-1","path":"docs/a.txt","title":"Doc A","locator":"page 1","snippet":"Alpha evidence."}]}
 ```
 
 ```text
 event: citation_stats
-data: {"retrieved":6,"cited":4,"coverage_pct":66.67}
+data: {"stats":{"valid_ids":[1],"used_valid_ids":[1],"invalid_ids":[],"is_valid":true}}
 ```
 
 ## Validation Rules
 - Every `[n]` in answer must map to a real source.
 - If no sources retrieved:
-  - no inline markers
-  - no sources block
-  - include note: `No sources retrieved; answer may be incomplete.`
+  - inline markers are stripped
+  - `inline+sources` mode renders `Sources: none.`
+  - answer includes explicit note about no retrieved sources.

@@ -25,7 +25,7 @@
   - Source indices are deterministic for a fixed retrieval order.
 - Validation commands:
   - `python -m pytest -q tests/test_vector_ids.py`
-- Status: `todo`
+- Status: `done`
 
 ## T002
 - Goal: Upgrade retrieval output with provenance-rich payloads and dedupe.
@@ -45,7 +45,7 @@
 - Validation commands:
   - `python -m pytest -q tests/test_smoke_retrieval.py`
   - `python -m pytest -q tests/test_citation_source_mapping.py`
-- Status: `todo`
+- Status: `done`
 
 ## T003
 - Goal: Build citation-aware prompt composer.
@@ -65,7 +65,7 @@
   - Context formatting is consistent across chat entrypoints.
 - Validation commands:
   - `python -m pytest -q tests/test_citation_prompting.py`
-- Status: `todo`
+- Status: `done`
 
 ## T004
 - Goal: Add citation validation and rendering modes.
@@ -85,7 +85,7 @@
   - Source section rendering is deterministic and bounded.
 - Validation commands:
   - `python -m pytest -q tests/test_citation_validator.py`
-- Status: `todo`
+- Status: `done`
 
 ## T005
 - Goal: Extend server JSON contract with citation payloads.
@@ -102,7 +102,7 @@
   - Existing non-citation endpoints remain functional.
 - Validation commands:
   - `python -m pytest -q tests/test_ingestion_server_routes.py`
-- Status: `todo`
+- Status: `done`
 
 ## T006
 - Goal: Extend SSE stream with end-of-stream citation payload.
@@ -122,7 +122,7 @@
 - Validation commands:
   - `python -m pytest -q tests/test_server_citation_sse.py`
   - `python -m pytest -q tests/test_streaming_continuation.py`
-- Status: `todo`
+- Status: `done`
 
 ## T007
 - Goal: Add CLI citation flags and output behavior.
@@ -144,7 +144,7 @@
   - `python .\\cmd\\app.py --cli chat-baseline --help`
   - `python .\\cmd\\app.py --cli chat-email --help`
   - `python -m pytest -q tests/test_cli_citations.py`
-- Status: `todo`
+- Status: `done`
 
 ## T008
 - Goal: Add citation config defaults and environment overrides.
@@ -160,7 +160,7 @@
   - Defaults enable citation output by default.
 - Validation commands:
   - `python -m pytest -q tests/test_streaming_continuation.py`
-- Status: `todo`
+- Status: `done`
 
 ## T009
 - Goal: Final test hardening and documentation alignment.
@@ -185,4 +185,4 @@
   - Spec docs match final API/CLI/SSE behavior.
 - Validation commands:
   - `python -m pytest -q`
-- Status: `todo`
+- Status: `done`
