@@ -26,6 +26,10 @@ max_continuations: 2
 flush_interval_ms: 250
 provider_timeout_s: 300
 continuation_instruction: "Continue exactly where you left off. Do not repeat prior text."
+citations: true
+citations_mode: "inline+sources"
+citation_max_sources: 7
+citation_max_snippet_chars: 240
 
 # Finalization options for reasoning drafts
 auto_finalize_thoughts: false

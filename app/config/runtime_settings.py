@@ -44,6 +44,10 @@ def load_settings(config_file='config.yaml'):
         'Continue exactly where you left off. Do not repeat prior text.',
     )
     cfg.setdefault('per_call_max_tokens', int(cfg.get('chat_max_tokens', 4000)))
+    cfg.setdefault('citations', True)
+    cfg.setdefault('citations_mode', 'inline+sources')
+    cfg.setdefault('citation_max_sources', int(cfg.get('top_k', 6)))
+    cfg.setdefault('citation_max_snippet_chars', 240)
     cfg.setdefault('vector_db_provider', 'chroma')
     cfg.setdefault('vector_db_persist_dir', 'data/chroma')
     cfg.setdefault('vector_db_collection', 'easy_local_rag')
@@ -83,6 +87,23 @@ def load_settings(config_file='config.yaml'):
     if os.getenv('PER_CALL_MAX_TOKENS'):
         try:
             cfg['per_call_max_tokens'] = int(os.getenv('PER_CALL_MAX_TOKENS'))
+        except ValueError:
+            pass
+    parsed_citations = _parse_bool_env(os.getenv('CITATIONS'))
+    if parsed_citations is not None:
+        cfg['citations'] = parsed_citations
+    if os.getenv('CITATIONS_MODE'):
+        mode = os.getenv('CITATIONS_MODE', '').strip().lower()
+        if mode in {'inline', 'inline+sources', 'none'}:
+            cfg['citations_mode'] = mode
+    if os.getenv('CITATION_MAX_SOURCES'):
+        try:
+            cfg['citation_max_sources'] = max(0, int(os.getenv('CITATION_MAX_SOURCES')))
+        except ValueError:
+            pass
+    if os.getenv('CITATION_MAX_SNIPPET_CHARS'):
+        try:
+            cfg['citation_max_snippet_chars'] = max(0, int(os.getenv('CITATION_MAX_SNIPPET_CHARS')))
         except ValueError:
             pass
     if os.getenv('MAX_CONTINUATIONS'):
