@@ -79,7 +79,7 @@
   - `/readyz` reports all dependencies.
 - Validation commands:
   - `python -m pytest -q tests/test_fastapi_system_endpoints.py`
-- Status: todo
+- Status: done
 
 ## T006: Namespaces + Documents v1
 - Goal: Implement namespace registry + documents APIs with pagination and soft delete.
