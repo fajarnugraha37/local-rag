@@ -21,6 +21,13 @@ def _prompt(prompt: str) -> str:
     return input(prompt).strip()
 
 
+def _run_and_separate(args: list[str]) -> None:
+    run_cli_subcommand(args)
+    typer.echo("-" * 72)
+    typer.echo("Ready for next command.")
+    typer.echo("-" * 72)
+
+
 def register_shell_command(app: typer.Typer) -> None:
     @app.command("shell")
     def shell_command() -> None:
@@ -37,30 +44,30 @@ def register_shell_command(app: typer.Typer) -> None:
                 if not q:
                     typer.echo("Query text is required.")
                     continue
-                run_cli_subcommand(["query", q])
+                _run_and_separate(["query", q])
                 continue
             if choice == "2":
-                run_cli_subcommand(["ns", "list"])
+                _run_and_separate(["ns", "list"])
                 continue
             if choice == "3":
-                run_cli_subcommand(["doc", "list", "--limit", "10"])
+                _run_and_separate(["doc", "list", "--limit", "10"])
                 continue
             if choice == "4":
                 ingestion_id = _prompt("Ingestion ID: ")
                 if not ingestion_id:
                     typer.echo("Ingestion ID is required.")
                     continue
-                run_cli_subcommand(["ingest", "status", ingestion_id])
+                _run_and_separate(["ingest", "status", ingestion_id])
                 continue
             if choice == "5":
                 run_id = _prompt("Run ID: ")
                 if not run_id:
                     typer.echo("Run ID is required.")
                     continue
-                run_cli_subcommand(["run", "show", run_id])
+                _run_and_separate(["run", "show", run_id])
                 continue
             if choice == "6":
-                run_cli_subcommand(["config", "get"])
+                _run_and_separate(["config", "get"])
                 continue
             if choice == "7":
                 raw = _prompt("CLI args (without --cli): ")
@@ -68,10 +75,9 @@ def register_shell_command(app: typer.Typer) -> None:
                 if not args:
                     typer.echo("No command entered.")
                     continue
-                run_cli_subcommand(args)
+                _run_and_separate(args)
                 continue
             typer.echo("Unknown choice. Use 0-7.")
 
 
 __all__ = ["register_shell_command"]
-
