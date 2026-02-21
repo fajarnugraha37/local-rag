@@ -7,7 +7,9 @@ from fastapi import FastAPI
 from app.config.runtime_settings import CONFIG
 from app.http.middleware.idempotency import IdempotencyMiddleware
 from app.http.middleware.request_id import RequestIdMiddleware
+from app.http.routers.documents import router as documents_router
 from app.http.routers.legacy import router as legacy_router
+from app.http.routers.namespaces import router as namespaces_router
 from app.http.routers.system import router as system_router
 from app.repositories.sqlite.db import init_db
 from app.repositories.sqlite.idempotency_repo import IdempotencyRepository
@@ -31,5 +33,7 @@ def create_app() -> FastAPI:
     app.add_middleware(IdempotencyMiddleware, repo=idempotency_repo)
 
     app.include_router(system_router)
+    app.include_router(namespaces_router)
+    app.include_router(documents_router)
     app.include_router(legacy_router)
     return app

@@ -50,6 +50,7 @@ def load_settings(config_file="config.yaml"):
     cfg.setdefault("citation_max_snippet_chars", 240)
     cfg.setdefault("vector_db_provider", "chroma")
     cfg.setdefault("vector_db_persist_dir", "data/chroma")
+    cfg.setdefault("sqlite_db_path", "data/app.db")
     cfg.setdefault("vector_db_collection", "easy_local_rag")
     cfg.setdefault("vector_db_batch_size", 64)
     cfg.setdefault("vector_db_timeout_s", 30)
@@ -136,6 +137,8 @@ def load_settings(config_file="config.yaml"):
         cfg["vector_db_provider"] = os.getenv("VECTOR_DB_PROVIDER")
     if os.getenv("VECTOR_DB_PERSIST_DIR"):
         cfg["vector_db_persist_dir"] = os.getenv("VECTOR_DB_PERSIST_DIR")
+    if os.getenv("SQLITE_DB_PATH"):
+        cfg["sqlite_db_path"] = os.getenv("SQLITE_DB_PATH")
     if os.getenv("VECTOR_DB_COLLECTION"):
         cfg["vector_db_collection"] = os.getenv("VECTOR_DB_COLLECTION")
     if os.getenv("VECTOR_DB_BATCH_SIZE"):

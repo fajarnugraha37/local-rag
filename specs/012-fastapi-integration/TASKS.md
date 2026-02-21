@@ -99,7 +99,7 @@
   - List and delete behavior matches spec, including soft delete filter.
 - Validation commands:
   - `python -m pytest -q tests/test_fastapi_documents.py tests/test_fastapi_namespaces.py`
-- Status: todo
+- Status: done
 
 ## T007: Ingestion Jobs
 - Goal: Implement async ingestion jobs with folder/repo/upload sources.
@@ -218,4 +218,5 @@
 - SQLite repositories used for server state (namespaces, docs, jobs, runs, feedback, idempotency).
 - Old server implementation removed.
 - Tests pass.
+
 

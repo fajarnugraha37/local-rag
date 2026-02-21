@@ -2,6 +2,7 @@ embedding_model: mxbai-embed-large
 embedding_dim: 1024
 vector_db_provider: "chroma"
 vector_db_persist_dir: "data/chroma"
+sqlite_db_path: "data/app.db"
 vector_db_collection: "easy_local_rag"
 vector_db_batch_size: 64
 vector_db_timeout_s: 30
