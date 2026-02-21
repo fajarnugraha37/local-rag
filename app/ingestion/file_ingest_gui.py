@@ -70,7 +70,9 @@ def write_chunks_file(
         namespace=namespace,
         progress_callback=_on_progress if show_progress else None,
     )
-    print(f"Wrote {result['added']} new chunks to vector DB (failed={result['failed']}, skipped={result['skipped']})")
+    print(
+        f"Wrote {result['added']} new chunks to vector DB (failed={result['failed']}, skipped={result['skipped']})"
+    )
     return result
 
 
@@ -88,7 +90,9 @@ def _read_txt_text(path: str) -> str:
 def ingest_file_path(file_path: str, *, namespace: str | None = None):
     options = build_options()
     summary = ingest_paths([file_path], options=options, namespace=namespace)
-    file_result = summary["files"][0] if summary.get("files") else {"status": "skipped", "reason": "no_file"}
+    file_result = (
+        summary["files"][0] if summary.get("files") else {"status": "skipped", "reason": "no_file"}
+    )
     if file_result.get("status") == "ok":
         print(
             f"Ingested '{file_result['path']}' chunks={file_result.get('chunks_count', 0)} "
@@ -171,7 +175,9 @@ def launch_gui() -> None:
     upload_button = tk.Button(container, text="Select Files and Ingest", command=select_and_ingest)
     upload_button.pack(pady=(0, 12), fill="x")
 
-    folder_button = tk.Button(container, text="Select Folder and Ingest (Recursive)", command=select_folder_and_ingest)
+    folder_button = tk.Button(
+        container, text="Select Folder and Ingest (Recursive)", command=select_folder_and_ingest
+    )
     folder_button.pack(pady=0, fill="x")
 
     root.mainloop()
@@ -195,11 +201,19 @@ def run_ingestion(
         recursive=recursive,
         include_patterns=list(include_patterns),
         exclude_patterns=list(exclude_patterns),
-        max_bytes=max_bytes if max_bytes is not None else settings.CONFIG.get("ingest_max_bytes", 8 * 1024 * 1024),
+        max_bytes=max_bytes
+        if max_bytes is not None
+        else settings.CONFIG.get("ingest_max_bytes", 8 * 1024 * 1024),
         max_rows=max_rows if max_rows is not None else settings.CONFIG.get("ingest_max_rows", 2000),
-        max_pages=max_pages if max_pages is not None else settings.CONFIG.get("ingest_max_pages", 200),
-        max_slides=max_slides if max_slides is not None else settings.CONFIG.get("ingest_max_slides", 300),
-        max_sheets=max_sheets if max_sheets is not None else settings.CONFIG.get("ingest_max_sheets", 50),
+        max_pages=max_pages
+        if max_pages is not None
+        else settings.CONFIG.get("ingest_max_pages", 200),
+        max_slides=max_slides
+        if max_slides is not None
+        else settings.CONFIG.get("ingest_max_slides", 300),
+        max_sheets=max_sheets
+        if max_sheets is not None
+        else settings.CONFIG.get("ingest_max_sheets", 50),
     )
 
     progress_state = {"current_file": ""}
@@ -224,7 +238,9 @@ def run_ingestion(
             sys.stdout.write("\n")
             sys.stdout.flush()
 
-    summary = ingest_paths(paths, options=options, progress_callback=_on_progress, namespace=namespace)
+    summary = ingest_paths(
+        paths, options=options, progress_callback=_on_progress, namespace=namespace
+    )
     for item in summary.get("files", []):
         status = item.get("status")
         line = (

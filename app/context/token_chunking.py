@@ -51,8 +51,12 @@ def estimate_token_count(text: Optional[str], tokenizer: Optional[Callable] = No
         return len(str(text).split())
 
 
-def chunk_by_tokens(text: str, max_tokens: Optional[int] = None, overlap: Optional[int] = None,
-                    tokenizer: Optional[Callable] = None) -> List[str]:
+def chunk_by_tokens(
+    text: str,
+    max_tokens: Optional[int] = None,
+    overlap: Optional[int] = None,
+    tokenizer: Optional[Callable] = None,
+) -> List[str]:
     """Split text into chunks aiming for <= max_tokens (estimated).
 
     - Preserves sentence boundaries where possible (splits on sentence enders).
@@ -69,12 +73,12 @@ def chunk_by_tokens(text: str, max_tokens: Optional[int] = None, overlap: Option
 
     # Respect explicit caller parameters; fall back to config defaults only when caller did not provide values
     if max_tokens is None:
-        max_tokens = settings.CONFIG.get('chunk_max_tokens', 200)
+        max_tokens = settings.CONFIG.get("chunk_max_tokens", 200)
     if overlap is None:
-        overlap = settings.CONFIG.get('chunk_overlap_tokens', 20)
+        overlap = settings.CONFIG.get("chunk_overlap_tokens", 20)
 
     # Split by sentence-ish boundaries to keep coherence
-    sentences = re.split(r'(?<=[.!?]) +', text)
+    sentences = re.split(r"(?<=[.!?]) +", text)
 
     chunks: List[str] = []
     cur = ""
@@ -142,6 +146,6 @@ def chunk_by_tokens(text: str, max_tokens: Optional[int] = None, overlap: Option
 
 
 __all__ = [
-    'estimate_token_count',
-    'chunk_by_tokens',
+    "estimate_token_count",
+    "chunk_by_tokens",
 ]

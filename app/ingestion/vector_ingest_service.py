@@ -112,7 +112,9 @@ def ingest_chunks(
         chunk_occurrence[base_chunk_key] = occurrence
         # Keep the first occurrence backward-compatible; disambiguate repeated
         # equal-text chunks so Chroma IDs stay unique within a document.
-        chunk_key = base_chunk_key if occurrence == 1 else stable_chunk_id(f"{base_chunk_key}:{occurrence}")
+        chunk_key = (
+            base_chunk_key if occurrence == 1 else stable_chunk_id(f"{base_chunk_key}:{occurrence}")
+        )
         v_id = stable_vector_id(resolved_doc_key, chunk_key)
 
         metadata = {

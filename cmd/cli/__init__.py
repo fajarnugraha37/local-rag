@@ -1,2 +1,1 @@
 """CLI mode wrapper."""
-

@@ -9,7 +9,12 @@ RESET_COLOR = "\033[0m"
 
 def print_context_blocks(source_blocks, format_source_blocks_text):
     if source_blocks:
-        print("Context Pulled from Documents: \n\n" + CYAN + format_source_blocks_text(source_blocks) + RESET_COLOR)
+        print(
+            "Context Pulled from Documents: \n\n"
+            + CYAN
+            + format_source_blocks_text(source_blocks)
+            + RESET_COLOR
+        )
     else:
         print(CYAN + "No relevant context found." + RESET_COLOR)
 

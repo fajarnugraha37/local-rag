@@ -76,7 +76,7 @@ def _parse_env(text: str) -> Dict[str, str]:
         if not line or line.startswith("#"):
             continue
         if line.startswith("export "):
-            line = line[len("export "):]
+            line = line[len("export ") :]
         if "=" not in line:
             continue
         key, value = line.split("=", 1)
@@ -93,7 +93,9 @@ def _parse_ini_like(text: str) -> Dict[str, Dict[str, str]]:
     return output
 
 
-def extract_textual(path: str, raw_bytes: Optional[bytes], context: ExtractorContext) -> ExtractedDocument:
+def extract_textual(
+    path: str, raw_bytes: Optional[bytes], context: ExtractorContext
+) -> ExtractedDocument:
     lower_name, ext = _normalize_path_info(path)
     warnings = []
 
@@ -107,7 +109,11 @@ def extract_textual(path: str, raw_bytes: Optional[bytes], context: ExtractorCon
 
     doc_type = _SPECIAL_DOC_TYPES.get(lower_name) or _DOC_TYPES.get(ext, "text")
 
-    if ext in {".yaml", ".yml"} or lower_name.endswith(".openapi.yaml") or lower_name.endswith(".openapi.yml"):
+    if (
+        ext in {".yaml", ".yml"}
+        or lower_name.endswith(".openapi.yaml")
+        or lower_name.endswith(".openapi.yml")
+    ):
         try:
             data = yaml.safe_load(text)
             text = json_pretty(data)

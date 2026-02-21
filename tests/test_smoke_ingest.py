@@ -54,21 +54,27 @@ def test_ingest_retrieve_delete_integration(tmp_path, monkeypatch):
         return {"embedding": [0.1, 0.2, 0.3, 0.4], "model": "fake", "used_fallback": False}
 
     monkeypatch.setattr(vector_ingest_service, "embed_text", fake_embed_text)
-    monkeypatch.setattr(retrieval, "get_query_embedding", lambda query, embedding_model=None: [0.1, 0.2, 0.3, 0.4])
+    monkeypatch.setattr(
+        retrieval, "get_query_embedding", lambda query, embedding_model=None: [0.1, 0.2, 0.3, 0.4]
+    )
 
     chunks = ["contract payment terms net 30", "termination requires written notice"]
     summary = ingest_chunks(chunks, source_path=doc, doc_id=doc)
     assert summary["added"] == 2
     assert summary["failed"] == 0
 
-    retrieved = retrieval.scored_chunks("payment terms", top_k=3, rerank=False, filters={"doc_id": doc})
+    retrieved = retrieval.scored_chunks(
+        "payment terms", top_k=3, rerank=False, filters={"doc_id": doc}
+    )
     assert len(retrieved) >= 1
     assert all(r.get("doc_id") == doc for r in retrieved)
 
     deleted = delete_doc(doc)
     assert deleted == 2
 
-    after_delete = retrieval.scored_chunks("payment terms", top_k=3, rerank=False, filters={"doc_id": doc})
+    after_delete = retrieval.scored_chunks(
+        "payment terms", top_k=3, rerank=False, filters={"doc_id": doc}
+    )
     assert after_delete == []
 
 
@@ -138,7 +144,9 @@ def test_ingest_namespace_default_and_custom(tmp_path, monkeypatch):
     monkeypatch.setattr(vector_ingest_service, "embed_text", fake_embed_text)
 
     ingest_chunks(["default ns chunk"], source_path="default.txt", doc_id="default.txt")
-    ingest_chunks(["custom ns chunk"], source_path="custom.txt", doc_id="custom.txt", namespace="project_a")
+    ingest_chunks(
+        ["custom ns chunk"], source_path="custom.txt", doc_id="custom.txt", namespace="project_a"
+    )
 
     store = ChromaVectorStore(persist_dir=str(persist_dir), collection=collection, embedding_dim=4)
     default_rows = store.collection.get(where={"doc_id": "default.txt"}, include=["metadatas"])

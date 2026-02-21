@@ -11,9 +11,13 @@ from app.ingestion.vector_ingest_service import delete_doc
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Delete ingested document vectors and registry records.")
+    parser = argparse.ArgumentParser(
+        description="Delete ingested document vectors and registry records."
+    )
     parser.add_argument("--doc-id", required=True, help="Document ID to delete.")
-    parser.add_argument("--namespace", default=None, help="Namespace to delete from (default: default).")
+    parser.add_argument(
+        "--namespace", default=None, help="Namespace to delete from (default: default)."
+    )
     parser.add_argument(
         "--all-namespaces",
         action="store_true",
@@ -22,7 +26,9 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _delete_registry_records(store: DocRegistryStore, doc_id: str, namespace: str | None, all_namespaces: bool) -> int:
+def _delete_registry_records(
+    store: DocRegistryStore, doc_id: str, namespace: str | None, all_namespaces: bool
+) -> int:
     deleted = 0
     if all_namespaces:
         page = store.list_docs(limit=100000)
@@ -39,14 +45,18 @@ def _delete_registry_records(store: DocRegistryStore, doc_id: str, namespace: st
 def main(argv: Sequence[str] | None = None) -> None:
     parser = _build_parser()
     args = parser.parse_args(argv)
-    namespace = None if args.all_namespaces else validate_namespace(args.namespace, default_to_default=True)
+    namespace = (
+        None if args.all_namespaces else validate_namespace(args.namespace, default_to_default=True)
+    )
 
     vectors_deleted = delete_doc(
         str(args.doc_id),
         namespace=namespace,
         all_namespaces=bool(args.all_namespaces),
     )
-    registry_store = DocRegistryStore(str(settings.CONFIG.get("doc_registry_path", "data/doc_registry.json")))
+    registry_store = DocRegistryStore(
+        str(settings.CONFIG.get("doc_registry_path", "data/doc_registry.json"))
+    )
     registry_deleted = _delete_registry_records(
         registry_store,
         doc_id=str(args.doc_id),

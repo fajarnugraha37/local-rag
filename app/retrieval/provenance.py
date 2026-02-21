@@ -79,4 +79,3 @@ def assign_source_indices(sources: Iterable[Dict[str, Any]]) -> List[Dict[str, A
         row["source_id"] = f"S{i}"
         assigned.append(row)
     return assigned
-

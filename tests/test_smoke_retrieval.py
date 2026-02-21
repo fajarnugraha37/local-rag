@@ -37,11 +37,19 @@ def test_retrieval_namespace_scoping(tmp_path, monkeypatch):
                 "id": "n2",
                 "embedding": [0.2, 0.1, 0.4, 0.3],
                 "text": "banana beta text",
-                "metadata": {"doc_id": "doc-beta", "chunk_id": "c-beta", "source": "s2", "namespace": "beta", "token_count": 3},
+                "metadata": {
+                    "doc_id": "doc-beta",
+                    "chunk_id": "c-beta",
+                    "source": "s2",
+                    "namespace": "beta",
+                    "token_count": 3,
+                },
             },
         ]
     )
-    monkeypatch.setattr(retrieval, "get_query_embedding", lambda query, embedding_model=None: [0.1, 0.2, 0.3, 0.4])
+    monkeypatch.setattr(
+        retrieval, "get_query_embedding", lambda query, embedding_model=None: [0.1, 0.2, 0.3, 0.4]
+    )
 
     all_ns = retrieval.scored_chunks("banana", top_k=3, rerank=False)
     assert len(all_ns) >= 2
@@ -101,14 +109,18 @@ def test_retrieval_vector_db(tmp_path, monkeypatch):
         ]
     )
 
-    monkeypatch.setattr(retrieval, "get_query_embedding", lambda query, embedding_model=None: [0.1, 0.2, 0.3, 0.4])
+    monkeypatch.setattr(
+        retrieval, "get_query_embedding", lambda query, embedding_model=None: [0.1, 0.2, 0.3, 0.4]
+    )
 
     res = retrieval.scored_chunks("banana", top_k=2, rerank=False)
     assert isinstance(res, list)
     assert len(res) >= 1
     ids = [r.get("chunk_id") for r in res]
     assert "c1" in ids or "c2" in ids
-    assert all("doc_id" in r and "source" in r and "citation" in r and "namespace" in r for r in res)
+    assert all(
+        "doc_id" in r and "source" in r and "citation" in r and "namespace" in r for r in res
+    )
     assert all(isinstance(r.get("source"), dict) for r in res)
     assert all("source_id" in r["source"] and "citation_index" in r["source"] for r in res)
     assert all("locator" in r["source"] and "snippet" in r["source"] for r in res)
@@ -135,5 +147,7 @@ def test_retrieval_vector_db(tmp_path, monkeypatch):
     )
     assert filtered_and_ns == []
 
-    no_match = retrieval.scored_chunks("banana", top_k=2, rerank=False, filters={"doc_id": "does-not-exist"})
+    no_match = retrieval.scored_chunks(
+        "banana", top_k=2, rerank=False, filters={"doc_id": "does-not-exist"}
+    )
     assert no_match == []

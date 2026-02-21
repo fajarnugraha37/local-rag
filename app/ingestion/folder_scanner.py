@@ -97,9 +97,13 @@ def _matches_ignore_files(
 
 def _path_allowed(relative_path: str, options: ScanOptions) -> bool:
     normalized = _normalize_rel_path(relative_path)
-    if options.include_patterns and not any(fnmatch.fnmatch(normalized, pattern) for pattern in options.include_patterns):
+    if options.include_patterns and not any(
+        fnmatch.fnmatch(normalized, pattern) for pattern in options.include_patterns
+    ):
         return False
-    if options.exclude_patterns and any(fnmatch.fnmatch(normalized, pattern) for pattern in options.exclude_patterns):
+    if options.exclude_patterns and any(
+        fnmatch.fnmatch(normalized, pattern) for pattern in options.exclude_patterns
+    ):
         return False
     return True
 
@@ -199,7 +203,9 @@ def scan_folder(
             continue
 
         size_bytes = os.path.getsize(abs_path)
-        candidates.append(FileCandidate(path=abs_path, relative_path=rel_path, size_bytes=size_bytes))
+        candidates.append(
+            FileCandidate(path=abs_path, relative_path=rel_path, size_bytes=size_bytes)
+        )
         summary.selected += 1
 
     return candidates, summary

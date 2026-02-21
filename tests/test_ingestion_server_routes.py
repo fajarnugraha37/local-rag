@@ -64,7 +64,9 @@ def test_ingest_files_endpoint(monkeypatch):
 
     conn = http.client.HTTPConnection(host, port)
     payload = json.dumps({"paths": ["README.md"], "recursive": False})
-    conn.request("POST", "/ingest/files", body=payload, headers={"Content-Type": "application/json"})
+    conn.request(
+        "POST", "/ingest/files", body=payload, headers={"Content-Type": "application/json"}
+    )
     resp = conn.getresponse()
     body = json.loads(resp.read().decode("utf-8"))
 
@@ -84,7 +86,7 @@ def test_ingest_upload_endpoint(monkeypatch):
     boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"
     body = (
         f"--{boundary}\r\n"
-        "Content-Disposition: form-data; name=\"file\"; filename=\"sample.txt\"\r\n"
+        'Content-Disposition: form-data; name="file"; filename="sample.txt"\r\n'
         "Content-Type: text/plain\r\n\r\n"
         "hello upload\r\n"
         f"--{boundary}--\r\n"
@@ -95,7 +97,10 @@ def test_ingest_upload_endpoint(monkeypatch):
         "POST",
         "/ingest/upload",
         body=body,
-        headers={"Content-Type": f"multipart/form-data; boundary={boundary}", "Content-Length": str(len(body))},
+        headers={
+            "Content-Type": f"multipart/form-data; boundary={boundary}",
+            "Content-Length": str(len(body)),
+        },
     )
     resp = conn.getresponse()
     payload = json.loads(resp.read().decode("utf-8"))
@@ -112,17 +117,33 @@ def test_ingest_upload_endpoint(monkeypatch):
 def test_ingest_endpoints_namespace_accept_and_invalid(monkeypatch):
     captured = {"chunks": None, "files": None, "upload": None, "folder": None}
 
-    def fake_ingest_chunks(chunks, source_path=None, doc_id=None, namespace=None, embedding_model=None):
+    def fake_ingest_chunks(
+        chunks, source_path=None, doc_id=None, namespace=None, embedding_model=None
+    ):
         captured["chunks"] = namespace
         return {"added": len(chunks), "skipped": 0, "failed": 0}
 
     def fake_ingest_paths(paths, options=None, embedding_model=None, namespace=None):
         captured["files"] = namespace
-        return {"total_files": len(paths), "extracted": len(paths), "skipped": 0, "failed": 0, "total_chunks": 1, "files": []}
+        return {
+            "total_files": len(paths),
+            "extracted": len(paths),
+            "skipped": 0,
+            "failed": 0,
+            "total_chunks": 1,
+            "files": [],
+        }
 
     def fake_ingest_uploaded(uploaded, options=None, embedding_model=None, namespace=None):
         captured["upload"] = namespace
-        return {"total_files": len(uploaded), "extracted": len(uploaded), "skipped": 0, "failed": 0, "total_chunks": 1, "files": []}
+        return {
+            "total_files": len(uploaded),
+            "extracted": len(uploaded),
+            "skipped": 0,
+            "failed": 0,
+            "total_chunks": 1,
+            "files": [],
+        }
 
     def fake_ingest_folder(options):
         captured["folder"] = options.namespace
@@ -186,11 +207,11 @@ def test_ingest_endpoints_namespace_accept_and_invalid(monkeypatch):
     boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"
     body = (
         f"--{boundary}\r\n"
-        "Content-Disposition: form-data; name=\"file\"; filename=\"sample.txt\"\r\n"
+        'Content-Disposition: form-data; name="file"; filename="sample.txt"\r\n'
         "Content-Type: text/plain\r\n\r\n"
         "hello upload\r\n"
         f"--{boundary}\r\n"
-        "Content-Disposition: form-data; name=\"namespace\"\r\n\r\n"
+        'Content-Disposition: form-data; name="namespace"\r\n\r\n'
         "delta\r\n"
         f"--{boundary}--\r\n"
     ).encode("utf-8")
@@ -198,7 +219,10 @@ def test_ingest_endpoints_namespace_accept_and_invalid(monkeypatch):
         "POST",
         "/ingest/upload",
         body=body,
-        headers={"Content-Type": f"multipart/form-data; boundary={boundary}", "Content-Length": str(len(body))},
+        headers={
+            "Content-Type": f"multipart/form-data; boundary={boundary}",
+            "Content-Length": str(len(body)),
+        },
     )
     resp4 = conn.getresponse()
     assert resp4.status == 200
@@ -227,7 +251,9 @@ def test_ingest_folder_endpoint_json(monkeypatch):
 
     conn = http.client.HTTPConnection(host, port)
     payload = json.dumps({"path": ".", "dry_run": True})
-    conn.request("POST", "/ingest/folder", body=payload, headers={"Content-Type": "application/json"})
+    conn.request(
+        "POST", "/ingest/folder", body=payload, headers={"Content-Type": "application/json"}
+    )
     resp = conn.getresponse()
     body = json.loads(resp.read().decode("utf-8"))
 
@@ -270,7 +296,9 @@ def test_ingest_folder_endpoint_streaming(monkeypatch):
     host, port = server.server_address
     conn = http.client.HTTPConnection(host, port)
     payload = json.dumps({"path": ".", "stream": True, "request_id": "req-123"})
-    conn.request("POST", "/ingest/folder", body=payload, headers={"Content-Type": "application/json"})
+    conn.request(
+        "POST", "/ingest/folder", body=payload, headers={"Content-Type": "application/json"}
+    )
     resp = conn.getresponse()
     text = resp.read().decode("utf-8")
 
@@ -293,7 +321,9 @@ def test_ingest_folder_rejects_unsafe_root(monkeypatch):
 
     conn = http.client.HTTPConnection(host, port)
     payload = json.dumps({"path": os.path.abspath(os.sep)})
-    conn.request("POST", "/ingest/folder", body=payload, headers={"Content-Type": "application/json"})
+    conn.request(
+        "POST", "/ingest/folder", body=payload, headers={"Content-Type": "application/json"}
+    )
     resp = conn.getresponse()
     body = json.loads(resp.read().decode("utf-8"))
 
@@ -309,14 +339,18 @@ def test_ingest_folder_rejects_unsafe_root(monkeypatch):
 def test_ingest_folder_rejects_outside_allowed_roots(monkeypatch, tmp_path):
     server = _start_server(monkeypatch)
     host, port = server.server_address
-    monkeypatch.setitem(streaming_server.settings.CONFIG, "ingest_allowed_roots", [str(tmp_path / "allowed")])
+    monkeypatch.setitem(
+        streaming_server.settings.CONFIG, "ingest_allowed_roots", [str(tmp_path / "allowed")]
+    )
 
     outside = tmp_path / "outside"
     outside.mkdir(parents=True, exist_ok=True)
 
     conn = http.client.HTTPConnection(host, port)
     payload = json.dumps({"path": str(outside)})
-    conn.request("POST", "/ingest/folder", body=payload, headers={"Content-Type": "application/json"})
+    conn.request(
+        "POST", "/ingest/folder", body=payload, headers={"Content-Type": "application/json"}
+    )
     resp = conn.getresponse()
     body = json.loads(resp.read().decode("utf-8"))
 
@@ -330,7 +364,9 @@ def test_ingest_folder_rejects_outside_allowed_roots(monkeypatch, tmp_path):
 
 
 def test_docs_list_endpoint_global_and_scoped(monkeypatch, tmp_path):
-    monkeypatch.setitem(streaming_server.settings.CONFIG, "doc_registry_path", str(tmp_path / "doc_registry.json"))
+    monkeypatch.setitem(
+        streaming_server.settings.CONFIG, "doc_registry_path", str(tmp_path / "doc_registry.json")
+    )
     store = DocRegistryStore(str(tmp_path / "doc_registry.json"))
     store.upsert(namespace="alpha", doc_id="doc-a", source_path="/tmp/a.txt", chunk_count=2)
     store.upsert(namespace="beta", doc_id="doc-b", source_path="/tmp/b.txt", chunk_count=1)
@@ -362,7 +398,9 @@ def test_docs_list_endpoint_global_and_scoped(monkeypatch, tmp_path):
 
 
 def test_docs_delete_endpoint_namespace_and_all(monkeypatch, tmp_path):
-    monkeypatch.setitem(streaming_server.settings.CONFIG, "doc_registry_path", str(tmp_path / "doc_registry.json"))
+    monkeypatch.setitem(
+        streaming_server.settings.CONFIG, "doc_registry_path", str(tmp_path / "doc_registry.json")
+    )
     store = DocRegistryStore(str(tmp_path / "doc_registry.json"))
     store.upsert(namespace="alpha", doc_id="doc-x", source_path="/tmp/a.txt", chunk_count=2)
     store.upsert(namespace="default", doc_id="doc-x", source_path="/tmp/d.txt", chunk_count=1)

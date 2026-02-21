@@ -23,16 +23,18 @@ class ChromaVectorStore:
         embedding_dim: Optional[int] = None,
         timeout_s: Optional[int] = None,
     ) -> None:
-        provider = str(CONFIG.get('vector_db_provider', 'chroma')).strip().lower()
-        if provider != 'chroma':
+        provider = str(CONFIG.get("vector_db_provider", "chroma")).strip().lower()
+        if provider != "chroma":
             raise ValueError(f"Unsupported vector_db_provider '{provider}'. Expected 'chroma'.")
         if chromadb is None or Settings is None:
             raise RuntimeError("chromadb is required. Install dependencies from requirements.txt.")
 
-        self.persist_dir = str(persist_dir or CONFIG.get('vector_db_persist_dir', 'data/chroma'))
-        self.collection_name = str(collection or CONFIG.get('vector_db_collection', 'easy_local_rag'))
-        self.embedding_dim = int(embedding_dim or CONFIG.get('embedding_dim', 1024))
-        self.timeout_s = int(timeout_s or CONFIG.get('vector_db_timeout_s', 30))
+        self.persist_dir = str(persist_dir or CONFIG.get("vector_db_persist_dir", "data/chroma"))
+        self.collection_name = str(
+            collection or CONFIG.get("vector_db_collection", "easy_local_rag")
+        )
+        self.embedding_dim = int(embedding_dim or CONFIG.get("embedding_dim", 1024))
+        self.timeout_s = int(timeout_s or CONFIG.get("vector_db_timeout_s", 30))
 
         os.makedirs(self.persist_dir, exist_ok=True)
         settings = Settings(anonymized_telemetry=False)
@@ -59,24 +61,24 @@ class ChromaVectorStore:
         metadatas: List[Dict[str, Any]] = []
 
         for item in items:
-            vector_key = item.get('id') or item.get('vector_id')
+            vector_key = item.get("id") or item.get("vector_id")
             if not vector_key:
                 raise ValueError("Each item must include 'id' or 'vector_id'.")
 
-            embedding = item.get('embedding')
+            embedding = item.get("embedding")
             if not isinstance(embedding, list) or not embedding:
                 raise ValueError("Each item must include non-empty 'embedding' list[float].")
 
-            document = item.get('document')
+            document = item.get("document")
             if document is None:
-                document = item.get('text', '')
+                document = item.get("text", "")
 
-            metadata = item.get('metadata')
+            metadata = item.get("metadata")
             if metadata is None:
                 metadata = {
                     k: v
                     for k, v in item.items()
-                    if k not in {'id', 'vector_id', 'embedding', 'document', 'text', 'metadata'}
+                    if k not in {"id", "vector_id", "embedding", "document", "text", "metadata"}
                 }
 
             ids.append(str(vector_key))
@@ -107,22 +109,22 @@ class ChromaVectorStore:
             query_embeddings=[query_embedding],
             n_results=int(top_k),
             where=filters,
-            include=['documents', 'metadatas', 'distances'],
+            include=["documents", "metadatas", "distances"],
         )
 
-        ids = (result.get('ids') or [[]])[0]
-        documents = (result.get('documents') or [[]])[0]
-        metadatas = (result.get('metadatas') or [[]])[0]
-        distances = (result.get('distances') or [[]])[0]
+        ids = (result.get("ids") or [[]])[0]
+        documents = (result.get("documents") or [[]])[0]
+        metadatas = (result.get("metadatas") or [[]])[0]
+        distances = (result.get("distances") or [[]])[0]
 
         rows: List[Dict[str, Any]] = []
         for idx, vector_id in enumerate(ids):
             rows.append(
                 {
-                    'id': vector_id,
-                    'document': documents[idx] if idx < len(documents) else None,
-                    'metadata': metadatas[idx] if idx < len(metadatas) else {},
-                    'distance': distances[idx] if idx < len(distances) else None,
+                    "id": vector_id,
+                    "document": documents[idx] if idx < len(documents) else None,
+                    "metadata": metadatas[idx] if idx < len(metadatas) else {},
+                    "distance": distances[idx] if idx < len(distances) else None,
                 }
             )
         return rows
@@ -130,8 +132,8 @@ class ChromaVectorStore:
     def delete_by_doc_id(self, doc_id: str) -> int:
         if not doc_id:
             return 0
-        existing = self.collection.get(where={'doc_id': str(doc_id)}, include=[])
-        ids = existing.get('ids') or []
+        existing = self.collection.get(where={"doc_id": str(doc_id)}, include=[])
+        ids = existing.get("ids") or []
         if not ids:
             return 0
         self.collection.delete(ids=ids)
@@ -141,7 +143,7 @@ class ChromaVectorStore:
         if not filters:
             return 0
         existing = self.collection.get(where=filters, include=[])
-        ids = existing.get('ids') or []
+        ids = existing.get("ids") or []
         if not ids:
             return 0
         self.collection.delete(ids=ids)
@@ -156,12 +158,12 @@ class ChromaVectorStore:
         result = self.collection.get(
             offset=safe_offset,
             limit=safe_limit,
-            include=['documents', 'metadatas'],
+            include=["documents", "metadatas"],
         )
         return {
-            'ids': result.get('ids') or [],
-            'documents': result.get('documents') or [],
-            'metadatas': result.get('metadatas') or [],
+            "ids": result.get("ids") or [],
+            "documents": result.get("documents") or [],
+            "metadatas": result.get("metadatas") or [],
         }
 
     def update_metadatas(self, ids: List[str], metadatas: List[Dict[str, Any]]) -> int:
@@ -172,8 +174,8 @@ class ChromaVectorStore:
 
     def health(self) -> Dict[str, Any]:
         return {
-            'provider': 'chroma',
-            'persist_dir': self.persist_dir,
-            'collection': self.collection_name,
-            'count': self.count(),
+            "provider": "chroma",
+            "persist_dir": self.persist_dir,
+            "collection": self.collection_name,
+            "count": self.count(),
         }

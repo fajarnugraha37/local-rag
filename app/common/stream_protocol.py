@@ -8,7 +8,7 @@ class StreamEnvelope:
     data: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {'event': self.event, 'data': self.data}
+        return {"event": self.event, "data": self.data}
 
 
 def _build(event: str, **data: Any) -> Dict[str, Any]:
@@ -16,32 +16,32 @@ def _build(event: str, **data: Any) -> Dict[str, Any]:
 
 
 def meta(**data: Any) -> Dict[str, Any]:
-    return _build('meta', **data)
+    return _build("meta", **data)
 
 
 def thinking_delta(text: str, **data: Any) -> Dict[str, Any]:
-    return _build('thinking_delta', text=text, **data)
+    return _build("thinking_delta", text=text, **data)
 
 
 def final_delta(text: str, **data: Any) -> Dict[str, Any]:
-    return _build('final_delta', text=text, **data)
+    return _build("final_delta", text=text, **data)
 
 
 def part_done(part_index: int, **data: Any) -> Dict[str, Any]:
-    return _build('part_done', part_index=part_index, **data)
+    return _build("part_done", part_index=part_index, **data)
 
 
 def done(**data: Any) -> Dict[str, Any]:
-    return _build('done', **data)
+    return _build("done", **data)
 
 
 def error(message: str, **data: Any) -> Dict[str, Any]:
-    return _build('error', message=message, **data)
+    return _build("error", message=message, **data)
 
 
 def sources(sources: list, **data: Any) -> Dict[str, Any]:
-    return _build('sources', sources=sources, **data)
+    return _build("sources", sources=sources, **data)
 
 
 def citation_stats(stats: Dict[str, Any], **data: Any) -> Dict[str, Any]:
-    return _build('citation_stats', stats=stats, **data)
+    return _build("citation_stats", stats=stats, **data)

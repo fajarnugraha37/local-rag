@@ -75,7 +75,9 @@ def _decide_action(path: str, store: FileStateStore, *, force: bool) -> tuple[st
 
 
 def ingest_folder(options: FolderIngestOptions) -> Dict[str, object]:
-    state_path = options.state_path or str(settings.CONFIG.get("ingest_state_path", "data/ingest_state.json"))
+    state_path = options.state_path or str(
+        settings.CONFIG.get("ingest_state_path", "data/ingest_state.json")
+    )
     store = FileStateStore(state_path=state_path)
     scan_options = ScanOptions(
         recursive=options.recursive,
@@ -104,7 +106,11 @@ def ingest_folder(options: FolderIngestOptions) -> Dict[str, object]:
     failed = 0
     state_changed = False
     max_bytes = int(
-        (options.ingest_options.max_bytes if options.ingest_options is not None else settings.CONFIG.get("ingest_max_bytes", 8 * 1024 * 1024))
+        (
+            options.ingest_options.max_bytes
+            if options.ingest_options is not None
+            else settings.CONFIG.get("ingest_max_bytes", 8 * 1024 * 1024)
+        )
         or 8 * 1024 * 1024
     )
 
@@ -117,28 +123,36 @@ def ingest_folder(options: FolderIngestOptions) -> Dict[str, object]:
             reason = f"file_too_large:{candidate.size_bytes}>{max_bytes}"
             results.append({"path": candidate.path, "status": "skipped", "reason": reason})
             if options.progress_callback:
-                options.progress_callback("file_skipped", {"path": candidate.path, "reason": reason})
+                options.progress_callback(
+                    "file_skipped", {"path": candidate.path, "reason": reason}
+                )
             continue
         if not _is_file_readable(candidate.path):
             skipped += 1
             reason = "unreadable_file"
             results.append({"path": candidate.path, "status": "skipped", "reason": reason})
             if options.progress_callback:
-                options.progress_callback("file_skipped", {"path": candidate.path, "reason": reason})
+                options.progress_callback(
+                    "file_skipped", {"path": candidate.path, "reason": reason}
+                )
             continue
         decision, reason = _decide_action(candidate.path, store, force=options.force)
         if decision == "skip":
             skipped += 1
             results.append({"path": candidate.path, "status": "skipped", "reason": reason})
             if options.progress_callback:
-                options.progress_callback("file_skipped", {"path": candidate.path, "reason": reason})
+                options.progress_callback(
+                    "file_skipped", {"path": candidate.path, "reason": reason}
+                )
             continue
 
         if options.dry_run:
             ingested += 1
             results.append({"path": candidate.path, "status": "planned", "reason": reason})
             if options.progress_callback:
-                options.progress_callback("file_planned", {"path": candidate.path, "reason": reason})
+                options.progress_callback(
+                    "file_planned", {"path": candidate.path, "reason": reason}
+                )
             continue
 
         ingest_result = ingest_single_path(
@@ -160,11 +174,15 @@ def ingest_folder(options: FolderIngestOptions) -> Dict[str, object]:
             state_changed = True
             ingested += 1
             if options.progress_callback:
-                options.progress_callback("file_ingested", {"path": candidate.path, "reason": reason})
+                options.progress_callback(
+                    "file_ingested", {"path": candidate.path, "reason": reason}
+                )
         elif status == "skipped":
             skipped += 1
             if options.progress_callback:
-                options.progress_callback("file_skipped", {"path": candidate.path, "reason": reason})
+                options.progress_callback(
+                    "file_skipped", {"path": candidate.path, "reason": reason}
+                )
         else:
             failed += 1
             if options.progress_callback:

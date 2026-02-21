@@ -15,7 +15,15 @@ from .office import (
     extract_xls,
     extract_xlsx,
 )
-from .structured import extract_csv_tsv, extract_har, extract_html_svg, extract_json, extract_json_lines, extract_log, extract_xml
+from .structured import (
+    extract_csv_tsv,
+    extract_har,
+    extract_html_svg,
+    extract_json,
+    extract_json_lines,
+    extract_log,
+    extract_xml,
+)
 from .textual import extract_textual
 
 
@@ -54,7 +62,9 @@ class ExtractorRegistry:
         extractor = self.resolve(path)
         return extractor.extract(path, None, context)
 
-    def extract_from_bytes(self, file_name: str, raw_bytes: bytes, context: ExtractorContext) -> ExtractedDocument:
+    def extract_from_bytes(
+        self, file_name: str, raw_bytes: bytes, context: ExtractorContext
+    ) -> ExtractedDocument:
         extractor = self.resolve(file_name)
         return extractor.extract(file_name, raw_bytes, context)
 
@@ -77,12 +87,32 @@ def build_default_registry() -> ExtractorRegistry:
 
     # Must-have docs/config/scripts/schema families
     for ext in [
-        ".md", ".markdown", ".mdx", ".rst", ".adoc", ".asciidoc",
-        ".yaml", ".yml", ".toml", ".ini", ".conf", ".env", ".properties",
-        ".sql", ".proto", ".graphql", ".gql",
-        ".sh", ".bash", ".ps1",
+        ".md",
+        ".markdown",
+        ".mdx",
+        ".rst",
+        ".adoc",
+        ".asciidoc",
+        ".yaml",
+        ".yml",
+        ".toml",
+        ".ini",
+        ".conf",
+        ".env",
+        ".properties",
+        ".sql",
+        ".proto",
+        ".graphql",
+        ".gql",
+        ".sh",
+        ".bash",
+        ".ps1",
         ".txt",
-        ".gitignore", ".gitattributes", ".editorconfig", ".npmrc", ".yarnrc",
+        ".gitignore",
+        ".gitattributes",
+        ".editorconfig",
+        ".npmrc",
+        ".yarnrc",
     ]:
         registry.register_extension(ext, textual)
 

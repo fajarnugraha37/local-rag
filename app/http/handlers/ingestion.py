@@ -115,7 +115,9 @@ def handle_ingestion_post(handler, deps, parsed) -> bool:
             return True
         chunks = body.get("chunks")
         if not isinstance(chunks, list) or not chunks:
-            handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'chunks' must be a non-empty array"})
+            handler.send_json(
+                HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'chunks' must be a non-empty array"}
+            )
             return True
         try:
             namespace = validate_namespace(body.get("namespace"), default_to_default=True)
@@ -149,7 +151,9 @@ def handle_ingestion_post(handler, deps, parsed) -> bool:
         try:
             max_chars = int(body.get("max_chars") or settings.CONFIG.get("chunk_max_chars", 1000))
         except (TypeError, ValueError):
-            handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'max_chars' must be an integer"})
+            handler.send_json(
+                HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'max_chars' must be an integer"}
+            )
             return True
         chunks = _chunk_text_for_ingest(text, max_chars=max(1, max_chars))
         try:
@@ -165,7 +169,9 @@ def handle_ingestion_post(handler, deps, parsed) -> bool:
                 namespace=namespace,
                 embedding_model=body.get("embedding_model"),
             )
-            handler.send_json(HTTPStatus.OK, {"ok": True, "chunk_count": len(chunks), "result": result})
+            handler.send_json(
+                HTTPStatus.OK, {"ok": True, "chunk_count": len(chunks), "result": result}
+            )
         except Exception as exc:
             handler.log_exception("ingestion_handler_failed", exc)
             handler.send_error_json(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
@@ -178,16 +184,33 @@ def handle_ingestion_post(handler, deps, parsed) -> bool:
             handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
             return True
         paths = body.get("paths")
-        if not isinstance(paths, list) or not paths or any(not isinstance(value, str) for value in paths):
-            handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'paths' must be a non-empty array of strings"})
+        if (
+            not isinstance(paths, list)
+            or not paths
+            or any(not isinstance(value, str) for value in paths)
+        ):
+            handler.send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"ok": False, "error": "'paths' must be a non-empty array of strings"},
+            )
             return True
         include_patterns = body.get("include") or []
         exclude_patterns = body.get("exclude") or []
-        if not isinstance(include_patterns, list) or any(not isinstance(value, str) for value in include_patterns):
-            handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'include' must be an array of strings"})
+        if not isinstance(include_patterns, list) or any(
+            not isinstance(value, str) for value in include_patterns
+        ):
+            handler.send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"ok": False, "error": "'include' must be an array of strings"},
+            )
             return True
-        if not isinstance(exclude_patterns, list) or any(not isinstance(value, str) for value in exclude_patterns):
-            handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'exclude' must be an array of strings"})
+        if not isinstance(exclude_patterns, list) or any(
+            not isinstance(value, str) for value in exclude_patterns
+        ):
+            handler.send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"ok": False, "error": "'exclude' must be an array of strings"},
+            )
             return True
         try:
             namespace = validate_namespace(body.get("namespace"), default_to_default=True)
@@ -198,7 +221,9 @@ def handle_ingestion_post(handler, deps, parsed) -> bool:
             recursive=parse_bool(body.get("recursive"), default=False),
             include_patterns=include_patterns,
             exclude_patterns=exclude_patterns,
-            max_bytes=body.get("max_bytes", settings.CONFIG.get("ingest_max_bytes", 8 * 1024 * 1024)),
+            max_bytes=body.get(
+                "max_bytes", settings.CONFIG.get("ingest_max_bytes", 8 * 1024 * 1024)
+            ),
             max_rows=body.get("max_rows", settings.CONFIG.get("ingest_max_rows", 2000)),
             max_pages=body.get("max_pages", settings.CONFIG.get("ingest_max_pages", 200)),
             max_slides=body.get("max_slides", settings.CONFIG.get("ingest_max_slides", 300)),
@@ -231,11 +256,21 @@ def handle_ingestion_post(handler, deps, parsed) -> bool:
 
         include_patterns = body.get("include") or []
         exclude_patterns = body.get("exclude") or []
-        if not isinstance(include_patterns, list) or any(not isinstance(value, str) for value in include_patterns):
-            handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'include' must be an array of strings"})
+        if not isinstance(include_patterns, list) or any(
+            not isinstance(value, str) for value in include_patterns
+        ):
+            handler.send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"ok": False, "error": "'include' must be an array of strings"},
+            )
             return True
-        if not isinstance(exclude_patterns, list) or any(not isinstance(value, str) for value in exclude_patterns):
-            handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'exclude' must be an array of strings"})
+        if not isinstance(exclude_patterns, list) or any(
+            not isinstance(value, str) for value in exclude_patterns
+        ):
+            handler.send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"ok": False, "error": "'exclude' must be an array of strings"},
+            )
             return True
 
         request_id = str(body.get("request_id") or uuid.uuid4())
@@ -267,6 +302,7 @@ def handle_ingestion_post(handler, deps, parsed) -> bool:
                 handler.wfile.flush()
 
             try:
+
                 def _on_progress(event_name: str, payload: dict):
                     mapped_name = "file_skipped" if event_name == "file_planned" else event_name
                     _emit(mapped_name, payload)
@@ -310,24 +346,36 @@ def handle_ingestion_post(handler, deps, parsed) -> bool:
                     namespace=namespace,
                 )
             )
-            handler.send_json(HTTPStatus.OK, {"ok": True, "request_id": request_id, "summary": summary})
+            handler.send_json(
+                HTTPStatus.OK, {"ok": True, "request_id": request_id, "summary": summary}
+            )
         except Exception as exc:
-            handler.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "request_id": request_id, "error": str(exc)})
+            handler.send_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"ok": False, "request_id": request_id, "error": str(exc)},
+            )
         return True
 
     if parsed.path in {"/ingest/upload", "/ingestion/upload"}:
         content_type = handler.headers.get("Content-Type", "")
         if "multipart/form-data" not in content_type:
-            handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "Content-Type must be multipart/form-data"})
+            handler.send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"ok": False, "error": "Content-Type must be multipart/form-data"},
+            )
             return True
         raw_len = handler.headers.get("Content-Length", "0")
         try:
             content_len = int(raw_len)
         except ValueError:
-            handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "invalid Content-Length"})
+            handler.send_json(
+                HTTPStatus.BAD_REQUEST, {"ok": False, "error": "invalid Content-Length"}
+            )
             return True
         if content_len <= 0:
-            handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "empty multipart body"})
+            handler.send_json(
+                HTTPStatus.BAD_REQUEST, {"ok": False, "error": "empty multipart body"}
+            )
             return True
         raw_body = handler.rfile.read(content_len)
         try:
@@ -336,7 +384,10 @@ def handle_ingestion_post(handler, deps, parsed) -> bool:
             handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
             return True
         if not uploaded:
-            handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "No file uploads provided under form field 'file'"})
+            handler.send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"ok": False, "error": "No file uploads provided under form field 'file'"},
+            )
             return True
         try:
             namespace = validate_namespace(fields.get("namespace"), default_to_default=True)
@@ -344,7 +395,9 @@ def handle_ingestion_post(handler, deps, parsed) -> bool:
             handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
             return True
         options = deps["build_options"](
-            max_bytes=fields.get("max_bytes", settings.CONFIG.get("ingest_max_bytes", 8 * 1024 * 1024)),
+            max_bytes=fields.get(
+                "max_bytes", settings.CONFIG.get("ingest_max_bytes", 8 * 1024 * 1024)
+            ),
             max_rows=fields.get("max_rows", settings.CONFIG.get("ingest_max_rows", 2000)),
             max_pages=fields.get("max_pages", settings.CONFIG.get("ingest_max_pages", 200)),
             max_slides=fields.get("max_slides", settings.CONFIG.get("ingest_max_slides", 300)),
@@ -371,7 +424,9 @@ def handle_ingestion_post(handler, deps, parsed) -> bool:
             return True
         doc_id = (body.get("doc_id") or "").strip()
         if not doc_id:
-            handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'doc_id' is required"})
+            handler.send_json(
+                HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'doc_id' is required"}
+            )
             return True
         try:
             deleted = deps["delete_doc"](doc_id)
@@ -394,15 +449,21 @@ def handle_ingestion_post(handler, deps, parsed) -> bool:
         try:
             top_k = int(body.get("top_k") or settings.CONFIG.get("top_k", 6))
         except (TypeError, ValueError):
-            handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'top_k' must be an integer"})
+            handler.send_json(
+                HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'top_k' must be an integer"}
+            )
             return True
         rerank = parse_bool(body.get("rerank"), default=True)
         filters = body.get("filters")
         if filters is not None and not isinstance(filters, dict):
-            handler.send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'filters' must be an object"})
+            handler.send_json(
+                HTTPStatus.BAD_REQUEST, {"ok": False, "error": "'filters' must be an object"}
+            )
             return True
         try:
-            results = deps["retrieval"].scored_chunks(query_text, top_k=top_k, rerank=rerank, filters=filters)
+            results = deps["retrieval"].scored_chunks(
+                query_text, top_k=top_k, rerank=rerank, filters=filters
+            )
             max_sources = int(settings.CONFIG.get("citation_max_sources", top_k))
             max_snippet_chars = int(settings.CONFIG.get("citation_max_snippet_chars", 240))
             sources = _extract_sources(results, max_sources=max_sources)
@@ -431,5 +492,3 @@ def handle_ingestion_post(handler, deps, parsed) -> bool:
         return True
 
     return False
-
-

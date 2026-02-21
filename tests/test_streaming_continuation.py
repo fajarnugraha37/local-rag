@@ -135,7 +135,9 @@ def test_stream_cancellation_path():
             continuation_instruction="continue",
             max_continuations=0,
             flush_interval_ms=999999,
-            cancel_check=lambda: (checks.__setitem__("count", checks["count"] + 1) or checks["count"] >= 3),
+            cancel_check=lambda: (
+                checks.__setitem__("count", checks["count"] + 1) or checks["count"] >= 3
+            ),
         )
     )
 
@@ -155,7 +157,7 @@ def test_streaming_config_toggles_are_loaded(tmp_path):
                 "max_continuations: 5",
                 "flush_interval_ms: 77",
                 "provider_timeout_s: 45",
-                "continuation_instruction: \"Keep going\"",
+                'continuation_instruction: "Keep going"',
             ]
         ),
         encoding="utf-8",

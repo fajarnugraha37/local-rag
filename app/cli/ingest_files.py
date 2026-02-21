@@ -17,16 +17,28 @@ def _build_parser() -> argparse.ArgumentParser:
         default=[],
         help="File or directory path to ingest. Repeat --path for multiple inputs.",
     )
-    parser.add_argument("--recursive", action="store_true", help="Recursively ingest files inside directories.")
-    parser.add_argument("--include", action="append", default=[], help="Glob include filter (repeatable).")
-    parser.add_argument("--exclude", action="append", default=[], help="Glob exclude filter (repeatable).")
+    parser.add_argument(
+        "--recursive", action="store_true", help="Recursively ingest files inside directories."
+    )
+    parser.add_argument(
+        "--include", action="append", default=[], help="Glob include filter (repeatable)."
+    )
+    parser.add_argument(
+        "--exclude", action="append", default=[], help="Glob exclude filter (repeatable)."
+    )
     parser.add_argument("--max-bytes", type=int, default=None, help="Max bytes per file.")
-    parser.add_argument("--max-rows", type=int, default=None, help="Max rows/records per structured file.")
+    parser.add_argument(
+        "--max-rows", type=int, default=None, help="Max rows/records per structured file."
+    )
     parser.add_argument("--max-pages", type=int, default=None, help="Max pages for PDF.")
     parser.add_argument("--max-slides", type=int, default=None, help="Max slides for PPT/PPTX.")
     parser.add_argument("--max-sheets", type=int, default=None, help="Max sheets for XLS/XLSX.")
     parser.add_argument("--fail-fast", action="store_true", help="Stop on first failed file.")
-    parser.add_argument("--namespace", default=None, help="Namespace to assign to ingested chunks (default: default).")
+    parser.add_argument(
+        "--namespace",
+        default=None,
+        help="Namespace to assign to ingested chunks (default: default).",
+    )
     return parser
 
 

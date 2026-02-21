@@ -44,7 +44,9 @@ def ollama_chat(
     enable_thinking_summary=False,
 ):
     top_k = int(settings.CONFIG.get("top_k", 3))
-    retrieved_chunks = get_relevant_context(user_input, vault_embeddings, vault_content, top_k=top_k)
+    retrieved_chunks = get_relevant_context(
+        user_input, vault_embeddings, vault_content, top_k=top_k
+    )
     user_input_with_context, source_blocks = chat_service.build_context_prompt(
         user_input,
         retrieved_chunks,
@@ -111,7 +113,9 @@ def main():
     parser.add_argument(
         "--per-call-max-tokens",
         type=int,
-        default=settings.CONFIG.get("per_call_max_tokens", settings.CONFIG.get("chat_max_tokens", 4000)),
+        default=settings.CONFIG.get(
+            "per_call_max_tokens", settings.CONFIG.get("chat_max_tokens", 4000)
+        ),
         help="Token cap per streaming call before continuation.",
     )
     parser.add_argument(
@@ -163,7 +167,9 @@ def main():
     )
 
     while True:
-        user_input = input(YELLOW + "Ask a question about your documents (or type 'quit' to exit): " + RESET_COLOR)
+        user_input = input(
+            YELLOW + "Ask a question about your documents (or type 'quit' to exit): " + RESET_COLOR
+        )
         if user_input.lower() == "quit":
             break
 

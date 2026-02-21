@@ -15,7 +15,9 @@ def extract_citation_ids(text: str) -> List[int]:
     return [int(match) for match in _CITATION_RE.findall(text)]
 
 
-def validate_citation_ids(citation_ids: Iterable[int], sources: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
+def validate_citation_ids(
+    citation_ids: Iterable[int], sources: Iterable[Dict[str, Any]]
+) -> Dict[str, Any]:
     valid_ids: Set[int] = {
         int(item.get("citation_index"))
         for item in (sources or [])
@@ -41,7 +43,9 @@ def strip_citation_markers(text: str) -> str:
     return cleaned.strip()
 
 
-def _render_sources_section(sources: Iterable[Dict[str, Any]], max_sources: int, max_snippet_chars: int) -> str:
+def _render_sources_section(
+    sources: Iterable[Dict[str, Any]], max_sources: int, max_snippet_chars: int
+) -> str:
     selected = list(sources or [])[: max(0, max_sources)]
     if not selected:
         return "Sources: none."

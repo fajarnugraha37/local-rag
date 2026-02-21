@@ -53,18 +53,26 @@ def handle_chat_stream_get(handler, deps, parsed) -> bool:
     try:
         model = (query.get("model") or [settings.CONFIG.get("ollama_model", "llama3")])[0]
         top_k = int((query.get("top_k") or [settings.CONFIG.get("top_k", 3)])[0])
-        max_continuations = int((query.get("max_continuations") or [settings.CONFIG.get("max_continuations", 2)])[0])
+        max_continuations = int(
+            (query.get("max_continuations") or [settings.CONFIG.get("max_continuations", 2)])[0]
+        )
         per_call_max_tokens = int(
             (
                 query.get("per_call_max_tokens")
-                or [settings.CONFIG.get("per_call_max_tokens", settings.CONFIG.get("chat_max_tokens", 4000))]
+                or [
+                    settings.CONFIG.get(
+                        "per_call_max_tokens", settings.CONFIG.get("chat_max_tokens", 4000)
+                    )
+                ]
             )[0]
         )
     except ValueError:
         handler.send_error(HTTPStatus.BAD_REQUEST, "Invalid numeric query parameter")
         return True
 
-    enable_thinking_summary_raw = (query.get("enable_thinking_summary") or ["false"])[0].strip().lower()
+    enable_thinking_summary_raw = (
+        (query.get("enable_thinking_summary") or ["false"])[0].strip().lower()
+    )
     enable_thinking_summary = enable_thinking_summary_raw in {"1", "true", "yes", "on"}
 
     timeout = settings.CONFIG.get("provider_timeout_s", settings.CONFIG.get("model_timeout", 120))
@@ -109,7 +117,9 @@ def handle_chat_stream_get(handler, deps, parsed) -> bool:
                         source_blocks,
                         mode="inline",
                         max_sources=int(settings.CONFIG.get("citation_max_sources", top_k)),
-                        max_snippet_chars=int(settings.CONFIG.get("citation_max_snippet_chars", 240)),
+                        max_snippet_chars=int(
+                            settings.CONFIG.get("citation_max_snippet_chars", 240)
+                        ),
                     ).get("stats", {})
                     handler.wfile.write(to_sse("citation_stats", {"stats": stats_payload}))
             handler.wfile.write(to_sse(name, payload))
@@ -119,7 +129,9 @@ def handle_chat_stream_get(handler, deps, parsed) -> bool:
     except Exception as exc:
         handler.log_exception("chat_stream_failed", exc)
         try:
-            handler.wfile.write(to_sse("error", {"message": "server_stream_error", "detail": str(exc)}))
+            handler.wfile.write(
+                to_sse("error", {"message": "server_stream_error", "detail": str(exc)})
+            )
             handler.wfile.write(to_sse("done", {"cancelled": True}))
             handler.wfile.flush()
         except Exception:

@@ -32,7 +32,9 @@ def _load_chunks(path: str) -> List[Dict[str, Any]]:
     return out
 
 
-def _load_embeddings_map(path: Optional[str], embedding_model: Optional[str]) -> Dict[str, List[float]]:
+def _load_embeddings_map(
+    path: Optional[str], embedding_model: Optional[str]
+) -> Dict[str, List[float]]:
     out: Dict[str, List[float]] = {}
     if not path or not os.path.exists(path):
         return out
@@ -47,7 +49,11 @@ def _load_embeddings_map(path: Optional[str], embedding_model: Optional[str]) ->
                 continue
             if not isinstance(obj, dict):
                 continue
-            if embedding_model and obj.get("embedding_model") and obj.get("embedding_model") != embedding_model:
+            if (
+                embedding_model
+                and obj.get("embedding_model")
+                and obj.get("embedding_model") != embedding_model
+            ):
                 continue
             cid = obj.get("chunk_id")
             emb = obj.get("embedding")
@@ -206,4 +212,3 @@ def main() -> None:
         retries=max(0, int(args.retries)),
         retry_delay_s=max(0.0, float(args.retry_delay_s)),
     )
-

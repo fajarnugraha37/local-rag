@@ -68,13 +68,19 @@ def stream_chat_answer(
     formatting,
     error_message: str,
 ):
-    provider_timeout = settings.CONFIG.get("provider_timeout_s", settings.CONFIG.get("model_timeout", 120))
+    provider_timeout = settings.CONFIG.get(
+        "provider_timeout_s", settings.CONFIG.get("model_timeout", 120)
+    )
     flush_interval_ms = settings.CONFIG.get("flush_interval_ms", 250)
     effective_per_call_tokens = per_call_max_tokens or settings.CONFIG.get(
         "per_call_max_tokens",
         settings.CONFIG.get("chat_max_tokens", 4000),
     )
-    effective_max_continuations = settings.CONFIG.get("max_continuations", 2) if max_continuations is None else max_continuations
+    effective_max_continuations = (
+        settings.CONFIG.get("max_continuations", 2)
+        if max_continuations is None
+        else max_continuations
+    )
     continuation_instruction = settings.CONFIG.get(
         "continuation_instruction",
         "Continue exactly where you left off. Do not repeat prior text.",

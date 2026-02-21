@@ -23,7 +23,9 @@ def test_folder_ingest_skips_unchanged_files(tmp_path, monkeypatch):
         calls["count"] += 1
         return {"path": path, "status": "ok", "chunks_count": 1}
 
-    monkeypatch.setattr("app.ingestion.folder_ingest_service.ingest_single_path", fake_ingest_single_path)
+    monkeypatch.setattr(
+        "app.ingestion.folder_ingest_service.ingest_single_path", fake_ingest_single_path
+    )
 
     first = ingest_folder(FolderIngestOptions(path=str(root), state_path=str(state_path)))
     assert first["ingested"] == 2
@@ -37,7 +39,9 @@ def test_folder_ingest_skips_unchanged_files(tmp_path, monkeypatch):
     assert calls["count"] == 2
     assert all(item["reason"] == "unchanged_stat" for item in second["files"])
 
-    forced = ingest_folder(FolderIngestOptions(path=str(root), state_path=str(state_path), force=True))
+    forced = ingest_folder(
+        FolderIngestOptions(path=str(root), state_path=str(state_path), force=True)
+    )
     assert forced["ingested"] == 2
     assert forced["skipped"] == 0
     assert calls["count"] == 4
@@ -54,9 +58,13 @@ def test_folder_ingest_dry_run_has_no_writes(tmp_path, monkeypatch):
         calls["count"] += 1
         return {"path": path, "status": "ok", "chunks_count": 1}
 
-    monkeypatch.setattr("app.ingestion.folder_ingest_service.ingest_single_path", fake_ingest_single_path)
+    monkeypatch.setattr(
+        "app.ingestion.folder_ingest_service.ingest_single_path", fake_ingest_single_path
+    )
 
-    result = ingest_folder(FolderIngestOptions(path=str(root), state_path=str(state_path), dry_run=True))
+    result = ingest_folder(
+        FolderIngestOptions(path=str(root), state_path=str(state_path), dry_run=True)
+    )
     assert result["dry_run"] is True
     assert result["ingested"] == 1
     assert result["skipped"] == 0
@@ -88,7 +96,9 @@ def test_folder_ingest_skips_too_large_file(tmp_path, monkeypatch):
         calls["count"] += 1
         return {"path": path, "status": "ok", "chunks_count": 1}
 
-    monkeypatch.setattr("app.ingestion.folder_ingest_service.ingest_single_path", fake_ingest_single_path)
+    monkeypatch.setattr(
+        "app.ingestion.folder_ingest_service.ingest_single_path", fake_ingest_single_path
+    )
 
     result = ingest_folder(
         FolderIngestOptions(
@@ -114,7 +124,9 @@ def test_folder_ingest_skips_unreadable_file(tmp_path, monkeypatch):
         calls["count"] += 1
         return {"path": path, "status": "ok", "chunks_count": 1}
 
-    monkeypatch.setattr("app.ingestion.folder_ingest_service.ingest_single_path", fake_ingest_single_path)
+    monkeypatch.setattr(
+        "app.ingestion.folder_ingest_service.ingest_single_path", fake_ingest_single_path
+    )
     monkeypatch.setattr("app.ingestion.folder_ingest_service._is_file_readable", lambda path: False)
 
     result = ingest_folder(FolderIngestOptions(path=str(root), state_path=str(state_path)))

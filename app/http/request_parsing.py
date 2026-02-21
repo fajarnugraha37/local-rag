@@ -34,7 +34,9 @@ def read_json(handler) -> dict:
     return body
 
 
-def parse_multipart_upload(content_type: str, raw_body: bytes) -> tuple[list[tuple[str, bytes]], dict[str, str]]:
+def parse_multipart_upload(
+    content_type: str, raw_body: bytes
+) -> tuple[list[tuple[str, bytes]], dict[str, str]]:
     boundary_match = re.search(r"boundary=([^;]+)", content_type or "", flags=re.IGNORECASE)
     if not boundary_match:
         raise ValueError("missing multipart boundary")

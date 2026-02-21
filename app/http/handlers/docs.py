@@ -21,12 +21,18 @@ def handle_docs_get(handler, deps, parsed) -> bool:
         handler.send_error_json(HTTPStatus.BAD_REQUEST, "'limit' must be an integer")
         return True
     try:
-        namespace = validate_namespace(namespace_raw, default_to_default=True) if namespace_raw is not None else None
+        namespace = (
+            validate_namespace(namespace_raw, default_to_default=True)
+            if namespace_raw is not None
+            else None
+        )
     except ValueError as exc:
         handler.send_error_json(HTTPStatus.BAD_REQUEST, str(exc))
         return True
     try:
-        store = deps["DocRegistryStore"](str(settings.CONFIG.get("doc_registry_path", "data/doc_registry.json")))
+        store = deps["DocRegistryStore"](
+            str(settings.CONFIG.get("doc_registry_path", "data/doc_registry.json"))
+        )
         payload = store.list_docs(namespace=namespace, limit=limit, cursor=cursor)
         handler.send_json(HTTPStatus.OK, {"ok": True, **payload})
     except Exception as exc:
@@ -41,7 +47,7 @@ def handle_docs_delete(handler, deps, parsed) -> bool:
 
     settings = deps["settings"]
     validate_namespace = deps["validate_namespace"]
-    doc_id = parsed.path[len("/docs/"):].strip()
+    doc_id = parsed.path[len("/docs/") :].strip()
     if not doc_id:
         handler.send_error_json(HTTPStatus.BAD_REQUEST, "'doc_id' is required")
         return True
@@ -60,8 +66,12 @@ def handle_docs_delete(handler, deps, parsed) -> bool:
             return True
 
     try:
-        vectors_deleted = deps["delete_doc"](doc_id, namespace=namespace, all_namespaces=all_namespaces)
-        registry_store = deps["DocRegistryStore"](str(settings.CONFIG.get("doc_registry_path", "data/doc_registry.json")))
+        vectors_deleted = deps["delete_doc"](
+            doc_id, namespace=namespace, all_namespaces=all_namespaces
+        )
+        registry_store = deps["DocRegistryStore"](
+            str(settings.CONFIG.get("doc_registry_path", "data/doc_registry.json"))
+        )
         registry_deleted = 0
         if all_namespaces:
             page = registry_store.list_docs(limit=100000)

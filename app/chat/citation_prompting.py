@@ -32,7 +32,9 @@ def build_source_blocks(
             "doc_id": str(source.get("doc_id") or row.get("doc_id") or ""),
             "namespace": str(source.get("namespace") or row.get("namespace") or ""),
             "path": str(source.get("path") or row.get("source_path") or ""),
-            "snippet": normalize_snippet(source.get("snippet") or row.get("text") or "", max_chars=max_snippet_chars),
+            "snippet": normalize_snippet(
+                source.get("snippet") or row.get("text") or "", max_chars=max_snippet_chars
+            ),
         }
         blocks.append(block)
         if max_sources is not None and len(blocks) >= max_sources:
@@ -46,7 +48,9 @@ def format_source_blocks_text(source_blocks: Iterable[Dict[str, Any]]) -> str:
         locator = block.get("locator")
         locator_part = f" | {locator}" if locator else ""
         lines.append(f"[{block['citation_index']}] {block['title']}{locator_part}")
-        lines.append(f"doc_id={block['doc_id']} namespace={block['namespace']} path={block['path']}")
+        lines.append(
+            f"doc_id={block['doc_id']} namespace={block['namespace']} path={block['path']}"
+        )
         lines.append(str(block.get("snippet") or ""))
         lines.append("")
     return "\n".join(lines).strip()

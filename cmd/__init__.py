@@ -33,4 +33,3 @@ def _load_stdlib_cmd() -> Optional[ModuleType]:
 _stdlib_cmd = _load_stdlib_cmd()
 if _stdlib_cmd is not None and hasattr(_stdlib_cmd, "Cmd"):
     Cmd = _stdlib_cmd.Cmd
-

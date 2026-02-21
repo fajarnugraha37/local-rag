@@ -1,2 +1,1 @@
 """Server mode wrapper."""
-

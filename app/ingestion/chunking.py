@@ -11,7 +11,9 @@ def _split_heading_blocks(text: str) -> List[str]:
     blocks: List[str] = []
     current: List[str] = []
 
-    heading_pattern = re.compile(r"^(#{1,6}\s+|=+\s*$|-+\s*$|\*\s+|\d+\.\s+|\.\.|[A-Z][A-Za-z\s]{0,80}:$)")
+    heading_pattern = re.compile(
+        r"^(#{1,6}\s+|=+\s*$|-+\s*$|\*\s+|\d+\.\s+|\.\.|[A-Z][A-Za-z\s]{0,80}:$)"
+    )
     for line in lines:
         if heading_pattern.match(line.strip()) and current:
             blocks.append("\n".join(current).strip())
@@ -73,7 +75,9 @@ def chunk_unit(text: str, doc_type: str, *, max_tokens: int, overlap_tokens: int
     parts = split_for_doc_type(text, doc_type)
     output: List[str] = []
     for part in parts:
-        output.extend(chunk_text_with_tokens(part, max_tokens=max_tokens, overlap_tokens=overlap_tokens))
+        output.extend(
+            chunk_text_with_tokens(part, max_tokens=max_tokens, overlap_tokens=overlap_tokens)
+        )
     return output
 
 

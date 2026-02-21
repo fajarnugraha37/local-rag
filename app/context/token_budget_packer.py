@@ -13,7 +13,13 @@ from app.config import runtime_settings as settings
 from app.context.token_chunking import estimate_token_count, chunk_by_tokens
 
 
-def pack_context(query: str, chunks: List[str], tokenizer=None, max_tokens: Optional[int] = None, overlap_tokens: int = 20) -> List[str]:
+def pack_context(
+    query: str,
+    chunks: List[str],
+    tokenizer=None,
+    max_tokens: Optional[int] = None,
+    overlap_tokens: int = 20,
+) -> List[str]:
     """Pack `chunks` (list of strings) into a list whose total estimated token
     count does not exceed `max_tokens`.
 
@@ -25,7 +31,7 @@ def pack_context(query: str, chunks: List[str], tokenizer=None, max_tokens: Opti
         return []
 
     if max_tokens is None:
-        max_tokens = settings.CONFIG.get('context_token_budget', 1500)
+        max_tokens = settings.CONFIG.get("context_token_budget", 1500)
 
     selected: List[str] = []
     total_tokens = 0
@@ -41,7 +47,9 @@ def pack_context(query: str, chunks: List[str], tokenizer=None, max_tokens: Opti
         # doesn't fit
         if not selected:
             # try to split the large chunk and take the first piece
-            subchunks = chunk_by_tokens(chunk, max_tokens=max_tokens, overlap=overlap_tokens, tokenizer=tokenizer)
+            subchunks = chunk_by_tokens(
+                chunk, max_tokens=max_tokens, overlap=overlap_tokens, tokenizer=tokenizer
+            )
             if subchunks:
                 chosen = subchunks[0]
                 selected.append(chosen)

@@ -14,7 +14,9 @@ from app.storage.chroma_vector_store import ChromaVectorStore
 
 def backfill_namespaces(*, batch_size: int = 500) -> Dict[str, int]:
     store = ChromaVectorStore()
-    registry = DocRegistryStore(str(settings.CONFIG.get("doc_registry_path", "data/doc_registry.json")))
+    registry = DocRegistryStore(
+        str(settings.CONFIG.get("doc_registry_path", "data/doc_registry.json"))
+    )
 
     total = store.count()
     offset = 0
@@ -67,7 +69,9 @@ def backfill_namespaces(*, batch_size: int = 500) -> Dict[str, int]:
             agg = docs_agg[key]
             agg["chunk_count"] = int(agg["chunk_count"]) + 1
             agg["source_path"] = str(metadata.get("source") or agg["source_path"] or "")
-            agg["title"] = str(agg["title"] or os.path.basename(str(metadata.get("source") or "")) or doc_id)
+            agg["title"] = str(
+                agg["title"] or os.path.basename(str(metadata.get("source") or "")) or doc_id
+            )
             agg["size_bytes"] = int(agg["size_bytes"]) + len(document.encode("utf-8"))
             agg["texts"].append(document)
 
@@ -104,8 +108,12 @@ def backfill_namespaces(*, batch_size: int = 500) -> Dict[str, int]:
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Backfill namespace metadata and doc registry from existing vectors.")
-    parser.add_argument("--batch-size", type=int, default=500, help="Batch size for scanning/updating vector rows.")
+    parser = argparse.ArgumentParser(
+        description="Backfill namespace metadata and doc registry from existing vectors."
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=500, help="Batch size for scanning/updating vector rows."
+    )
     return parser
 
 

@@ -140,12 +140,17 @@ class DocRegistryStore:
             source_type=str(source_type or (existing.source_type if existing else "file")),
             title=str(title or (existing.title if existing else key[1])),
             content_hash=str(content_hash or (existing.content_hash if existing else "")),
-            chunk_count=int(chunk_count if chunk_count else (existing.chunk_count if existing else 0)),
+            chunk_count=int(
+                chunk_count if chunk_count else (existing.chunk_count if existing else 0)
+            ),
             created_at=created_at,
             updated_at=now,
             last_ingested_at=str(last_ingested_at or now),
             size_bytes=int(size_bytes if size_bytes else (existing.size_bytes if existing else 0)),
-            tags=[str(tag) for tag in (tags if tags is not None else (existing.tags if existing else []))],
+            tags=[
+                str(tag)
+                for tag in (tags if tags is not None else (existing.tags if existing else []))
+            ],
         )
         self._records[key] = record
         return record
@@ -165,7 +170,11 @@ class DocRegistryStore:
         self._load()
         safe_limit = max(1, int(limit or 50))
         cursor_key = self._decode_key(cursor) if cursor else None
-        namespace_filter = validate_namespace(namespace, default_to_default=True) if namespace is not None else None
+        namespace_filter = (
+            validate_namespace(namespace, default_to_default=True)
+            if namespace is not None
+            else None
+        )
 
         keys = sorted(self._records.keys())
         rows: List[DocRegistryRecord] = []

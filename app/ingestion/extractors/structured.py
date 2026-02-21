@@ -9,10 +9,20 @@ from typing import List, Optional
 from bs4 import BeautifulSoup
 
 from .base import ExtractedDocument, ExtractedUnit, ExtractorContext
-from .utils import batch_lines, json_pretty, normalize_text, read_bytes, read_text, safe_decode, strip_json_comments
+from .utils import (
+    batch_lines,
+    json_pretty,
+    normalize_text,
+    read_bytes,
+    read_text,
+    safe_decode,
+    strip_json_comments,
+)
 
 
-def extract_json(path: str, raw_bytes: Optional[bytes], context: ExtractorContext) -> ExtractedDocument:
+def extract_json(
+    path: str, raw_bytes: Optional[bytes], context: ExtractorContext
+) -> ExtractedDocument:
     warnings: List[str] = []
     if raw_bytes is None:
         raw_text, _ = read_text(path, max_bytes=context.max_bytes)
@@ -21,7 +31,7 @@ def extract_json(path: str, raw_bytes: Optional[bytes], context: ExtractorContex
         raw_text = normalize_text(decoded)
 
     lower_name = os.path.basename(path).lower()
-    is_jsonc = lower_name.endswith('.jsonc')
+    is_jsonc = lower_name.endswith(".jsonc")
 
     source = strip_json_comments(raw_text) if is_jsonc else raw_text
     try:
@@ -31,11 +41,15 @@ def extract_json(path: str, raw_bytes: Optional[bytes], context: ExtractorContex
         warnings.append(f"json_parse_failed: {exc}")
         text = normalize_text(raw_text)
 
-    doc_type = "openapi" if lower_name.endswith(".openapi.json") else ("jsonc" if is_jsonc else "json")
+    doc_type = (
+        "openapi" if lower_name.endswith(".openapi.json") else ("jsonc" if is_jsonc else "json")
+    )
     return ExtractedDocument(doc_type=doc_type, units=[ExtractedUnit(text=text)], warnings=warnings)
 
 
-def extract_json_lines(path: str, raw_bytes: Optional[bytes], context: ExtractorContext) -> ExtractedDocument:
+def extract_json_lines(
+    path: str, raw_bytes: Optional[bytes], context: ExtractorContext
+) -> ExtractedDocument:
     warnings: List[str] = []
     if raw_bytes is None:
         text, _ = read_text(path, max_bytes=context.max_bytes)
@@ -57,12 +71,16 @@ def extract_json_lines(path: str, raw_bytes: Optional[bytes], context: Extractor
         except Exception:
             payload = normalize_text(stripped)
             warnings.append(f"jsonl_line_parse_failed_at_line={idx}")
-        units.append(ExtractedUnit(text=payload, metadata={"row_number": idx, "json_pointer": f"/{idx}"}))
+        units.append(
+            ExtractedUnit(text=payload, metadata={"row_number": idx, "json_pointer": f"/{idx}"})
+        )
 
     return ExtractedDocument(doc_type="jsonl", units=units, warnings=warnings)
 
 
-def extract_csv_tsv(path: str, raw_bytes: Optional[bytes], context: ExtractorContext) -> ExtractedDocument:
+def extract_csv_tsv(
+    path: str, raw_bytes: Optional[bytes], context: ExtractorContext
+) -> ExtractedDocument:
     warnings: List[str] = []
     lower_name = os.path.basename(path).lower()
     delimiter = "\t" if lower_name.endswith(".tsv") else ","
@@ -93,7 +111,9 @@ def extract_csv_tsv(path: str, raw_bytes: Optional[bytes], context: ExtractorCon
     return ExtractedDocument(doc_type=doc_type, units=units, warnings=warnings)
 
 
-def extract_html_svg(path: str, raw_bytes: Optional[bytes], context: ExtractorContext) -> ExtractedDocument:
+def extract_html_svg(
+    path: str, raw_bytes: Optional[bytes], context: ExtractorContext
+) -> ExtractedDocument:
     if raw_bytes is None:
         raw = read_bytes(path, max_bytes=context.max_bytes)
     else:
@@ -113,7 +133,9 @@ def extract_html_svg(path: str, raw_bytes: Optional[bytes], context: ExtractorCo
     return ExtractedDocument(doc_type=doc_type, units=[ExtractedUnit(text=full_text)])
 
 
-def extract_xml(path: str, raw_bytes: Optional[bytes], context: ExtractorContext) -> ExtractedDocument:
+def extract_xml(
+    path: str, raw_bytes: Optional[bytes], context: ExtractorContext
+) -> ExtractedDocument:
     warnings: List[str] = []
     if raw_bytes is None:
         raw = read_bytes(path, max_bytes=context.max_bytes)
@@ -140,13 +162,17 @@ def extract_xml(path: str, raw_bytes: Optional[bytes], context: ExtractorContext
     return ExtractedDocument(doc_type="xml", units=[ExtractedUnit(text=text)], warnings=warnings)
 
 
-def extract_har(path: str, raw_bytes: Optional[bytes], context: ExtractorContext) -> ExtractedDocument:
+def extract_har(
+    path: str, raw_bytes: Optional[bytes], context: ExtractorContext
+) -> ExtractedDocument:
     warnings: List[str] = []
     doc = extract_json(path, raw_bytes, context)
     try:
         payload = json.loads(doc.units[0].text)
     except Exception:
-        return ExtractedDocument(doc_type="har", units=doc.units, warnings=[*doc.warnings, "har_json_decode_failed"])
+        return ExtractedDocument(
+            doc_type="har", units=doc.units, warnings=[*doc.warnings, "har_json_decode_failed"]
+        )
 
     entries = payload.get("log", {}).get("entries", []) if isinstance(payload, dict) else []
     units: List[ExtractedUnit] = []
@@ -169,7 +195,9 @@ def extract_har(path: str, raw_bytes: Optional[bytes], context: ExtractorContext
     return ExtractedDocument(doc_type="har", units=units, warnings=[*doc.warnings, *warnings])
 
 
-def extract_log(path: str, raw_bytes: Optional[bytes], context: ExtractorContext) -> ExtractedDocument:
+def extract_log(
+    path: str, raw_bytes: Optional[bytes], context: ExtractorContext
+) -> ExtractedDocument:
     if raw_bytes is None:
         text, _ = read_text(path, max_bytes=context.max_bytes)
     else:

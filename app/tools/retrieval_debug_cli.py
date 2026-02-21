@@ -41,4 +41,3 @@ def main():
     )
     print("RESULT_LEN:", len(res))
     print(json.dumps(res, ensure_ascii=False, indent=2))
-

@@ -63,13 +63,17 @@ def test_scored_chunks_emits_provenance_and_dedupes_chunk_ids(tmp_path, monkeypa
         ]
     )
 
-    monkeypatch.setattr(retrieval, "get_query_embedding", lambda query, embedding_model=None: [0.1, 0.2, 0.3, 0.4])
+    monkeypatch.setattr(
+        retrieval, "get_query_embedding", lambda query, embedding_model=None: [0.1, 0.2, 0.3, 0.4]
+    )
 
     rows = retrieval.scored_chunks("banana", top_k=5, rerank=False)
     chunk_ids = [row["chunk_id"] for row in rows]
     assert chunk_ids.count("shared-chunk") == 1
 
     assert all(isinstance(row.get("source"), dict) for row in rows)
-    assert [row["source"]["source_id"] for row in rows] == [f"S{i}" for i in range(1, len(rows) + 1)]
+    assert [row["source"]["source_id"] for row in rows] == [
+        f"S{i}" for i in range(1, len(rows) + 1)
+    ]
     assert [row["source"]["citation_index"] for row in rows] == list(range(1, len(rows) + 1))
     assert all(row["source"]["locator"] for row in rows)

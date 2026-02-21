@@ -138,7 +138,9 @@ def main():
     parser.add_argument(
         "--per-call-max-tokens",
         type=int,
-        default=settings.CONFIG.get("per_call_max_tokens", settings.CONFIG.get("chat_max_tokens", 2000)),
+        default=settings.CONFIG.get(
+            "per_call_max_tokens", settings.CONFIG.get("chat_max_tokens", 2000)
+        ),
         help="Token cap per streaming call before continuation.",
     )
     parser.add_argument(
@@ -192,7 +194,9 @@ def main():
     system_message = config["system_message"]
 
     while True:
-        user_input = input(YELLOW + "Ask a question about your documents (or type 'quit' to exit): " + RESET_COLOR)
+        user_input = input(
+            YELLOW + "Ask a question about your documents (or type 'quit' to exit): " + RESET_COLOR
+        )
         if user_input.lower() == "quit":
             break
         response = ollama_chat(

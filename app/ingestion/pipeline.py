@@ -78,24 +78,34 @@ def build_options(**overrides) -> IngestOptions:
         "recursive": _to_bool(overrides.get("recursive"), False),
         "include_patterns": list(overrides.get("include_patterns") or []),
         "exclude_patterns": list(overrides.get("exclude_patterns") or []),
-        "max_bytes": _to_int(overrides.get("max_bytes"), cfg.get("ingest_max_bytes", 8 * 1024 * 1024)),
+        "max_bytes": _to_int(
+            overrides.get("max_bytes"), cfg.get("ingest_max_bytes", 8 * 1024 * 1024)
+        ),
         "max_rows": _to_int(overrides.get("max_rows"), cfg.get("ingest_max_rows", 2000)),
         "max_objects": _to_int(overrides.get("max_objects"), cfg.get("ingest_max_objects", 2000)),
         "max_pages": _to_int(overrides.get("max_pages"), cfg.get("ingest_max_pages", 200)),
         "max_slides": _to_int(overrides.get("max_slides"), cfg.get("ingest_max_slides", 300)),
         "max_sheets": _to_int(overrides.get("max_sheets"), cfg.get("ingest_max_sheets", 50)),
-        "max_zip_entries": _to_int(overrides.get("max_zip_entries"), cfg.get("ingest_zip_max_entries", 10000)),
+        "max_zip_entries": _to_int(
+            overrides.get("max_zip_entries"), cfg.get("ingest_zip_max_entries", 10000)
+        ),
         "max_zip_uncompressed_bytes": _to_int(
             overrides.get("max_zip_uncompressed_bytes"),
             cfg.get("ingest_zip_max_uncompressed_bytes", 128 * 1024 * 1024),
         ),
-        "ingest_timeout_s": _to_int(overrides.get("ingest_timeout_s"), cfg.get("ingest_timeout_s", 30)),
-        "chunk_max_tokens": _to_int(overrides.get("chunk_max_tokens"), cfg.get("chunk_max_tokens", 200)),
+        "ingest_timeout_s": _to_int(
+            overrides.get("ingest_timeout_s"), cfg.get("ingest_timeout_s", 30)
+        ),
+        "chunk_max_tokens": _to_int(
+            overrides.get("chunk_max_tokens"), cfg.get("chunk_max_tokens", 200)
+        ),
         "chunk_overlap_tokens": _to_int(
             overrides.get("chunk_overlap_tokens"),
             cfg.get("chunk_overlap_tokens", 20),
         ),
-        "enable_parquet": _to_bool(overrides.get("enable_parquet"), cfg.get("ingest_enable_parquet", True)),
+        "enable_parquet": _to_bool(
+            overrides.get("enable_parquet"), cfg.get("ingest_enable_parquet", True)
+        ),
         "enable_legacy_office": _to_bool(
             overrides.get("enable_legacy_office"), cfg.get("ingest_enable_legacy_office", True)
         ),
@@ -120,7 +130,9 @@ def _context(options: IngestOptions) -> ExtractorContext:
     )
 
 
-def _path_allowed(path: str, include_patterns: Sequence[str], exclude_patterns: Sequence[str]) -> bool:
+def _path_allowed(
+    path: str, include_patterns: Sequence[str], exclude_patterns: Sequence[str]
+) -> bool:
     normalized = path.replace("\\", "/")
     if include_patterns and not any(fnmatch.fnmatch(normalized, pat) for pat in include_patterns):
         return False
@@ -129,7 +141,13 @@ def _path_allowed(path: str, include_patterns: Sequence[str], exclude_patterns: 
     return True
 
 
-def _collect_paths(paths: Sequence[str], *, recursive: bool, include_patterns: Sequence[str], exclude_patterns: Sequence[str]) -> List[str]:
+def _collect_paths(
+    paths: Sequence[str],
+    *,
+    recursive: bool,
+    include_patterns: Sequence[str],
+    exclude_patterns: Sequence[str],
+) -> List[str]:
     resolved: List[str] = []
     for raw in paths:
         if not raw:
@@ -149,14 +167,18 @@ def _collect_paths(paths: Sequence[str], *, recursive: bool, include_patterns: S
             else:
                 for file_name in os.listdir(path):
                     file_path = os.path.join(path, file_name)
-                    if os.path.isfile(file_path) and _path_allowed(file_path, include_patterns, exclude_patterns):
+                    if os.path.isfile(file_path) and _path_allowed(
+                        file_path, include_patterns, exclude_patterns
+                    ):
                         resolved.append(file_path)
             continue
         resolved.append(path)
     return sorted(dict.fromkeys(resolved))
 
 
-def _chunks_for_document(path: str, doc, options: IngestOptions, ctx: ExtractorContext) -> List[Dict[str, object]]:
+def _chunks_for_document(
+    path: str, doc, options: IngestOptions, ctx: ExtractorContext
+) -> List[Dict[str, object]]:
     source_name = os.path.basename(path)
     ext_info = chunking.normalize_extension(source_name)
 
@@ -279,6 +301,7 @@ def ingest_single_path(
 
     ingest_progress = None
     if progress_callback:
+
         def _progress_with_file(stage, current, total, stats):
             merged = dict(stats or {})
             merged["file_path"] = path

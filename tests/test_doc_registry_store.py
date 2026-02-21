@@ -37,7 +37,9 @@ def test_doc_registry_pagination_and_stable_order(tmp_path):
         ("beta", "doc-1"),
     ]
     for namespace, doc_id in entries:
-        store.upsert(namespace=namespace, doc_id=doc_id, source_path=f"/x/{doc_id}.txt", chunk_count=1)
+        store.upsert(
+            namespace=namespace, doc_id=doc_id, source_path=f"/x/{doc_id}.txt", chunk_count=1
+        )
     store.save()
 
     page1 = store.list_docs(limit=2)

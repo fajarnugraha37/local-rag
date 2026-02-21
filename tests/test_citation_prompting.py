@@ -39,7 +39,9 @@ def test_build_citation_prompt_includes_numbered_sources_and_instruction():
             },
         },
     ]
-    prompt, blocks = build_citation_prompt("What happened?", retrieved, max_sources=2, max_snippet_chars=120)
+    prompt, blocks = build_citation_prompt(
+        "What happened?", retrieved, max_sources=2, max_snippet_chars=120
+    )
     assert len(blocks) == 2
     assert "[1] Doc A | page 2" in prompt
     assert "[2] Doc B | slide 4" in prompt

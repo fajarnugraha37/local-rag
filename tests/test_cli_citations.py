@@ -48,7 +48,9 @@ def test_chat_actions_help_exposes_citation_flags(capsys):
 
 def test_baseline_cli_output_matches_citation_modes(monkeypatch, capsys):
     monkeypatch.setattr(baseline_cli, "client", _DummyClient())
-    monkeypatch.setattr(baseline_cli, "get_relevant_context", lambda *args, **kwargs: _sample_source_rows())
+    monkeypatch.setattr(
+        baseline_cli, "get_relevant_context", lambda *args, **kwargs: _sample_source_rows()
+    )
 
     settings.CONFIG["citations"] = True
     settings.CONFIG["citations_mode"] = "none"

@@ -12,7 +12,9 @@ from .utils import check_zip_safety, normalize_text, read_bytes
 
 
 @contextmanager
-def _bytes_as_temp_file(raw_bytes: Optional[bytes], *, suffix: str) -> Generator[Optional[str], None, None]:
+def _bytes_as_temp_file(
+    raw_bytes: Optional[bytes], *, suffix: str
+) -> Generator[Optional[str], None, None]:
     if raw_bytes is None:
         yield None
         return
@@ -36,7 +38,9 @@ def _load_raw(path: str, raw_bytes: Optional[bytes], context: ExtractorContext) 
     return read_bytes(path, max_bytes=context.max_bytes)
 
 
-def _extract_pdf_from_reader(reader, context: ExtractorContext, raw_pdf: bytes) -> ExtractedDocument:
+def _extract_pdf_from_reader(
+    reader, context: ExtractorContext, raw_pdf: bytes
+) -> ExtractedDocument:
     warnings: List[str] = []
     units: List[ExtractedUnit] = []
 
@@ -56,7 +60,10 @@ def _extract_pdf_from_reader(reader, context: ExtractorContext, raw_pdf: bytes) 
         # Best-effort fallback for PDFs where page-level extraction fails.
         text_candidates = re.findall(rb"[A-Za-z0-9][A-Za-z0-9 ,.;:()\\-]{12,}", raw_pdf)
         if text_candidates:
-            merged = "\n".join(normalize_text(item.decode("latin-1", errors="ignore")) for item in text_candidates[:40])
+            merged = "\n".join(
+                normalize_text(item.decode("latin-1", errors="ignore"))
+                for item in text_candidates[:40]
+            )
             merged = normalize_text(merged)
             if merged:
                 units.append(ExtractedUnit(text=merged, metadata={"page_number": 1}))
@@ -65,7 +72,9 @@ def _extract_pdf_from_reader(reader, context: ExtractorContext, raw_pdf: bytes) 
     return ExtractedDocument(doc_type="pdf", units=units, warnings=warnings)
 
 
-def extract_pdf(path: str, raw_bytes: Optional[bytes], context: ExtractorContext) -> ExtractedDocument:
+def extract_pdf(
+    path: str, raw_bytes: Optional[bytes], context: ExtractorContext
+) -> ExtractedDocument:
     try:
         import PyPDF2
     except Exception as exc:  # pragma: no cover
@@ -76,7 +85,9 @@ def extract_pdf(path: str, raw_bytes: Optional[bytes], context: ExtractorContext
     return _extract_pdf_from_reader(reader, context, raw_pdf)
 
 
-def extract_docx(path: str, raw_bytes: Optional[bytes], context: ExtractorContext) -> ExtractedDocument:
+def extract_docx(
+    path: str, raw_bytes: Optional[bytes], context: ExtractorContext
+) -> ExtractedDocument:
     try:
         import docx  # type: ignore
     except Exception as exc:  # pragma: no cover
@@ -100,7 +111,9 @@ def extract_docx(path: str, raw_bytes: Optional[bytes], context: ExtractorContex
     return ExtractedDocument(doc_type="docx", units=units, warnings=warnings)
 
 
-def extract_pptx(path: str, raw_bytes: Optional[bytes], context: ExtractorContext) -> ExtractedDocument:
+def extract_pptx(
+    path: str, raw_bytes: Optional[bytes], context: ExtractorContext
+) -> ExtractedDocument:
     try:
         from pptx import Presentation  # type: ignore
     except Exception as exc:  # pragma: no cover
@@ -136,7 +149,9 @@ def extract_pptx(path: str, raw_bytes: Optional[bytes], context: ExtractorContex
     return ExtractedDocument(doc_type="pptx", units=units, warnings=warnings)
 
 
-def extract_xlsx(path: str, raw_bytes: Optional[bytes], context: ExtractorContext) -> ExtractedDocument:
+def extract_xlsx(
+    path: str, raw_bytes: Optional[bytes], context: ExtractorContext
+) -> ExtractedDocument:
     try:
         from openpyxl import load_workbook  # type: ignore
     except Exception as exc:  # pragma: no cover
@@ -163,7 +178,9 @@ def extract_xlsx(path: str, raw_bytes: Optional[bytes], context: ExtractorContex
             sheet = workbook[sheet_name]
             for row_idx, row in enumerate(sheet.iter_rows(values_only=True), start=1):
                 if row_idx > context.max_rows:
-                    warnings.append(f"xlsx_sheet_{sheet_name}_truncated_at_max_rows={context.max_rows}")
+                    warnings.append(
+                        f"xlsx_sheet_{sheet_name}_truncated_at_max_rows={context.max_rows}"
+                    )
                     break
                 values = ["" if cell is None else str(cell) for cell in row]
                 if not any(v.strip() for v in values):
@@ -214,9 +231,13 @@ def _ole_extract_strings(path: str, raw_bytes: Optional[bytes], context: Extract
     return "\n".join(strings)
 
 
-def extract_doc(path: str, raw_bytes: Optional[bytes], context: ExtractorContext) -> ExtractedDocument:
+def extract_doc(
+    path: str, raw_bytes: Optional[bytes], context: ExtractorContext
+) -> ExtractedDocument:
     if not context.enable_legacy_office:
-        return ExtractedDocument(doc_type="doc", units=[], warnings=["legacy_office_disabled_by_config"])
+        return ExtractedDocument(
+            doc_type="doc", units=[], warnings=["legacy_office_disabled_by_config"]
+        )
     try:
         text = _ole_extract_strings(path, raw_bytes, context)
     except MissingDependencyError:
@@ -229,9 +250,13 @@ def extract_doc(path: str, raw_bytes: Optional[bytes], context: ExtractorContext
     return ExtractedDocument(doc_type="doc", units=[ExtractedUnit(text=text)], warnings=[])
 
 
-def extract_ppt(path: str, raw_bytes: Optional[bytes], context: ExtractorContext) -> ExtractedDocument:
+def extract_ppt(
+    path: str, raw_bytes: Optional[bytes], context: ExtractorContext
+) -> ExtractedDocument:
     if not context.enable_legacy_office:
-        return ExtractedDocument(doc_type="ppt", units=[], warnings=["legacy_office_disabled_by_config"])
+        return ExtractedDocument(
+            doc_type="ppt", units=[], warnings=["legacy_office_disabled_by_config"]
+        )
     try:
         text = _ole_extract_strings(path, raw_bytes, context)
     except MissingDependencyError:
@@ -249,9 +274,13 @@ def extract_ppt(path: str, raw_bytes: Optional[bytes], context: ExtractorContext
     return ExtractedDocument(doc_type="ppt", units=units, warnings=[])
 
 
-def extract_xls(path: str, raw_bytes: Optional[bytes], context: ExtractorContext) -> ExtractedDocument:
+def extract_xls(
+    path: str, raw_bytes: Optional[bytes], context: ExtractorContext
+) -> ExtractedDocument:
     if not context.enable_legacy_office:
-        return ExtractedDocument(doc_type="xls", units=[], warnings=["legacy_office_disabled_by_config"])
+        return ExtractedDocument(
+            doc_type="xls", units=[], warnings=["legacy_office_disabled_by_config"]
+        )
 
     try:
         import xlrd  # type: ignore

@@ -19,8 +19,10 @@ def _print_cli_help() -> None:
     print()
     print("Examples:")
     print("  python .\\cmd\\app.py --cli chat --top-k 6 --stream")
-    print("  python .\\cmd\\app.py --cli query --query \"payment terms\" --top-k 6")
-    print("  python .\\cmd\\app.py --cli ingest-email --keyword \"invoice\" --startdate 01.01.2025 --enddate 31.01.2025")
+    print('  python .\\cmd\\app.py --cli query --query "payment terms" --top-k 6')
+    print(
+        '  python .\\cmd\\app.py --cli ingest-email --keyword "invoice" --startdate 01.01.2025 --enddate 31.01.2025'
+    )
 
 
 def run_cli(argv: Sequence[str]) -> int:

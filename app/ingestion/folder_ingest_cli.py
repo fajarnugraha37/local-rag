@@ -27,7 +27,9 @@ def run_folder_ingest(args) -> None:
         if event == "scan_done":
             scan_counts["scanned"] = int(payload.get("scanned") or 0)
             scan_counts["selected"] = int(payload.get("selected") or 0)
-            _render_progress(progress_counts, scanned=scan_counts["scanned"], selected=scan_counts["selected"])
+            _render_progress(
+                progress_counts, scanned=scan_counts["scanned"], selected=scan_counts["selected"]
+            )
             return
         if event in {"file_ingested", "file_planned"}:
             progress_counts["ingested"] += 1
@@ -40,7 +42,9 @@ def run_folder_ingest(args) -> None:
         file_path = str(payload.get("path") or "")
         reason = str(payload.get("reason") or "")
         print(f"[{event}] {file_path} reason={reason}")
-        _render_progress(progress_counts, scanned=scan_counts["scanned"], selected=scan_counts["selected"])
+        _render_progress(
+            progress_counts, scanned=scan_counts["scanned"], selected=scan_counts["selected"]
+        )
 
     result = ingest_folder(
         FolderIngestOptions(

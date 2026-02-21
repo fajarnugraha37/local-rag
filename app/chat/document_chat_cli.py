@@ -65,7 +65,9 @@ def split_think_and_final(text):
             rest = text[start + close.end() :].strip()
             final = rest if rest else None
             return (thinking, final)
-        fm = re.search(r"(?i)(\n\n|\r\n\r\n)(final answer[:\s]|final[:\s]|\*\*final\*\*)", text[start:])
+        fm = re.search(
+            r"(?i)(\n\n|\r\n\r\n)(final answer[:\s]|final[:\s]|\*\*final\*\*)", text[start:]
+        )
         if fm:
             thinking = text[start : start + fm.start()].strip()
             final = text[start + fm.end() :].strip()
@@ -88,7 +90,10 @@ def finalize_draft(draft_text, ollama_model):
         "You are a concise assistant. Given the draft below which may contain internal reasoning, "
         "produce a concise final answer only (no chain-of-thought), and return only the answer text."
     )
-    messages = [{"role": "system", "content": system_msg}, {"role": "user", "content": "Draft:\n\n" + draft_text}]
+    messages = [
+        {"role": "system", "content": system_msg},
+        {"role": "user", "content": "Draft:\n\n" + draft_text},
+    ]
     timeout = settings.CONFIG.get("model_timeout", 120)
     resp = _call_with_timeout(
         client.chat.completions.create,
@@ -174,7 +179,9 @@ def ollama_chat(
 
     if len(conversation_history) > 1:
         query_json = {"Query": user_input, "Rewritten Query": ""}
-        rewritten_query_json = rewrite_query(json.dumps(query_json), conversation_history, ollama_model)
+        rewritten_query_json = rewrite_query(
+            json.dumps(query_json), conversation_history, ollama_model
+        )
         rewritten_query_data = json.loads(rewritten_query_json)
         rewritten_query = rewritten_query_data["Rewritten Query"]
         print(PINK + "Original Query: " + user_input + RESET_COLOR)
@@ -182,7 +189,9 @@ def ollama_chat(
     else:
         rewritten_query = user_input
 
-    retrieved_chunks = get_relevant_context(rewritten_query, vault_embeddings, vault_content, top_k=top_k)
+    retrieved_chunks = get_relevant_context(
+        rewritten_query, vault_embeddings, vault_content, top_k=top_k
+    )
     user_input_with_context, source_blocks = chat_service.build_context_prompt(
         user_input,
         retrieved_chunks,
@@ -228,7 +237,9 @@ def ollama_chat(
         print(YELLOW + f"Chat response parsing failed: {exc}" + RESET_COLOR)
         return "Sorry, the chat request failed."
 
-    resp_text = chat_service.render_answer_with_citations(resp_text, source_blocks, settings=settings, top_k=top_k)
+    resp_text = chat_service.render_answer_with_citations(
+        resp_text, source_blocks, settings=settings, top_k=top_k
+    )
 
     thinking, final = split_think_and_final(resp_text)
     auto_finalize = settings.CONFIG.get("auto_finalize_thoughts", False)
@@ -293,7 +304,9 @@ def main():
     parser.add_argument(
         "--per-call-max-tokens",
         type=int,
-        default=settings.CONFIG.get("per_call_max_tokens", settings.CONFIG.get("chat_max_tokens", 4000)),
+        default=settings.CONFIG.get(
+            "per_call_max_tokens", settings.CONFIG.get("chat_max_tokens", 4000)
+        ),
         help="Token cap per streaming call before continuation.",
     )
     parser.add_argument(
@@ -347,7 +360,9 @@ def main():
     )
 
     while True:
-        user_input = input(YELLOW + "Ask a query about your documents (or type 'quit' to exit): " + RESET_COLOR)
+        user_input = input(
+            YELLOW + "Ask a query about your documents (or type 'quit' to exit): " + RESET_COLOR
+        )
         if user_input.lower() == "quit":
             break
 
@@ -374,7 +389,9 @@ def main():
                 print(NEON_GREEN + "Running multi-pass refinement (B)..." + RESET_COLOR)
                 extra_top_k = max(1, args.top_k * 2)
                 extra_rows = get_relevant_context(user_input, None, [], top_k=extra_top_k)
-                _, extra_blocks = chat_service.build_context_prompt(user_input, extra_rows, extra_top_k, settings)
+                _, extra_blocks = chat_service.build_context_prompt(
+                    user_input, extra_rows, extra_top_k, settings
+                )
                 extra_context_str = chat_service.context_blocks_to_text(extra_blocks)
                 refine_prompt = (
                     f"Refine the previous assistant response to the query:\n{user_input}\n\n"

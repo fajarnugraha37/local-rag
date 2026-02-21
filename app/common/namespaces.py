@@ -30,9 +30,7 @@ def validate_namespace(value: Optional[str], *, default_to_default: bool = True)
         raise ValueError("Namespace is required.")
 
     if not is_valid_namespace(candidate):
-        raise ValueError(
-            "Invalid namespace. Expected 1-64 chars matching [a-z0-9._-]."
-        )
+        raise ValueError("Invalid namespace. Expected 1-64 chars matching [a-z0-9._-].")
     return candidate
 
 

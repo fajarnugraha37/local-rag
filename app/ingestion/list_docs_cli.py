@@ -20,8 +20,14 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> None:
     parser = _build_parser()
     args = parser.parse_args(argv)
-    namespace = validate_namespace(args.namespace, default_to_default=True) if args.namespace is not None else None
-    store = DocRegistryStore(str(settings.CONFIG.get("doc_registry_path", "data/doc_registry.json")))
+    namespace = (
+        validate_namespace(args.namespace, default_to_default=True)
+        if args.namespace is not None
+        else None
+    )
+    store = DocRegistryStore(
+        str(settings.CONFIG.get("doc_registry_path", "data/doc_registry.json"))
+    )
     payload = store.list_docs(namespace=namespace, limit=int(args.limit), cursor=args.cursor)
     print(json.dumps({"ok": True, **payload}, ensure_ascii=False, indent=2))
 

@@ -14,7 +14,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Backfill legacy JSONL records into vector DB")
     parser.add_argument("--chunks-file", default=None)
     parser.add_argument("--embeddings-file", default=None)
-    parser.add_argument("--batch-size", type=int, default=settings.CONFIG.get("vector_db_batch_size", 64))
+    parser.add_argument(
+        "--batch-size", type=int, default=settings.CONFIG.get("vector_db_batch_size", 64)
+    )
     parser.add_argument(
         "--embedding-model",
         default=settings.CONFIG.get("embedding_model", "mxbai-embed-large"),
@@ -36,4 +38,3 @@ def main() -> None:
         f"skipped={summary['skipped']} errors={summary['errors']} "
         f"vector_count={summary['vector_count']}"
     )
-
