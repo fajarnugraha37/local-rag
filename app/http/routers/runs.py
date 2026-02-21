@@ -4,7 +4,7 @@ from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
 
 from app.config import runtime_settings as settings
-from app.http.sse import to_sse
+from app.http.sse_utils import to_sse
 from app.services.run_service import RunService
 
 router = APIRouter(prefix="/v1/runs", tags=["runs"])
@@ -51,3 +51,4 @@ def replay_run_events(run_id: str, limit: int = Query(default=1000, ge=1, le=500
         "X-Accel-Buffering": "no",
     }
     return StreamingResponse(event_iter(), media_type="text/event-stream; charset=utf-8", headers=headers)
+

@@ -187,7 +187,7 @@
   - `python .\cmd\app.py --server --help` works and starts FastAPI server.
 - Validation commands:
   - `python -m pytest -q`
-- Status: todo
+- Status: done
 
 ## T012: Docs + README + AGENTS + Makefile
 - Goal: Update documentation and workflows for FastAPI.

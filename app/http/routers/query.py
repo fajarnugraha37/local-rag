@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from app.config import runtime_settings as settings
 from app.http.schemas.query import QueryRequest
-from app.http.sse import to_sse
+from app.http.sse_utils import to_sse
 from app.services.query_service import QueryService
 
 router = APIRouter(prefix="/v1", tags=["query"])
@@ -99,3 +99,4 @@ def rerank(body: RerankRequest) -> dict:
         weights=body.weights,
     )
     return {"ok": True, **result}
+

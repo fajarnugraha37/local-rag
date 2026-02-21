@@ -20,16 +20,8 @@ from app.chat.citation_prompting import build_citation_prompt
 from app.chat.streaming_llm_client import stream_chat_with_continuation
 from app.common.namespaces import validate_namespace
 from app.config import runtime_settings as settings
-from app.http.handlers.actions import HTTP_ACTION_EXCLUDE, get_http_actions
-from app.http.handlers.chat import _build_messages
-from app.http.handlers.ingestion import (
-    _build_retrieval_answer,
-    _chunk_text_for_ingest,
-    _extract_sources,
-    _is_safe_folder_path,
-)
-from app.http.request_parsing import parse_bool
-from app.http.sse import to_sse
+from app.http.utils import parse_bool
+from app.http.sse_utils import to_sse
 from app.ingestion.doc_registry_store import DocRegistryStore
 from app.ingestion.folder_ingest_service import FolderIngestOptions, ingest_folder
 from app.ingestion.pipeline import build_options, ingest_paths, ingest_uploaded_files
@@ -37,6 +29,126 @@ from app.ingestion.vector_ingest_service import delete_doc, ingest_chunks
 from app.retrieval import hybrid_search as retrieval
 
 router = APIRouter(tags=["legacy"])
+HTTP_ACTION_EXCLUDE = {"chat", "chat-baseline", "chat-email", "ingest-files", "server"}
+
+
+def get_http_actions(action_specs: dict) -> list[str]:
+    return sorted(name for name in action_specs if name not in HTTP_ACTION_EXCLUDE)
+
+
+def _get_relevant_context(query: str, top_k: int):
+    try:
+        return retrieval.scored_chunks(query, top_k=top_k)
+    except Exception:
+        return []
+
+
+def _build_messages(question: str, top_k: int):
+    retrieved_chunks = _get_relevant_context(question, top_k=top_k)
+    user_text, source_blocks = build_citation_prompt(
+        question,
+        retrieved_chunks,
+        max_sources=top_k,
+        max_snippet_chars=int(settings.CONFIG.get("citation_max_snippet_chars", 500)),
+    )
+    system_message = settings.CONFIG.get(
+        "system_message",
+        "You are a helpful assistant that is an expert at extracting the most useful information from a given text.",
+    )
+    return [
+        {"role": "system", "content": system_message},
+        {"role": "user", "content": user_text},
+    ], source_blocks
+
+
+def _resolve_allowed_roots() -> list[str]:
+    raw = settings.CONFIG.get("ingest_allowed_roots")
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        values = [raw]
+    elif isinstance(raw, list):
+        values = [item for item in raw if isinstance(item, str)]
+    else:
+        return []
+    return [item for item in (value.strip() for value in values) if item]
+
+
+def _is_safe_folder_path(path: str) -> tuple[bool, str]:
+    raw = re.sub(r"\s+", " ", path or "").strip()
+    if not raw:
+        return False, "path is required"
+    try:
+        abs_path = os.path.abspath(raw)
+    except Exception:
+        return False, "invalid path"
+    normalized_abs = os.path.normpath(abs_path)
+    if os.path.dirname(normalized_abs) == normalized_abs:
+        return False, "scanning filesystem root is not allowed"
+    allowed_roots = _resolve_allowed_roots()
+    if not allowed_roots:
+        return True, ""
+    normalized = os.path.normcase(normalized_abs)
+    for root in allowed_roots:
+        candidate = os.path.normcase(os.path.abspath(root))
+        if normalized == candidate or normalized.startswith(candidate + os.sep):
+            return True, ""
+    return False, "path is outside configured allowed roots"
+
+
+def _chunk_text_for_ingest(text: str, max_chars: int) -> list[str]:
+    normalized = re.sub(r"\s+", " ", text or "").strip()
+    if not normalized:
+        return []
+    sentences = re.split(r"(?<=[.!?]) +", normalized)
+    chunks = []
+    current = ""
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+        if len(current) + len(sentence) + 1 <= max_chars:
+            current = (current + " " + sentence).strip()
+            continue
+        if current:
+            chunks.append(current)
+        current = sentence
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def _extract_sources(results: list[dict], max_sources: int = 8) -> list[dict]:
+    sources: list[dict] = []
+    seen = set()
+    for row in results:
+        src = row.get("source")
+        if not isinstance(src, dict):
+            continue
+        idx = src.get("citation_index")
+        key = (idx, src.get("doc_id"), src.get("path"))
+        if key in seen:
+            continue
+        seen.add(key)
+        sources.append(src)
+        if len(sources) >= max_sources:
+            break
+    return sources
+
+
+def _build_retrieval_answer(sources: list[dict]) -> str:
+    if not sources:
+        return "No relevant sources found."
+    lines = ["Retrieved relevant sources:"]
+    for src in sources:
+        idx = src.get("citation_index")
+        title = src.get("title") or src.get("doc_id") or "Untitled"
+        snippet = str(src.get("snippet") or "").strip()
+        if snippet:
+            lines.append(f"- {title}: {snippet} [{idx}]")
+        else:
+            lines.append(f"- {title} [{idx}]")
+    return "\n".join(lines)
 
 
 def _ok(status: int = 200, **payload: Any) -> JSONResponse:
@@ -241,15 +353,7 @@ async def chat_stream(request: Request) -> Response:
         base_url=settings.CONFIG.get("ollama_api", {}).get("base_url", "http://localhost:11434/v1"),
         api_key=settings.CONFIG.get("ollama_api", {}).get("api_key"),
     )
-    messages, source_blocks = _build_messages(
-        {
-            "settings": settings,
-            "retrieval": retrieval,
-            "build_citation_prompt": build_citation_prompt,
-        },
-        question=question,
-        top_k=top_k,
-    )
+    messages, source_blocks = _build_messages(question=question, top_k=top_k)
 
     def event_iter():
         try:
@@ -391,7 +495,7 @@ async def ingest_folder_endpoint(request: Request) -> Response:
         return _err(400, str(exc))
 
     folder_path = str(body.get("path") or "").strip()
-    is_safe, safety_reason = _is_safe_folder_path(settings, folder_path)
+    is_safe, safety_reason = _is_safe_folder_path(folder_path)
     if not is_safe:
         return _err(400, safety_reason)
 
@@ -474,10 +578,10 @@ async def ingest_upload_endpoint(request: Request) -> JSONResponse:
     uploaded: list[tuple[str, bytes]] = []
     fields: dict[str, str] = {}
     for key, value in form.multi_items():
-        if isinstance(value, UploadFile):
-            if key == "file" and value.filename:
+        if hasattr(value, "filename") and hasattr(value, "read"):
+            if key == "file" and getattr(value, "filename", None):
                 content = await value.read()
-                uploaded.append((value.filename, content))
+                uploaded.append((str(value.filename), content))
         else:
             fields[key] = str(value)
 
@@ -555,3 +659,4 @@ async def retrieval_query_endpoint(request: Request) -> JSONResponse:
         sources=sources,
         citation_stats=rendered.get("stats", {}),
     )
+

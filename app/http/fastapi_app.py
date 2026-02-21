@@ -29,7 +29,13 @@ async def lifespan(_: FastAPI):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Easy Local RAG API", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(
+        title="Easy Local RAG API",
+        version="0.1.0",
+        lifespan=lifespan,
+        docs_url="/api/docs",
+        redoc_url="/api/redoc",
+    )
 
     idempotency_repo = IdempotencyRepository(_db_path())
     idempotency_ttl_s = int(CONFIG.get("idempotency_ttl_s") or 86400)

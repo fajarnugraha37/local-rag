@@ -4,7 +4,7 @@ from fastapi import APIRouter, Query
 
 from app.common.namespaces import validate_namespace
 from app.config import runtime_settings as settings
-from app.http.request_parsing import parse_bool
+from app.http.utils import parse_bool
 from app.http.schemas.namespaces import NamespaceCreateRequest
 from app.services.namespace_service import NamespaceService
 
