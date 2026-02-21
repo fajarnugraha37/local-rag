@@ -121,11 +121,25 @@ def _launch_gui() -> None:
             exclude_patterns=[],
         )
 
+    def select_folder_and_ingest():
+        selected = filedialog.askdirectory()
+        if not selected:
+            return
+        _run_ingestion(
+            [selected],
+            recursive=True,
+            include_patterns=[],
+            exclude_patterns=[],
+        )
+
     root = tk.Tk()
     root.title("Ingest files into Easy Local RAG")
 
     upload_button = tk.Button(root, text="Select Files and Ingest", command=select_and_ingest)
     upload_button.pack(pady=16, padx=16)
+
+    folder_button = tk.Button(root, text="Select Folder and Ingest (Recursive)", command=select_folder_and_ingest)
+    folder_button.pack(pady=0, padx=16)
 
     root.mainloop()
 
